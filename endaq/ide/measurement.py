@@ -124,11 +124,14 @@ class MeasurementType:
             if not isinstance(channel, SubChannel):
                 return any(self.match(c) for c in channel.children)
             else:
-                mt = channel.units[0].lower()
+                mt = channel.units[0]
+        elif isinstance(channel, str):
+            mt = channel
         else:
             raise TypeError("Cannot compare measurement types with %r (%s)" %
                             (channel, type(channel)))
 
+        mt = mt.lower()
         return any(label in mt or fnmatch(mt, label) for label in self._labels)
 
 # ============================================================================
