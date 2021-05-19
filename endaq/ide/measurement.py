@@ -4,20 +4,27 @@ representing different measurement types.
 """
 
 __all__ = ['ANY', 'ACCELERATION', 'ALTITUDE', 'ANG_RATE', 'AUDIO', 'DIRECTION',
-           'GENERIC', 'HUMIDITY', 'LIGHT', 'LOCATION', 'MAGNETIC',
-           'ORIENTATION', 'PRESSURE', 'ROTATION', 'SPEED', 'TEMPERATURE',
-           'TIME', 'VOLTAGE', 'get_measurement_type', 'filter_channels',
-           'get_channels']
+           'FREQUENCY', 'GENERIC', 'GYRO', 'HUMIDITY', 'LIGHT', 'LOCATION',
+           'MAGNETIC', 'ORIENTATION', 'PRESSURE', 'ROTATION', 'SPEED',
+           'TEMPERATURE', 'TIME', 'VOLTAGE',
+           'get_measurement_type', 'filter_channels', 'get_channels']
 
+from fnmatch import fnmatch
 from shlex import shlex
+
+from idelib.dataset import Dataset, Channel, SubChannel
 
 # ============================================================================
 #
 # ============================================================================
 
+
 class MeasurementType:
-    """ Singleton marker object for getting channels by measurement type.
+    """ Singleton marker object for filtering channels by measurement type.
     """
+    # TODO: Fix nomenclature. "Singleton" may not be the correct term; there are multiple instances
+    #   of MeasurementType, but not multiple *duplicate* ones.
+
     types = {}
     verbose = False
 
@@ -42,11 +49,13 @@ class MeasurementType:
             obj = super().__new__(cls)
             obj._name = name
             obj._key = key
-            labels = (labels.lower(),) if isinstance(labels, str) else labels
-            obj._labels = tuple(labels) if labels else ()
+            if labels is not None:
+                labels = (labels.lower(),) if isinstance(labels, str) else labels
+                labels = tuple(labels) if labels else ()
+                if name not in labels:
+                    labels += (name.lower(),)
+            obj._labels = labels
             obj.__doc__ = doc or name
-            if name not in obj._labels:
-                obj._labels += (name,)
             cls.types[key] = obj
         return cls.types[key]
 
@@ -81,6 +90,10 @@ class MeasurementType:
         # Concatenates as strings (with this one's negated)
         return "%s -%s" % (other, self)
 
+    def __or__(self, other):
+        # Same as __add__(), but convenient for those used to using bitwise OR to combine flags
+        return self + other
+
     def __neg__(self):
         # Negates (appends a `-`) so query-like strings can be built.
         return "-%s" % self.key
@@ -93,66 +106,96 @@ class MeasurementType:
     def key(self):
         return self._key
 
+    def match(self, channel):
+        """ Does the given object match this measurement type?
+
+            :param channel: The object to test. Can be an `idelib.dataset.Channel`,
+                `idelib.dataset.SubChannel`, or a or a string of a measurement
+                type name.
+            :return: `True` if the given object uses this measurement type.
+                In the case of `idelib.dataset.Channel`, `True` is returned
+                if any of its subchannels match.
+        """
+        if getattr(channel, '_measurementType', channel) == self:
+            return True
+
+        if isinstance(channel, Channel):
+            if not isinstance(channel, SubChannel):
+                return any(self.match(c) for c in channel.children)
+            else:
+                mt = channel.units[0].lower()
+        else:
+            raise TypeError("Cannot compare measurement types with %r (%s)" %
+                            (channel, type(channel)))
+
+        return any(label in mt or fnmatch(mt, label) for label in self._labels)
+
 # ============================================================================
 #
 # ============================================================================
 
-""" does this do anything in Python? """
+
 ANY = MeasurementType("Any/all", "*",
-    doc="Marker object for matching any/all measurement types")
+    doc="Marker object for matching any/all measurement types",
+    labels=("*",))
 
 ACCELERATION = MeasurementType("Acceleration", "acc",
-    doc="Marker object for getting channels of with acceleration data",
+    doc="Marker object for filtering channels with acceleration data",
     labels=())
 ORIENTATION = MeasurementType("Orientation", "rot",
-    doc="Marker object for getting channels of with rotation/orientation data",
+    doc="Marker object for filtering channels with rotation/orientation data",
     labels=("rotation", "quaternion", "euler", "orientation"))
 AUDIO = MeasurementType("Audio", "mic",
-    doc="Marker object for getting channels of with sound level data",
+    doc="Marker object for filtering channels with sound level data",
     labels=("mic",))
 LIGHT = MeasurementType("Light", "lux",
-    doc="Marker object for getting channels of with light intensity data",
+    doc="Marker object for filtering channels with light intensity data",
     labels=("lux", "uv"))
 PRESSURE = MeasurementType("Pressure", "pre",
-    doc="Marker object for getting channels of with air pressure data",
+    doc="Marker object for filtering channels with air pressure data",
     labels=())  # pressures
 TEMPERATURE = MeasurementType("Temperature", "tmp",
-    doc="Marker object for getting channels of with temperature data",
+    doc="Marker object for filtering channels with temperature data",
     labels=())  # temperature
 HUMIDITY = MeasurementType("Humidity", "hum",
-    doc="Marker object for getting channels of with (relative) humidity data",
+    doc="Marker object for filtering channels with (relative) humidity data",
     labels=())  # Humidity
 LOCATION = MeasurementType("Location", "gps",
-    doc="Marker object for getting channels of with location data",
-    labels=())  # GPS
+    doc="Marker object for filtering channels with location data",
+    labels=("pos",))  # GPS
 SPEED = MeasurementType("Speed", "spd",
-    doc="Marker object for getting channels of with rate-of-speed data",
+    doc="Marker object for filtering channels with rate-of-speed data",
     labels=("velocity",))  # GPS Ground Speed
 TIME = MeasurementType("Time", "epo",
-    doc="Marker object for getting channels of with time data",
+    doc="Marker object for filtering channels with time data",
     labels=("epoch",))  # GPS Epoch Time
-
-# Synonyms
-ROTATION = ORIENTATION
 
 # For potential future use
 GENERIC = MeasurementType("Generic/Unspecified", "???",
     labels=("adc",))
 ANG_RATE = MeasurementType("Angular Rate", "ang",
-    doc="Marker object for getting channels of with angular change rate data",
+    doc="Marker object for filtering channels with angular change rate data",
     labels=("gyro"))
 ALTITUDE = MeasurementType("Altitude", "alt",
-    doc="Marker object for getting channels of with altitude data",
+    doc="Marker object for filtering channels with altitude data",
     labels=())
 VOLTAGE = MeasurementType("Voltage", "vol",
-    doc="Marker object for getting channels of with voltmeter data",
+    doc="Marker object for filtering channels with voltmeter data",
     labels=("volt",))
 DIRECTION = MeasurementType("Direction", "dir",
-    doc="Marker object for getting channels of with 2D directional data",
+    doc="Marker object for filtering channels with 2D directional data",
     labels=("compass", "heading"))
 MAGNETIC = MeasurementType("Magnetic Field", "emf",
-    doc="Marker object for getting channels of with magnetic field strength data",
+    doc="Marker object for filtering channels with magnetic field strength data",
     labels=("emf", "magnetic"))
+FREQUENCY = MeasurementType("Frequency", "fre",
+    doc="Marker object for filtering channels with frequency data",
+    labels=("rate",))
+
+# Synonyms, for convenience.
+# TODO: Include abbreviations (e.g., TEMP = TEMPERATURE) for convenience?
+ROTATION = ORIENTATION
+GYRO = ANG_RATE
 
 
 # ============================================================================
@@ -170,26 +213,24 @@ def get_measurement_type(channel):
             of `MeasurentType` objects (one for each child) if a `Channel`
             was supplied.
     """
-    # Note: this caches the MeasurementType in the Channel/SubChannel; the
-    # attribute `_measurementType` must be settable
     mt = getattr(channel, "_measurementType", None)
     if mt:
         return mt
 
     if channel.children:
-        mt = [get_measurement_type(c) for c in channel.children]
+        # Note: this caches the MeasurementType in the Channel/SubChannel; the
+        # attribute `_measurementType` must be settable
+        channel._measurementType = [get_measurement_type(c) for c in channel.children]
+        return channel._measurementType
     else:
-        for m in MeasurementType.types:
-            for label in m._labels:
-                # Check MeasurementType's label substrings for match. Could
-                # also/alternately use `fnmatch` for more complex patterns.
-                if label in channel.units[0].lower():
-                    mt = m
-                    break
-    if mt:
-        channel._measurementType = mt
+        for m in MeasurementType.types.values():
+            if m == ANY:
+                continue
+            if m.match(channel):
+                channel._measurementType = m
+                return m
 
-    return mt
+    return None
 
 
 def split_types(query):
@@ -211,6 +252,8 @@ def split_types(query):
     exc = []
     prev = None
 
+    # NOTE: Casting to string and parsing isn't always required, but this
+    #   isn't used often enough to require high performance optimization.
     for token in shlex(query):
         if token in MeasurementType.types:
             if prev == "-":
@@ -238,21 +281,21 @@ def filter_channels(channels, measurement_type=ANY):
     if measurement_type == ANY:
         return channels[:]
 
+    # Note: if no `inc`, only `exc` is used
     inc, exc = split_types(measurement_type)
-    if not inc:
-        # Only exclusions (if any); include everything.
-        inc = list(MeasurementType.types.values())
 
     result = []
     for ch in channels:
         thisType = get_measurement_type(ch)
         if isinstance(thisType, (list, tuple)):
             for t in thisType:
-                if t not in exc and t in inc:
-                    result.append(ch)
-                    break
-        elif thisType not in exc and thisType in inc:
-            result.append(ch)
+                if t not in exc:
+                    if not inc or t in inc:
+                        result.append(ch)
+                        break
+        elif thisType not in exc:
+            if not inc or thisType in inc:
+                result.append(ch)
 
     return result
 

@@ -4,6 +4,7 @@ Functions for retrieving summary data from a dataset.
 from collections import defaultdict
 from datetime import timedelta
 
+from idelib.dataset import Channel
 import pandas as pd
 
 from .measurement import ANY, MeasurementType, get_channels
@@ -29,10 +30,15 @@ def get_channel_table(dataset, measurement_type=ANY, **kwargs):
     if session:
         session = getattr(session, 'sessionId', session)
 
+    if hasattr(dataset, 'getPlots'):
+        sources = dataset.getPlots(sort=False)
+    else:
+        sources = dataset
+
     result = defaultdict(list)
-    for source in get_channels(dataset, measurement_type):
-        result['channel_id'].append(source.parent.id)
-        result['subchannel_id'].append(source.id)
+    for source in sources:
+        result['Channel ID'].append(source.parent.id)
+        result['Subchannel ID'].append(source.id)
         result['name'].append(source.name)
         result['type'].append(source.units[0])
         result['units'].append(source.units[1])
@@ -49,5 +55,6 @@ def get_channel_table(dataset, measurement_type=ANY, **kwargs):
         result['end'].append(end)
         result['duration'].append(duration)
         result['samples'].append(samples)
+        result['rate'].append(samples / ((end - start) / 10**6))
 
     return pd.DataFrame(result)
