@@ -14,6 +14,25 @@ from .measurement import ANY, MeasurementType, get_channels
 # Display formatting functions
 # ============================================================================
 
+def format_channel_id(ch):
+    """ Function for formatting an `idelib.dataset.Channel` or `SubChannel`
+        for display. Renders as only the channel and subchannel IDs (the other
+        information is shown in the rest of the table).
+
+        :param ch: The `idelib.dataset.Channel` or `idelib.dataset.SubChannel`
+            to format.
+        :return: A formatted "channel.subchannel" string.
+    """
+    try:
+        if ch.parent:
+            return "%s.%s" % (ch.parent.id, ch.id)
+        else:
+            return "%s.x" % ch.id
+
+    except (AttributeError, TypeError, ValueError):
+        return str(ch)
+
+
 def format_timedelta(td):
     """ Function for formatting the duration. Somewhat more condensed than
         the standard Pandas formatting.
@@ -43,7 +62,10 @@ def format_timestamp(ts):
             `idelib` timestamps have whole microsecond resolution.
         :return: A formatted timestamp string, with units.
     """
-    return "%d µs" % ts
+    try:
+        return "%d µs" % ts
+    except (AttributeError, TypeError, ValueError):
+        return str(ts)
 
 # ============================================================================
 #
@@ -51,6 +73,7 @@ def format_timestamp(ts):
 
 
 TABLE_STYLE = {
+    'channel': format_channel_id,
     'start': format_timestamp,
     'end': format_timestamp,
     'duration': format_timedelta,
@@ -59,7 +82,7 @@ TABLE_STYLE = {
 
 
 def get_channel_table(dataset, measurement_type=ANY, formatting=None,
-                      index=True, **kwargs):
+                      index=True, precision=4, **kwargs):
     """ Get summary data for all `SubChannel` objects in a `Dataset` that
         contain one or more type of sensor data.
 
@@ -72,6 +95,8 @@ def get_channel_table(dataset, measurement_type=ANY, formatting=None,
         :param formatting: A dictionary of additional style/formatting
             items (see `pandas.DataFrame.style.format()`).
         :param index: If `True`, show the index column on the left.
+        :param precision: The default decimal precision to display. Can
+            be changed later.
         :returns: A table (`DataFrame`) of summary data.
         :rtype: pandas.DataFrame
     """
@@ -91,8 +116,7 @@ def get_channel_table(dataset, measurement_type=ANY, formatting=None,
 
     result = defaultdict(list)
     for source in sources:
-        result['Channel ID'].append(source.parent.id)
-        result['Subchannel ID'].append(source.id)
+        result['channel'].append(source)
         result['name'].append(source.name)
         result['type'].append(source.units[0])
         result['units'].append(source.units[1])
@@ -111,6 +135,11 @@ def get_channel_table(dataset, measurement_type=ANY, formatting=None,
         result['samples'].append(samples)
         result['rate'].append(samples / ((end - start) / 10**6))
 
+        dmin, dmean, dmax = data.getRangeMinMeanMax()
+        result['min'].append(dmin)
+        result['mean'].append(dmean)
+        result['max'].append(dmax)
+
     if formatting is False:
         return pd.DataFrame(result)
 
@@ -121,6 +150,7 @@ def get_channel_table(dataset, measurement_type=ANY, formatting=None,
         style = TABLE_STYLE
 
     styled = pd.DataFrame(result).style.format(style)
+    styled.set_precision(precision)
     if not index:
         return styled.hide_index()
     else:
