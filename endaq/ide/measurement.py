@@ -199,6 +199,8 @@ FREQUENCY = MeasurementType("Frequency", "fre",
 # Synonyms, for convenience.
 # TODO: Include abbreviations (e.g., TEMP = TEMPERATURE) for convenience? Current names are long.
 ROTATION = ORIENTATION
+QUATERNION = ORIENTATION
+ADC = GENERIC
 GYRO = ANG_RATE
 
 
