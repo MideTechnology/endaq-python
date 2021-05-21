@@ -146,9 +146,12 @@ ANY = MeasurementType("Any/all", "*",
 ACCELERATION = MeasurementType("Acceleration", "acc",
     doc="Marker object for filtering channels with acceleration data",
     labels=())
-ORIENTATION = MeasurementType("Orientation", "rot",
+ORIENTATION = MeasurementType("Orientation", "imu",
     doc="Marker object for filtering channels with rotation/orientation data",
-    labels=("rotation", "quaternion", "euler", "orientation"))
+    labels=("quaternion", "euler", "orientation"))
+ROTATION = MeasurementType("Rotation", "rot",
+    doc="Marker object for filtering channels with angular change rate data",
+    labels=("rotation", "gyro"))
 AUDIO = MeasurementType("Audio", "mic",
     doc="Marker object for filtering channels with sound level data",
     labels=("mic",))
@@ -175,11 +178,8 @@ TIME = MeasurementType("Time", "epo",
     labels=("epoch",))  # GPS Epoch Time
 
 # For potential future use
-GENERIC = MeasurementType("Generic/Unspecified", "???",
-    labels=("adc",))
-ANG_RATE = MeasurementType("Angular Rate", "ang",
-    doc="Marker object for filtering channels with angular change rate data",
-    labels=("gyro"))
+GENERIC = MeasurementType("Generic/Unspecified", "raw",
+    labels=("adc", "raw"))
 ALTITUDE = MeasurementType("Altitude", "alt",
     doc="Marker object for filtering channels with altitude data",
     labels=())
@@ -198,10 +198,11 @@ FREQUENCY = MeasurementType("Frequency", "fre",
 
 # Synonyms, for convenience.
 # TODO: Include abbreviations (e.g., TEMP = TEMPERATURE) for convenience? Current names are long.
-ROTATION = ORIENTATION
-QUATERNION = ORIENTATION
 ADC = GENERIC
-GYRO = ANG_RATE
+ANG_RATE = ROTATION
+GYRO = ROTATION
+RAW = GENERIC
+QUATERNION = ORIENTATION
 
 
 # ============================================================================
