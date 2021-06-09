@@ -6,17 +6,18 @@ with open('README.md', 'r', encoding='utf-8') as fh:
 INSTALL_REQUIRES = [
     'numpy',
     'ebmlite>=3.0.0',
-    'idelib>=3.1.0'
+    'idelib>=3.1.0',
+    'pandas>=1.2.4',
     ]
 
 TEST_REQUIRES = [
     'pytest>=4.6',
-    'mock',
-    'pytest-cov',
+    # 'mock',
+    # 'pytest-cov',
     ]
 
 EXAMPLE_REQUIRES = [
-    'matplotlib'
+    # 'matplotlib'
     ]
 
 setuptools.setup(
