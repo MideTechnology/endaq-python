@@ -23,9 +23,9 @@ def format_channel_id(ch):
     """
     try:
         if ch.parent:
-            return "%s.%s" % (ch.parent.id, ch.id)
+            return "{}.{}".format(ch.parent.id, ch.id)
         else:
-            return "%s.x" % ch.id
+            return "{}.*".format(ch.id)
 
     except (AttributeError, TypeError, ValueError):
         return str(ch)
@@ -66,8 +66,8 @@ def format_timestamp(ts):
         :return: A formatted timestamp string, with units.
     """
     try:
-        return "%d µs" % ts
-    except (AttributeError, TypeError, ValueError):
+        return "{} µs".format(int(ts))
+    except (TypeError, ValueError):
         return str(ts)
 
 # ============================================================================
