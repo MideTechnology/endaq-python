@@ -2,6 +2,8 @@
 Functions for retrieving summary data from a dataset.
 """
 from collections import defaultdict
+import datetime
+import warnings
 
 import pandas as pd
 
@@ -27,23 +29,25 @@ def format_channel_id(ch):
         else:
             return "{}.*".format(ch.id)
 
-    except (AttributeError, TypeError, ValueError):
+    except (AttributeError, TypeError, ValueError) as err:
+        warnings.warn("format_channel_id({}) raised {}: {}".format(repr(ch), type(err).__name__, err))
         return str(ch)
 
 
-def format_timedelta(td):
+def format_timedelta(val):
     """ Function for formatting microsecond timestamps (e.g., start, end,
         or duration) as times. Somewhat more condensed than the standard
         `DataFrame` formatting of `datetime.timedelta`.
 
-        :param td: The `pandas.Timedelta` or `datetime.timedelta` to format.
+        :param val: The `pandas.Timedelta` or `datetime.timedelta` to format.
+            Will also work with microseconds as `float` or `int`.
         :return: A formatted time 'duration' string.
     """
     try:
-        if isinstance(td, float):
-            td = pd.Timedelta(microseconds=td)
+        if isinstance(val, datetime.timedelta):
+            td = pd.Timedelta(val)
         else:
-            td = pd.Timedelta(td)
+            td = pd.Timedelta(microseconds=val)
 
         # NOTE: `components` attr only exists in pandas `Timedelta`
         c = td.components
@@ -53,8 +57,10 @@ def format_timedelta(td):
             if c.days:
                 s = "{c.days}d {s}".format(c=c, s=s)
         return s
-    except (AttributeError, TypeError, ValueError):
-        return str(td)
+
+    except (AttributeError, TypeError, ValueError) as err:
+        warnings.warn("format_timedelta({}) raised {}: {}".format(repr(val), type(err).__name__, err))
+        return str(val)
 
 
 def format_timestamp(ts):
@@ -67,7 +73,8 @@ def format_timestamp(ts):
     """
     try:
         return "{} µs".format(int(ts))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError) as err:
+        warnings.warn("format_timestamp({}) raised {}: {}".format(repr(ts), type(err).__name__, err))
         return str(ts)
 
 # ============================================================================
