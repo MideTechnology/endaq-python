@@ -1,3 +1,4 @@
+from datetime import timedelta
 import os.path
 import unittest
 import warnings
@@ -5,6 +6,8 @@ import warnings
 from idelib.importer import importFile
 from endaq.ide import info, measurement
 
+
+IDE_FILENAME = os.path.join(os.path.dirname(__file__), "test.ide")
 
 class MeasurementTypeTests(unittest.TestCase):
     """ Basic tests of the MeasurementType class and constant instances.
@@ -53,7 +56,7 @@ class GetByTypeTests(unittest.TestCase):
     """
 
     def setUp(self):
-        self.dataset = importFile(os.path.join(os.path.dirname(__file__), "test.ide"))
+        self.dataset = importFile(IDE_FILENAME)
 
 
     def test_get_measurement_type(self):
@@ -65,12 +68,37 @@ class GetByTypeTests(unittest.TestCase):
 
     def test_split_types(self):
         # XXX: Implement test_split_types
+        inc, exc = measurement.split_types("*")
         warnings.warn("measurement.split_types() test not implemented")
 
 
     def test_filter_channels(self):
-        # XXX: Implement test_filter_channels
-        warnings.warn("measurement.filter_channels() test not implemented")
+        """ Test test_filter_channels() filtering of Channels (filter applies
+            if any SubChannel matches).
+        """
+        channels = self.dataset.channels
+        everything = measurement.filter_channels(channels)
+        self.assertListEqual(everything, measurement.filter_channels(list(channels.values())),
+                             "filter_channels(list) did not match filter_channels(dict)")
+
+        accels = measurement.filter_channels(channels, measurement.ACCELERATION)
+        self.assertEqual(len(accels), 2)
+
+        noaccel = measurement.filter_channels(channels, -measurement.ACCELERATION)
+        self.assertEqual(len(noaccel), len(everything) - len(accels))
+
+
+    def test_filter_channels_subchannels(self):
+        """ Test test_filter_channels() filtering of SubChannels.
+        """
+        subchannels = self.dataset.getPlots()
+        everything = measurement.filter_channels(subchannels)
+
+        accels = measurement.filter_channels(subchannels, measurement.ACCELERATION)
+        self.assertEqual(len(accels), 6)
+
+        noaccel = measurement.filter_channels(subchannels, -measurement.ACCELERATION)
+        self.assertEqual(len(noaccel), len(everything) - len(accels))
 
 
     def test_get_channels(self):
@@ -82,33 +110,62 @@ class GetByTypeTests(unittest.TestCase):
         noaccel = measurement.get_channels(self.dataset, -measurement.ACCELERATION)
         self.assertEqual(len(noaccel), len(everything) - len(accels))
 
+        everything = measurement.get_channels(self.dataset, subchannels=False)
+
+        accels = measurement.get_channels(self.dataset, measurement.ACCELERATION, subchannels=False)
+        self.assertEqual(len(accels), 2)
+
+        noaccel = measurement.get_channels(self.dataset, -measurement.ACCELERATION, subchannels=False)
+        self.assertEqual(len(noaccel), len(everything) - len(accels))
+
 
 class ChannelTableFormattingTests(unittest.TestCase):
     """ Test the individual column value formatting functions.
     """
 
     def test_format_channel_id(self):
-        # XXX: Implement test_format_channel_id
-        warnings.warn("info.format_channel_id() test not implemented")
+        dataset = importFile(IDE_FILENAME)
+        self.assertEqual(info.format_channel_id(dataset.channels[59]), '59.*')
+        self.assertEqual(info.format_channel_id(dataset.channels[59][0]), '59.0')
+
+        self.assertEqual(info.format_channel_id(None), "None")
 
 
     def test_format_timedelta(self):
-        # XXX: Implement test_format_timedelta
-        warnings.warn("info.format_timedelta() test not implemented")
+        # Note: only the start of strings is checked in order to avoid
+        # differences in selected number of significant digits
+        td = timedelta(seconds=0)
+        self.assertTrue(info.format_timedelta(td).startswith('00:00.'))
+
+        td = timedelta(seconds=1623430749.8969631)
+        self.assertTrue(info.format_timedelta(td).startswith('18789d 16:59:09.'))
+
+        # Number instead of timedelta. Unlikely but not not impossible.
+        self.assertTrue(info.format_timedelta(100000000).startswith('01:40.'))
+        self.assertEqual(info.format_timedelta(None), "None")
 
 
     def test_format_timestamp(self):
-        # XXX: Implement test_format_timestamp
-        warnings.warn("info.format_timestamp() test not implemented")
+        for i in range(0, 10000, 123):
+            self.assertTrue(info.format_timestamp(i).startswith(str(i)))
+            self.assertTrue(info.format_timestamp(str(i)).startswith(str(i)))
+
+        self.assertEqual(info.format_timestamp('bogus'), 'bogus')
+        self.assertEqual(info.format_timestamp(None), "None")
 
 
 class ChannelTableTests(unittest.TestCase):
     """ Test the "channel table" generating functionality
     """
+    def setUp(self):
+        self.dataset = importFile(IDE_FILENAME)
 
     def test_get_channel_table(self):
-        # XXX: Implement test_get_channel_table
-        warnings.warn("info.get_channel_table() test not implemented")
+        # XXX: Implement additional get_channel_table() tests
+        ct = info.get_channel_table(self.dataset)
+
+        self.assertEqual(len(ct.data), len(self.dataset.getPlots()),
+                         "Length of table's data did not match number of subchannels in IDE")
 
 
 if __name__ == '__main__':

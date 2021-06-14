@@ -248,15 +248,15 @@ def split_types(query):
         :param query: A `MeasurementType` or a string containing multiple
             `MeasurementType` keys. A key can be excluded by prefixing it with
             a ``-``.
-        :returns: A pair of lists of `MeasurementType` instances: ones to
+        :returns: A pair of sets of `MeasurementType` instances: ones to
             include, and ones to exclude.
     """
     query = str(query).lower().strip()
     if query == "*":
-        return list(MeasurementType.types.values()), []
+        return set(MeasurementType.types.values()), set()
 
-    inc = []
-    exc = []
+    inc = set()
+    exc = set()
     prev = None
 
     # NOTE: Casting to string and parsing isn't always required, but this
@@ -264,9 +264,9 @@ def split_types(query):
     for token in shlex(query):
         if token in MeasurementType.types:
             if prev == "-":
-                exc.append(MeasurementType.types[token])
+                exc.add(MeasurementType.types[token])
             else:
-                inc.append(MeasurementType.types[token])
+                inc.add(MeasurementType.types[token])
         elif token not in "+-":
             raise TypeError("Unknown measurement type: %r" % token)
         prev = token
@@ -286,10 +286,10 @@ def filter_channels(channels, measurement_type=ANY):
     # Note: This is separated from `get_channels()` so it can be used
     # elsewhere (i.e., to retrieve channels by type from a `Recorder`)
     if isinstance(channels, dict):
-        channels = list(channels.values())
+        channels = channels.values()
 
     if measurement_type == ANY:
-        return channels[:]
+        return list(channels)
 
     # Note: if no `inc`, only `exc` is used
     inc, exc = split_types(measurement_type)
@@ -297,12 +297,16 @@ def filter_channels(channels, measurement_type=ANY):
     result = []
     for ch in channels:
         thisType = get_measurement_type(ch)
-        if isinstance(thisType, (list, tuple)):
-            for t in thisType:
-                if t not in exc:
-                    if not inc or t in inc:
-                        result.append(ch)
-                        break
+
+        if isinstance(thisType, (list, set, tuple)):
+            # `ch` is a Channel with SubChannels
+            if exc.intersection(thisType):
+                # One or more subchannels excluded; exclude channel.
+                continue
+            elif not inc or inc.intersection(thisType):
+                result.append(ch)
+                continue
+
         elif thisType not in exc:
             if not inc or thisType in inc:
                 result.append(ch)
