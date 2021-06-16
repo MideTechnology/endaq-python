@@ -9,6 +9,7 @@ from endaq.ide import info, measurement
 
 IDE_FILENAME = os.path.join(os.path.dirname(__file__), "test.ide")
 
+
 class MeasurementTypeTests(unittest.TestCase):
     """ Basic tests of the MeasurementType class and constant instances.
     """
@@ -67,9 +68,16 @@ class GetByTypeTests(unittest.TestCase):
 
 
     def test_split_types(self):
-        # XXX: Implement test_split_types
         inc, exc = measurement.split_types("*")
-        warnings.warn("measurement.split_types() test not implemented")
+        self.assertEqual(len(measurement.MeasurementType.types), len(inc))
+        self.assertEqual(len(exc), 0)
+
+        inc, exc = measurement.split_types(measurement.ACCELERATION + measurement.PRESSURE - measurement.LIGHT)
+        self.assertIn(measurement.ACCELERATION, inc)
+        self.assertIn(measurement.PRESSURE, inc)
+        self.assertIn(measurement.LIGHT, exc)
+        self.assertTrue(measurement.LIGHT not in inc)
+        self.assertTrue(measurement.PRESSURE not in exc)
 
 
     def test_filter_channels(self):
