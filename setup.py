@@ -1,22 +1,20 @@
 import setuptools
 
-with open('README.md', 'r', encoding='utf-8') as fh:
+with open('README.rst', 'r', encoding='utf-8') as fh:
     long_description = fh.read()
 
 INSTALL_REQUIRES = [
-    'numpy',
-    'ebmlite>=3.0.0',
-    'idelib>=3.1.0'
+    'endaq-calc',
+    'endaq-cloud',
+    'endaq-ide',
+    'endaq-io',
+    'endaq-plot',
     ]
 
 TEST_REQUIRES = [
-    'pytest>=4.6',
-    'mock',
-    'pytest-cov',
     ]
 
 EXAMPLE_REQUIRES = [
-    'matplotlib'
     ]
 
 setuptools.setup(
