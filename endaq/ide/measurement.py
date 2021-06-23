@@ -64,8 +64,8 @@ class MeasurementType:
 
     def __repr__(self):
         if self.verbose:
-            return "<Measurement Type: %s (%r)>" % (self._name, self._key)
-        return "<Measurement Type: %s>" % self._name
+            return f"<Measurement Type: {self._name} {self.key!r})>"
+        return f"<Measurement Type: {self._name}>"
 
     def __eq__(self, other):
         return str(self) == str(other)
@@ -77,19 +77,19 @@ class MeasurementType:
 
     def __add__(self, other):
         # Concatenates as strings, so query-like sequences can be built.
-        return "%s %s" % (self, other)
+        return f"{self} {other}"
 
     def __radd__(self, other):
         # Concatenates as strings, so query-like sequences can be built.
-        return "%s %s" % (other, self)
+        return f"{other} {self}"
 
     def __sub__(self, other):
         # Concatenates as strings (with this one's negated)
-        return "%s -%s" % (self, other)
+        return f"{self} -{other}"
 
     def __rsub__(self, other):
         # Concatenates as strings (with this one's negated)
-        return "%s -%s" % (other, self)
+        return f"{other} -{self}"
 
     def __or__(self, other):
         # Same as __add__(), but convenient for those used to using bitwise OR to combine flags
@@ -97,7 +97,7 @@ class MeasurementType:
 
     def __neg__(self):
         # Negates (appends a `-`) so query-like strings can be built.
-        return "-%s" % self.key
+        return f"-{self.key}"
 
     @property
     def name(self):
@@ -128,8 +128,7 @@ class MeasurementType:
         elif isinstance(channel, str):
             mt = channel
         else:
-            raise TypeError("Cannot compare measurement types with %r (%s)" %
-                            (channel, type(channel)))
+            raise TypeError(f"Cannot compare measurement types with {channel} ({type(channel)})")
 
         mt = mt.lower()
         return any(label in mt or fnmatch(mt, label) for label in self._labels)
@@ -268,7 +267,7 @@ def split_types(query):
             else:
                 inc.add(MeasurementType.types[token])
         elif token not in "+-":
-            raise TypeError("Unknown measurement type: %r" % token)
+            raise TypeError(f"Unknown measurement type: {token!r}")
         prev = token
     return inc, exc
 

@@ -25,12 +25,12 @@ def format_channel_id(ch):
     """
     try:
         if ch.parent:
-            return "{}.{}".format(ch.parent.id, ch.id)
+            return f"{ch.parent.id}.{ch.id}"
         else:
-            return "{}.*".format(ch.id)
+            return f"{ch.id}.*"
 
     except (AttributeError, TypeError, ValueError) as err:
-        warnings.warn("format_channel_id({}) raised {}: {}".format(repr(ch), type(err).__name__, err))
+        warnings.warn(f"format_channel_id({ch!r}) raised {type(err).__name__}: {err}")
         return str(ch)
 
 
@@ -51,15 +51,15 @@ def format_timedelta(val):
 
         # NOTE: `components` attr only exists in pandas `Timedelta`
         c = td.components
-        s = "{c.minutes:02d}:{c.seconds:02d}.{c.milliseconds:04d}".format(c=c)
+        s = f"{c.minutes:02d}:{c.seconds:02d}.{c.milliseconds:04d}"
         if c.hours or c.days:
-            s = "{c.hours:02d}:{s}".format(c=c, s=s)
+            s = f"{c.hours:02d}:{s}"
             if c.days:
-                s = "{c.days}d {s}".format(c=c, s=s)
+                s = f"{c.days}d {s}"
         return s
 
     except (AttributeError, TypeError, ValueError) as err:
-        warnings.warn("format_timedelta({}) raised {}: {}".format(repr(val), type(err).__name__, err))
+        warnings.warn(f"format_timedelta({val!r}) raised {type(err).__name__}: {err}")
         return str(val)
 
 
@@ -72,9 +72,9 @@ def format_timestamp(ts):
         :return: A formatted timestamp string, with units.
     """
     try:
-        return "{} µs".format(int(ts))
+        return f"{int(ts)} µs"
     except (TypeError, ValueError) as err:
-        warnings.warn("format_timestamp({}) raised {}: {}".format(repr(ts), type(err).__name__, err))
+        warnings.warn(f"format_timestamp({ts!r}) raised {type(err).__name__}: {err}")
         return str(ts)
 
 # ============================================================================

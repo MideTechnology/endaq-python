@@ -34,20 +34,20 @@ class MeasurementTypeTests(unittest.TestCase):
     def test_comp(self):
         # Test that all predefined MeasurementTypes are equal to their string equivalents
         for mt in self.types:
-            self.assertEqual(mt, str(mt), "{} not equal to string '{}'".format(repr(mt), mt))
+            self.assertEqual(mt, str(mt), f"{mt!r} not equal to string '{mt}'")
 
 
     def test_strings(self):
         # Adding MeasurementTypes concatenates their strings
         self.assertEqual(measurement.ACCELERATION + measurement.PRESSURE,
-                         "{} {}".format(measurement.ACCELERATION, measurement.PRESSURE))
+                         f"{measurement.ACCELERATION} {measurement.PRESSURE}")
 
         # Negating creates a string prefixed by ``"-"``
         self.assertEqual(-measurement.ACCELERATION,
-                         "-{}".format(measurement.ACCELERATION))
+                         f"-{measurement.ACCELERATION}")
 
         self.assertEqual(measurement.ACCELERATION - measurement.PRESSURE,
-                         "{} -{}".format(measurement.ACCELERATION, measurement.PRESSURE))
+                         f"{measurement.ACCELERATION} -{measurement.PRESSURE}")
 
 
 
