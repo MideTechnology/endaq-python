@@ -1,3 +1,5 @@
-numpy>=1.16.6
-ebmlite>=3.0.0
-idelib>=3.1.0
+endaq-calc
+endaq-cloud
+endaq-ide
+endaq-io
+endaq-plot
