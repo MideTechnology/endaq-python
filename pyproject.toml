@@ -44,16 +44,16 @@
         "__"
       ]
       # Naming Conventions
-      argument_naming-style="camelCase"
-      attr-naming-style="camelCase"
+      argument_naming-style="snake_case"
+      attr-naming-style="snake_case"
       class-naming-style="PascalCase"
       class-attribute-naming-style="UPPER_CASE"
       const-naming-style="UPPER_CASE"
-      function-naming-style="camelCase"
-      inlinevar-naming-style="camelCase"
-      method-naming-style="camelCase"
+      function-naming-style="snake_case"
+      inlinevar-naming-style="snake_case"
+      method-naming-style="snake_case"
       module-naming-style="snake_case"
-      variable-naming-style="camelCase"
+      variable-naming-style="snake_case"
   [tool.pytest]
     [tool.pytest.ini_options]
       required_plugins=["pytest-cov"]
