@@ -1,0 +1,5 @@
+git+https://github.com/MideTechnology/endaq-python-ide.git@development
+git+https://github.com/MideTechnology/endaq-python-calc.git@development
+git+https://github.com/MideTechnology/endaq-python-cloud.git@development
+git+https://github.com/MideTechnology/endaq-python-plot.git@development
+git+https://github.com/MideTechnology/endaq-python-io.git@development
