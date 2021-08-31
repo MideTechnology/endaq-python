@@ -4,11 +4,11 @@ with open('README.rst', 'r', encoding='utf-8') as fh:
     long_description = fh.read()
 
 INSTALL_REQUIRES = [
-    'endaq-calc',
-    'endaq-cloud',
-    'endaq-ide',
-    'endaq-io',
-    'endaq-plot',
+    'endaq-python-calc',
+    'endaq-python-cloud',
+    'endaq-python-ide',
+    'endaq-python-io',
+    'endaq-python-plot',
     ]
 
 TEST_REQUIRES = [
