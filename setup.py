@@ -18,7 +18,7 @@ EXAMPLE_REQUIRES = [
     ]
 
 setuptools.setup(
-        name='endaq',
+        name='endaq-python',
         version='1.0.0a1',
         author='Mide Technology',
         author_email='help@mide.com',
@@ -38,7 +38,7 @@ setuptools.setup(
                      'Topic :: Scientific/Engineering',
                      ],
         keywords='ebml binary ide mide endaq',
-        # packages=setuptools.find_packages(exclude=('testing',)),
+        packages=setuptools.find_packages(exclude=('tests',)),
         package_dir={'endaq': './endaq'},
         # package_data={
         #     'idelib': ['schemata/*'],
