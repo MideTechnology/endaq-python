@@ -4,11 +4,11 @@ with open('README.rst', 'r', encoding='utf-8') as fh:
     long_description = fh.read()
 
 INSTALL_REQUIRES = [
-    'endaq-python-calc',
-    'endaq-python-cloud',
-    'endaq-python-ide',
-    'endaq-python-io',
-    'endaq-python-plot',
+    'endaq-calc',
+    'endaq-cloud',
+    'endaq-ide',
+    'endaq-io',
+    'endaq-plot',
     ]
 
 TEST_REQUIRES = [
@@ -18,7 +18,7 @@ EXAMPLE_REQUIRES = [
     ]
 
 setuptools.setup(
-        name='endaq-python',
+        name='endaq',
         version='1.0.0a1',
         author='Mide Technology',
         author_email='help@mide.com',
