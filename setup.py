@@ -7,8 +7,6 @@ INSTALL_REQUIRES = [
     'endaq-calc',
     'endaq-cloud',
     'endaq-ide',
-    'endaq-io',
-    'endaq-plot',
     ]
 
 TEST_REQUIRES = [
@@ -38,7 +36,7 @@ setuptools.setup(
                      'Topic :: Scientific/Engineering',
                      ],
         keywords='ebml binary ide mide endaq',
-        # packages=setuptools.find_packages(exclude=('testing',)),
+        packages=setuptools.find_packages(exclude=('tests',)),
         package_dir={'endaq': './endaq'},
         # package_data={
         #     'idelib': ['schemata/*'],
