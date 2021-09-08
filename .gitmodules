@@ -1,0 +1,9 @@
+[submodule "submodules/endaq-python-calc"]
+	path = submodules/endaq-python-calc
+	url = https://github.com/MideTechnology/endaq-python-calc
+[submodule "submodules/endaq-python-ide"]
+	path = submodules/endaq-python-ide
+	url = https://github.com/MideTechnology/endaq-python-ide
+[submodule "submodules/endaq-python-cloud"]
+	path = submodules/endaq-python-cloud
+	url = https://github.com/MideTechnology/endaq-python-cloud
