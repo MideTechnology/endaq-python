@@ -21,17 +21,18 @@ Commands
 ========
 
 =================== ======================================================================
-files               Outputs file information for selected number of files and attributes
-file-id             Outputs file information for file with specified ID to output file
-devices             Ouputs device information for selected number of files
-device-id           Output device information for device with specified ID to output file
-account             Prints out account information
-attributes          Adds an attribute to a specified file
-set-env             Creates a .env file with passed-in API key (*NOT SECURE*)
+``files``           Outputs file information for selected number of files and attributes
+``file-id``         Outputs file information for file with specified ID to output file
+``devices``         Ouputs device information for selected number of files
+``device-id``       Output device information for device with specified ID to output file
+``account``         Prints out account information
+``attributes``      Adds an attribute to a specified file
+``set-env``         Creates a .env file with passed-in API key (*NOT SECURE*)
 =================== ======================================================================
 
-Usages
-======
+Parameters
+==========
+
 -h                  Command Line Help
 --id, -i            File or Device ID
 --limit, -l         File or Device output limit; Max 100 default 50
@@ -42,11 +43,14 @@ Usages
 --value, -v         Attribute Value
 --verbose, -V       Prints out URL API calls
 
-- endaq-cloud set-env -k <API_KEY>
-- endaq-cloud download -i <FILE_ID> -o <OUTPUT_FOLDER>
-- endaq-cloud files -a <ATTRIBUTES_TO_GET> -l <FILE_OR_DEVICE_OUTPUT_LIMIT>
-- endaq-cloud file-id -i **# additional argument needed**
-- endaq-cloud devices -l <FILE_OR_DEVICE_OUTPUT_LIMIT>
-- endaq-cloud device-id -i **# additional argument needed**
-- endaq-cloud account
-- endaq-cloud attribute -n <ATTRIBUTE_NAME> -t <ATTRIBUTE_TYPE> -v <ATTRIBUTE_VALUE> -i **# additional arguments needed**
+Usages
+======
+
+- ``endaq-cloud set-env -k <API_KEY>``
+- ``endaq-cloud download -i <FILE_ID> -o <OUTPUT_FOLDER>``
+- ``endaq-cloud files -a <ATTRIBUTES_TO_GET> -l <FILE_OR_DEVICE_OUTPUT_LIMIT>``
+- ``endaq-cloud file-id -i <FILE_ID>``
+- ``endaq-cloud devices -l <FILE_OR_DEVICE_OUTPUT_LIMIT>``
+- ``endaq-cloud device-id -i <DEVICE_ID>``
+- ``endaq-cloud account``
+- ``endaq-cloud attribute -n <ATTRIBUTE_NAME> -t <ATTRIBUTE_TYPE> -v <ATTRIBUTE_VALUE> -i <FILE_ID>``
