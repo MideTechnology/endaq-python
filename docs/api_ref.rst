@@ -5,4 +5,5 @@ enDAQ API Reference
    :maxdepth: 2
    :caption: Contents:
 
+   endaq/ide
    endaq/calc
