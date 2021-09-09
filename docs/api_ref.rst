@@ -7,3 +7,6 @@ enDAQ API Reference
 
    endaq/ide
    endaq/calc
+   endaq/cloud
+
+   endaq/cloud_API_wrapper
