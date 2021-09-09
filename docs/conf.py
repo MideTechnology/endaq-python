@@ -13,6 +13,8 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 
+import pkg_resources
+
 import endaq
 
 # -- Project information -----------------------------------------------------
@@ -21,10 +23,10 @@ project = 'enDAQ'
 copyright = '2021, Mide Technology Corp.'
 author = ''
 
-# The short X.Y version
-#version = u'.'.join([str(i) for i in endaq.__version__[:2]])
 # The full version, including alpha/beta/rc tags
-#release = u'.'.join([u'{}'.format(i) for i in endaq.__version__])
+release = pkg_resources.get_distribution("endaq").version
+# The short X.Y version
+version = '.'.join(release.split(".")[:2])
 
 
 # -- General configuration ---------------------------------------------------
