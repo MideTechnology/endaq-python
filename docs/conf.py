@@ -17,7 +17,7 @@ import endaq
 
 # -- Project information -----------------------------------------------------
 
-project = 'idelib'
+project = 'enDAQ'
 copyright = '2021, Mide Technology Corp.'
 author = ''
 
