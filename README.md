@@ -1,4 +1,4 @@
-### `endaq-python`: A comprehensive, user-centric Python API for working with enDAQ data and devices
+# `endaq-python`: A comprehensive, user-centric Python API for working with enDAQ data and devices
 
 `endaq-python` is essentially a meta-package, combining several function-specific sub-packages, and providing a central repository from which to build the documentation.
 
