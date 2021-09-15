@@ -1,0 +1,5 @@
+endaq-calc
+endaq-ide
+endaq-cloud
+sphinx
+sphinx-rtd-theme
