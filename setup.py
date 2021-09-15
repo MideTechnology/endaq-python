@@ -17,7 +17,7 @@ EXAMPLE_REQUIRES = [
 
 setuptools.setup(
         name='endaq',
-        version='1.0.0a1',
+        version='1.0.0b1',
         author='Mide Technology',
         author_email='help@mide.com',
         description='A comprehensive, user-centric Python API for working with enDAQ data and devices',
@@ -25,7 +25,7 @@ setuptools.setup(
         long_description_content_type='text/markdown',
         url='https://github.com/MideTechnology/endaq-python',
         license='MIT',
-        classifiers=['Development Status :: 2 - Pre-Alpha',
+        classifiers=['Development Status :: 4 - Beta',
                      'License :: OSI Approved :: MIT License',
                      'Natural Language :: English',
                      'Programming Language :: Python :: 3.5',
