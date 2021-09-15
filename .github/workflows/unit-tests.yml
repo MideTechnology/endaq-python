@@ -1,0 +1,44 @@
+name: Unit test on push and PR
+
+
+on: [push, pull_request, workflow_dispatch]
+
+
+jobs:
+  unit-tests:
+    name: Run Unit Tests
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        python-version: [3.6, 3.7, 3.8, 3.9]
+
+    env:
+      OS: ${{ matrix.os }}
+      PYTHON-VERSION: ${{ matrix.python-version }}
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade pip
+
+      - uses: actions/checkout@v2
+
+      - run: python -m pip install .[test]
+
+      - run: python -m pytest ./testing/ --cov=idelib
+      - run: sphinx-build -W -b html docs/source docs/html
+      - run: sphinx-build -W -b doctest docs/source docs/doctest
+
+      - uses: codecov/codecov-action@v2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          env_vars: OS,PYTHON-VERSION
+          files: .coverage
+          name: ${{ matrix.os }} ${{ matrix.python-version }}
+          verbose: true
