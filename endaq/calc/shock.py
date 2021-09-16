@@ -341,12 +341,13 @@ class HalfSineWavePulse(NamedTuple):
         t = np.arange(trange[0], trange[1], dt)
 
         data = np.zeros((len(t), len(self.amplitude)), dtype=float)
-        t_data = np.broadcast_to(t[..., None], data.shape)
-        t_mask = np.nonzero((t_data >= t0) & (t_data < t0 + self.duration.to_numpy()))
-        data[t_mask] = (
-            self.amplitude.to_numpy()
-            * np.sin(np.pi * t_data / self.duration.to_numpy())
-        )[t_mask]
+        t_data, ampl_data, T_data = np.broadcast_arrays(
+            t[..., None], self.amplitude.to_numpy(), self.duration.to_numpy()
+        )
+        t_mask = np.nonzero((t_data >= t0) & (t_data < t0 + T_data))
+        data[t_mask] = ampl_data[t_mask] * np.sin(
+            np.pi * t_data[t_mask] / T_data[t_mask]
+        )
 
         return pd.DataFrame(
             data,
