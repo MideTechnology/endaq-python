@@ -248,22 +248,14 @@ def test_pseudo_velocity_zero_padding(
 )
 @hyp.settings(deadline=None)  # this test tends to timeout
 def test_enveloping_half_sine(df_pvss, damp):
-    ampl, T = shock.enveloping_half_sine(df_pvss, damp=damp)
+    env_half_sine = shock.enveloping_half_sine(df_pvss, damp=damp)
+    ampl, T = env_half_sine
     hyp.note(f"pulse amplitude: {ampl}")
     hyp.note(f"pulse duration: {T}")
 
-    ampl = ampl[0]
-    T = T[0]
-
-    dt = min(
-        1 / (2 * df_pvss.index[-1]), T / 20
-    )  # guarantee sufficient # of samples to represent pulse
-    fs = 1 / dt
-    times = np.arange(int(fs * (T + 1 / df_pvss.index[0]))) / fs
-    pulse = np.zeros_like(times)
-    pulse[: int(T * fs)] = ampl * np.sin((np.pi / T) * times[: int(T * fs)])
+    pulse = env_half_sine.to_time_series()
     pulse_pvss = shock.shock_spectrum(
-        pd.DataFrame(pulse, index=times), freqs=df_pvss.index, damp=damp, mode="pvss"
+        pulse, freqs=df_pvss.index, damp=damp, mode="pvss"
     )
 
     # This is an approximation -> give the result a fudge-factor for correctness

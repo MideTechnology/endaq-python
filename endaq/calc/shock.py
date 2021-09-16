@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import typing
-from typing import NamedTuple
+from typing import Optional, Tuple, NamedTuple
 from collections import namedtuple
 import functools
 import warnings
@@ -232,11 +232,6 @@ def shock_spectrum(
     )
 
 
-class HalfSineWavePulse(NamedTuple):
-    amplitude: float
-    duration: float
-
-
 def enveloping_half_sine(
     pvss: pd.DataFrame,
     damp: float = 0.0,
@@ -283,3 +278,84 @@ def enveloping_half_sine(
         amplitude=2 * np.pi * max_f_pvss,
         duration=max_pvss / (4 * amp_factor(damp) * max_f_pvss),
     )
+
+
+class HalfSineWavePulse(NamedTuple):
+    """
+    The output data type for ``enveloping_half_sine``.
+
+    The significant data members are `amplitude` and `duration`. Because this
+    class inherits from ``collections.namedtuple``, these two members can simply
+    be unpacked as if from a plain tuple:
+
+    .. code-block:: python
+
+        ampl, T = enveloping_half_sine(df_pvss)
+
+    However, users can also elect to use the other methods of this class to
+    generate other kinds of outputs.
+
+    .. note:: This class is not intended to be instantiated manually.
+    """
+
+    amplitude: float
+    duration: float
+
+    def to_time_series(
+        self,
+        dt: Optional[float] = None,
+        t0: float = 0.0,
+        trange: Tuple[Optional[float], Optional[float]] = (None, None),
+    ) -> pd.DataFrame:
+        """
+        Generate a time-series of the half-sine pulse.
+
+        :param dt: the sampling period of the resulting waveform; defaults to
+            1/20th of the pulse duration
+        :param t0: the starting time of the pulse within the resulting waveform;
+            defaults to 0
+        :param trange: the time range of the resulting waveform; if
+            `trange[0]` is `None` (default), the range starts at `t0`; if
+            `trange[1]` is `None` (default), the range ends at `t0 + duration`
+        :return: a time-series of the half-sine pulse
+        """
+        if dt is None:
+            dt = self.duration.min() / 20
+        if dt > self.duration.min() / 8:
+            warnings.warn(
+                f"the sampling period {dt} is large relative to the pulse duration"
+                f" {self.duration.min()}; the waveform may not accurately represent"
+                f" the half-sine pulse's shock intensity"
+            )
+
+        trange = (
+            trange[0] if trange[0] is not None else t0,
+            trange[1] if trange[1] is not None else t0 + self.duration.max(),
+        )
+
+        if t0 < trange[0] or trange[1] < t0 + self.duration.max():
+            warnings.warn(
+                "half-sine pulse extends beyond the bounds of the time series"
+            )
+
+        t = np.arange(trange[0], trange[1], dt)
+
+        data = np.zeros((len(t), len(self.amplitude)), dtype=float)
+        t_data = np.broadcast_to(t[..., None], data.shape)
+        t_mask = np.nonzero((t_data >= t0) & (t_data < t0 + self.duration.to_numpy()))
+        data[t_mask] = (
+            self.amplitude.to_numpy()
+            * np.sin(np.pi * t_data / self.duration.to_numpy())
+        )[t_mask]
+
+        return pd.DataFrame(
+            data,
+            index=pd.Series(t, name="timestamp"),
+            columns=self.amplitude.index,
+        )
+
+    # def widened_duration(self, new_duration: float):
+    #    pass
+
+    # def pseudo_velocity(self):
+    #    pass
