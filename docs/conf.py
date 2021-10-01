@@ -89,7 +89,13 @@ html_theme = 'pydata_sphinx_theme'
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+html_theme_options = {
+    "logo_link": "index",
+    "github_url": "https://github.com/MideTechnology/endaq-python",
+    "twitter_url": "https://twitter.com/enDAQ_sensors",
+    "collapse_navigation": True,
+    #"external_links": [{"name": "Learn", "url": "https://numpy.org/numpy-tutorials/"}],
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
