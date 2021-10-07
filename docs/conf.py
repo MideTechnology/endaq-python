@@ -106,6 +106,8 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+# Appends custom .css file
+# https://docs.readthedocs.io/en/stable/guides/adding-custom-css.html#overriding-or-replacing-a-theme-s-stylesheet
 html_style = "endaq-style.css"
 
 # Custom sidebar templates, must be a dictionary that maps document names
