@@ -4,11 +4,12 @@ import os
 
 import numpy as np
 import pandas as pd
-import idelib
+
+import endaq.ide
+from endaq.calc import stats as calc_stats
+from endaq.calc import psd as calc_psd
 
 from endaq.batch.analyzer import Analyzer
-from endaq.batch.utils.calc import stats as utils_stats
-from endaq.batch.utils.calc import psd as utils_psd
 
 
 def _make_meta(dataset):
@@ -36,26 +37,19 @@ def _make_psd(analyzer, fstart=None, bins_per_octave=None):
     if accel_ch is None:
         return None
 
-    f, psd = analyzer._PSDData
+    df_psd = analyzer._PSDData
     if bins_per_octave is not None:
-        f, psd = utils_psd.to_octave(
-            f,
-            psd,
+        df_psd = calc_psd.to_octave(
+            df_psd,
             fstart=(fstart or 1),
             octave_bins=bins_per_octave,
-            axis=1,
-            mode="mean",
+            agg=np.mean,
         )
 
-    df_psd = pd.DataFrame(
-        psd.T * analyzer.MPS2_TO_G ** 2,  # (m/s^2)^2/Hz -> g^2/Hz
-        index=pd.Index(f, name="frequency"),
-        columns=pd.Index(accel_ch.axis_names, name="axis"),
-    )
-
     df_psd["Resultant"] = np.sum(df_psd.to_numpy(), axis=1)
+    df_psd = df_psd * analyzer.MPS2_TO_G ** 2  # (m/s^2)^2/Hz -> g^2/Hz
 
-    return df_psd.stack(level="axis").reorder_levels(["axis", "frequency"])
+    return df_psd.stack(level="axis").reorder_levels(["axis", "frequency (Hz)"])
 
 
 def _make_pvss(analyzer):
@@ -68,17 +62,11 @@ def _make_pvss(analyzer):
     if accel_ch is None:
         return None
 
-    f, pvss = analyzer._PVSSData
+    df_pvss = analyzer._PVSSData
+    df_pvss["Resultant"] = analyzer._PVSSResultantData
+    df_pvss = df_pvss * analyzer.MPS_TO_MMPS
 
-    df_pvss = pd.DataFrame(
-        pvss.T * analyzer.MPS_TO_MMPS,
-        index=pd.Index(f, name="frequency"),
-        columns=pd.Index(accel_ch.axis_names, name="axis"),
-    )
-
-    df_pvss["Resultant"] = utils_stats.L2_norm(df_pvss.to_numpy(), axis=1)
-
-    return df_pvss.stack(level="axis").reorder_levels(["axis", "frequency"])
+    return df_pvss.stack(level="axis").reorder_levels(["axis", "frequency (Hz)"])
 
 
 def _make_metrics(analyzer):
@@ -96,7 +84,7 @@ def _make_metrics(analyzer):
     - temperature - degrees Celsius
     - pressure - kiloPascals
     """
-    df = pd.DataFrame(
+    df = pd.concat(
         [
             analyzer.accRMSFull,
             analyzer.velRMSFull,
@@ -109,12 +97,13 @@ def _make_metrics(analyzer):
             analyzer.micRMSFull,
             analyzer.tempFull,
             analyzer.pressFull,
-        ]
+        ],
+        axis="columns",
     )
 
     # Format data into desired shape
-    df.index.name = "calculation"
-    series = df.stack()
+    df.columns.name = "calculation"
+    series = df.stack().reorder_levels(["calculation", "axis"])
 
     return series
 
@@ -131,44 +120,42 @@ def _make_peak_windows(analyzer, margin_len):
     if accel_ch is None:
         return None
 
-    data = analyzer.MPS2_TO_G * np.concatenate(  # m/s^2 -> g
-        [analyzer._accelerationData, analyzer._accelerationResultant[None]], axis=0
-    )
+    data = analyzer._accelerationData[:]
+    data["Resultant"] = analyzer._accelerationResultantData
+    data = analyzer.MPS2_TO_G * data
 
-    window_len = 2 * margin_len + 1
-    t = (
-        accel_ch.eventarray.arraySlice()[0]
-        - accel_ch.channel.dataset.sessions[0].firstTime
-    )
     dt = 1 / analyzer._accelerationFs
-    result_data = np.full((window_len, data.shape[0]), np.nan, dtype=data.dtype)
 
-    # Calculate ranges
-    i_max = np.argmax(np.abs(data), axis=1)
-    i_max_neg = i_max - data.shape[1]
-    for j in range(data.shape[0]):
-        result_data[-margin_len - 1 - i_max[j] : margin_len - i_max_neg[j], j] = data[
-            j, i_max_neg[j] - margin_len : i_max[j] + margin_len + 1
-        ]
+    data_noidx = data.reset_index(drop=True)
+    peak_indices = data_noidx.abs().idxmax(axis="rows")
+    aligned_peak_data = pd.concat(
+        [
+            pd.Series(
+                data[col].to_numpy(),
+                index=(data_noidx.index - peak_indices[col]),
+                name=col,
+            )
+            for col in data.columns
+        ],
+        axis="columns",
+    )
+    aligned_peak_data = aligned_peak_data.loc[-margin_len : margin_len + 1]
+    aligned_peak_data.index = pd.Series(
+        aligned_peak_data.index * dt, name="peak offset"
+    )
+    aligned_peak_data.columns = pd.MultiIndex.from_frame(
+        pd.DataFrame(
+            {
+                "axis": aligned_peak_data.columns.values,
+                "peak time": data.index[peak_indices],
+            }
+        )
+    )
 
     # Format results
     result = (
-        pd.DataFrame(
-            result_data,
-            index=pd.to_timedelta(
-                dt * pd.RangeIndex(-margin_len, margin_len + 1, name="peak offset"),
-                unit="s",
-            ),
-            columns=pd.MultiIndex.from_arrays(
-                [
-                    accel_ch.axis_names + ["Resultant"],
-                    t[i_max].astype("timedelta64[us]"),
-                ],
-                names=["axis", "peak time"],
-            ),
-        )
-        .stack(level="axis")
-        .stack(level="peak time")
+        aligned_peak_data.stack()
+        .stack()
         .reorder_levels(["axis", "peak time", "peak offset"])
     )
 
@@ -179,22 +166,14 @@ def _make_vc_curves(analyzer):
     """
     Format the VC curves of the main accelerometer channel into a pandas object.
     """
-
     accel_ch = analyzer._channels.get("acc", None)
     if accel_ch is None:
         return None
 
-    f, vc = analyzer._VCCurveData
+    df_vc = analyzer._VCCurveData * analyzer.MPS_TO_UMPS  # (m/s) -> (μm/s)
+    df_vc["Resultant"] = calc_stats.L2_norm(df_vc.to_numpy(), axis=1)
 
-    df_vc = pd.DataFrame(
-        vc.T * analyzer.MPS_TO_UMPS,  # (m/s) -> (μm/s)
-        index=pd.Index(f, name="frequency"),
-        columns=pd.Index(accel_ch.axis_names, name="axis"),
-    )
-
-    df_vc["Resultant"] = utils_stats.L2_norm(df_vc.to_numpy(), axis=1)
-
-    return df_vc.stack(level="axis").reorder_levels(["axis", "frequency"])
+    return df_vc.stack(level="axis").reorder_levels(["axis", "frequency (Hz)"])
 
 
 class GetDataBuilder:
@@ -393,7 +372,7 @@ class GetDataBuilder:
         print(f"processing {filename}...")
 
         data = {}
-        with idelib.importFile(filename) as ds:
+        with endaq.ide.get_doc(filename) as ds:
             analyzer = Analyzer(
                 ds,
                 **self._analyzer_kwargs,
@@ -510,7 +489,11 @@ class OutputStruct:
                 continue
             if k == "psd":
                 fig = px.line(
-                    df, x="frequency", y="value", color="filename", line_dash="axis"
+                    df,
+                    x="frequency (Hz)",
+                    y="value",
+                    color="filename",
+                    line_dash="axis",
                 )
 
                 fig.update_xaxes(type="log", title_text="frequency (Hz)")
@@ -519,7 +502,11 @@ class OutputStruct:
 
             elif k == "pvss":
                 fig = px.line(
-                    df, x="frequency", y="value", color="filename", line_dash="axis"
+                    df,
+                    x="frequency (Hz)",
+                    y="value",
+                    color="filename",
+                    line_dash="axis",
                 )
                 fig.update_xaxes(type="log", title_text="frequency (Hz)")
                 fig.update_yaxes(type="log", title_text="Velocity (mm/s)")
@@ -544,7 +531,11 @@ class OutputStruct:
 
             elif k == "vc_curves":
                 fig = px.line(
-                    df, x="frequency", y="value", color="filename", line_dash="axis"
+                    df,
+                    x="frequency (Hz)",
+                    y="value",
+                    color="filename",
+                    line_dash="axis",
                 )
 
                 fig.update_xaxes(type="log", title_text="frequency (Hz)")

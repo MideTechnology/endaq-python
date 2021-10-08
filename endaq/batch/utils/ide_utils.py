@@ -1,6 +1,8 @@
 from collections import defaultdict, namedtuple
 import warnings
 
+from endaq.ide import to_pandas
+
 
 # Constant Channel definitions
 UTYPE_GROUPS = {
@@ -38,7 +40,12 @@ class ChannelStruct(namedtuple("ChannelStruct", "channel, sch_ids")):
 
     @property
     def axis_names(self):
-        return [self.channel.subchannels[i].axisName for i in self.sch_ids]
+        return [self.channel.subchannels[i].name for i in self.sch_ids]
+
+    def to_pandas(self, *args, **kwargs):
+        df = to_pandas(self.channel, *args, **kwargs).iloc[:, self.sch_ids]
+        df.columns.name = "axis"
+        return df
 
 
 def chs_by_utype(dataset):

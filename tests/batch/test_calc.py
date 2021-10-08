@@ -50,14 +50,13 @@ def test_make_peak_windows(filename):
     with idelib.importFile(filename) as ds:
         accel_ch = ide_utils.get_ch_type_best(ds, "acc")
 
-        data = accel_ch.eventarray.arraySlice()
-        t, data = data[0], data[1:]
-        utc_start_time = ds.sessions[0].utcStartTime
+        data = accel_ch.to_pandas(time_mode="timedelta")
+        utc_start_time = ds.lastUtcTime
         axis_names = accel_ch.axis_names
 
         analyzer = endaq.batch.analyzer.Analyzer(
             ds,
-            accel_highpass_cutoff=1,
+            accel_highpass_cutoff=None,
             accel_start_time=None,
             accel_end_time=None,
             accel_start_margin=None,
@@ -70,7 +69,7 @@ def test_make_peak_windows(filename):
         )
         calc_meta = endaq.batch.calc._make_meta(ds)
         calc_peaks = endaq.batch.calc._make_peak_windows(analyzer, margin_len=10)
-        i_max = np.argmax(np.abs(analyzer._accelerationData), axis=1)
+        i_max = np.argmax(np.abs(analyzer._accelerationData.to_numpy()), axis=0)
 
     assert calc_peaks.index.names == ["axis", "peak time", "peak offset"]
     assert np.all(
@@ -78,16 +77,14 @@ def test_make_peak_windows(filename):
         == ["Resultant"] + axis_names
     )
 
-    calc_peak_times = calc_meta.loc["start time"] + (
+    calc_peak_times = (
         calc_peaks.index.droplevel("peak offset")
         .unique()
         .to_frame()
         .droplevel("peak time")
         .loc[axis_names, "peak time"]
     )
-    expt_peak_times = np.datetime64(utc_start_time, "s") + t[i_max].astype(
-        "timedelta64[us]"
-    )
+    expt_peak_times = data.index[i_max].astype("timedelta64[ns]")
     assert np.all(calc_peak_times == expt_peak_times)
 
 
@@ -155,7 +152,7 @@ def assert_output_is_valid(output: endaq.batch.calc.OutputStruct):
             == [
                 "filename",
                 "axis",
-                "frequency",
+                "frequency (Hz)",
                 "value",
                 "serial number",
                 "start time",
@@ -168,7 +165,7 @@ def assert_output_is_valid(output: endaq.batch.calc.OutputStruct):
             == [
                 "filename",
                 "axis",
-                "frequency",
+                "frequency (Hz)",
                 "value",
                 "serial number",
                 "start time",
@@ -208,7 +205,7 @@ def assert_output_is_valid(output: endaq.batch.calc.OutputStruct):
             == [
                 "filename",
                 "axis",
-                "frequency",
+                "frequency (Hz)",
                 "value",
                 "serial number",
                 "start time",
@@ -249,16 +246,24 @@ def assert_output_is_valid(output: endaq.batch.calc.OutputStruct):
         ),
         # Test time restrictions on acceleration data
         endaq.batch.calc.GetDataBuilder(
-            accel_highpass_cutoff=1, accel_start_time=5, accel_end_time=10
+            accel_highpass_cutoff=1,
+            accel_start_time=np.timedelta64(5, "s"),
+            accel_end_time=np.timedelta64(10, "s"),
         ).add_psd(freq_bin_width=1),
         endaq.batch.calc.GetDataBuilder(
-            accel_highpass_cutoff=1, accel_start_margin=2, accel_end_margin=2
+            accel_highpass_cutoff=1,
+            accel_start_margin=np.timedelta64(2, "s"),
+            accel_end_margin=np.timedelta64(2, "s"),
         ).add_psd(freq_bin_width=1),
         endaq.batch.calc.GetDataBuilder(
-            accel_highpass_cutoff=1, accel_start_time=5, accel_end_margin=2
+            accel_highpass_cutoff=1,
+            accel_start_time=np.timedelta64(5, "s"),
+            accel_end_margin=np.timedelta64(2, "s"),
         ).add_psd(freq_bin_width=1),
         endaq.batch.calc.GetDataBuilder(
-            accel_highpass_cutoff=1, accel_start_margin=2, accel_end_time=10
+            accel_highpass_cutoff=1,
+            accel_start_margin=np.timedelta64(2, "s"),
+            accel_end_time=np.timedelta64(10, "s"),
         ).add_psd(freq_bin_width=1),
         # Octave-spaced PSD parameters
         endaq.batch.calc.GetDataBuilder(accel_highpass_cutoff=1).add_psd(
@@ -291,7 +296,22 @@ def test_aggregate_data(getdata_builder):
 def output_struct():
     data = {}
 
-    RowStruct = namedtuple("RowStruct", ["filename", "serial_number", "start_time"])
+    fieldname_mods = dict(
+        frequency="frequency (Hz)",
+        serial_number="serial number",
+        start_time="start time",
+        peak_time="peak time",
+        peak_offset="peak offset",
+    )
+
+    RowStruct = namedtuple(
+        "RowStruct",
+        [
+            "filename",
+            "serial_number",
+            "start_time",
+        ],
+    )
     data["meta"] = pd.DataFrame.from_records(
         [
             RowStruct(
@@ -306,7 +326,7 @@ def output_struct():
             ),
         ],
         index="filename",
-        columns=[i.replace("_", " ") for i in RowStruct._fields],
+        columns=[fieldname_mods.get(i, i) for i in RowStruct._fields],
     )
 
     RowStruct = namedtuple(
@@ -355,7 +375,7 @@ def output_struct():
                 start_time=np.datetime64("2020-02-02 00:00:00"),
             ),
         ],
-        columns=[i.replace("_", " ") for i in RowStruct._fields],
+        columns=[fieldname_mods.get(i, i) for i in RowStruct._fields],
     )
 
     RowStruct = namedtuple(
@@ -404,7 +424,7 @@ def output_struct():
                 start_time=np.datetime64("2020-02-02 00:00:00"),
             ),
         ],
-        columns=[i.replace("_", " ") for i in RowStruct._fields],
+        columns=[fieldname_mods.get(i, i) for i in RowStruct._fields],
     )
 
     RowStruct = namedtuple(
@@ -437,7 +457,7 @@ def output_struct():
                 start_time=np.datetime64("2020-02-02 00:00:00"),
             ),
         ],
-        columns=[i.replace("_", " ") for i in RowStruct._fields],
+        columns=[fieldname_mods.get(i, i) for i in RowStruct._fields],
     )
 
     RowStruct = namedtuple(
@@ -509,7 +529,7 @@ def output_struct():
                 start_time=np.datetime64("2020-02-02 00:00:00"),
             ),
         ],
-        columns=[i.replace("_", " ") for i in RowStruct._fields],
+        columns=[fieldname_mods.get(i, i) for i in RowStruct._fields],
     )
 
     RowStruct = namedtuple(
@@ -558,7 +578,7 @@ def output_struct():
                 start_time=np.datetime64("2020-02-02 00:00:00"),
             ),
         ],
-        columns=[i.replace("_", " ") for i in RowStruct._fields],
+        columns=[fieldname_mods.get(i, i) for i in RowStruct._fields],
     )
 
     result = endaq.batch.calc.OutputStruct(data)

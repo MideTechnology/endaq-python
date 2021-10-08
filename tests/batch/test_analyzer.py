@@ -3,10 +3,11 @@ from unittest import mock
 
 import idelib
 import numpy as np
+import pandas as pd
 import pytest
 
 import endaq.batch.analyzer
-from endaq.batch.utils.calc.stats import rms, L2_norm
+from endaq.calc.stats import rms, L2_norm
 
 
 np.random.seed(0)
@@ -47,16 +48,44 @@ def analyzer_bulk(analyzer_raw):
     }
 
     analyzer_mock._accelerationFs = 3000
-    analyzer_mock._accelerationData = np.random.random((3, 21))
-    analyzer_mock._accelerationResultant = L2_norm(
-        analyzer_mock._accelerationData, axis=0
+    analyzer_mock._accelerationData = pd.DataFrame(
+        np.random.random((21, 3)),
+        index=pd.Series(np.arange(21) / 3000, name="time"),
+        columns=pd.Series(["X", "Y", "Z"], name="axis"),
     )
-    analyzer_mock._microphoneData = np.random.random((1, 21))
-    analyzer_mock._velocityData = np.random.random((3, 21))
-    analyzer_mock._displacementData = np.random.random((3, 21))
-    analyzer_mock._pressureData = np.random.random(5)
-    analyzer_mock._temperatureData = np.random.random(5)
-    analyzer_mock._gyroscopeData = np.random.random(11)
+    analyzer_mock._accelerationResultantData = analyzer_mock._accelerationData.apply(
+        L2_norm, axis="columns"
+    ).to_frame()
+    analyzer_mock._microphoneData = pd.DataFrame(
+        np.random.random(21),
+        index=pd.Series(np.arange(21) / 3000, name="time"),
+        columns=pd.Series(["Mic"], name="axis"),
+    )
+    analyzer_mock._velocityData = pd.DataFrame(
+        np.random.random((21, 3)),
+        index=pd.Series(np.arange(21) / 3000, name="time"),
+        columns=pd.Series(["X", "Y", "Z"], name="axis"),
+    )
+    analyzer_mock._displacementData = pd.DataFrame(
+        np.random.random((21, 3)),
+        index=pd.Series(np.arange(21) / 3000, name="time"),
+        columns=pd.Series(["X", "Y", "Z"], name="axis"),
+    )
+    analyzer_mock._pressureData = pd.DataFrame(
+        np.random.random(5),
+        index=pd.Series(np.arange(5) / 5, name="time"),
+        columns=pd.Series(["Control"], name="axis"),
+    )
+    analyzer_mock._temperatureData = pd.DataFrame(
+        np.random.random(5),
+        index=pd.Series(np.arange(5) / 5, name="time"),
+        columns=pd.Series(["Control"], name="axis"),
+    )
+    analyzer_mock._gyroscopeData = pd.DataFrame(
+        np.random.random(11),
+        index=pd.Series(np.arange(11) / 5, name="time"),
+        columns=pd.Series(["Gyro"], name="axis"),
+    )
 
     return analyzer_mock
 
@@ -68,36 +97,42 @@ def analyzer_bulk(analyzer_raw):
 
 class TestAnalyzer:
     def test_accRMSFull(self, analyzer_bulk):
-        assert endaq.batch.analyzer.Analyzer.accRMSFull.func(analyzer_bulk)[
+        calc_result = endaq.batch.analyzer.Analyzer.accRMSFull.func(analyzer_bulk)[
             "Resultant"
-        ] == pytest.approx(
-            endaq.batch.analyzer.Analyzer.MPS2_TO_G
-            * rms(L2_norm(analyzer_bulk._accelerationData, axis=0))
+        ]
+        expt_result = endaq.batch.analyzer.Analyzer.MPS2_TO_G * rms(
+            analyzer_bulk._accelerationData.apply(L2_norm, axis="columns")
         )
+
+        assert calc_result == pytest.approx(expt_result)
 
     def test_velRMSFull(self, analyzer_bulk):
-        assert endaq.batch.analyzer.Analyzer.velRMSFull.func(analyzer_bulk)[
+        calc_result = endaq.batch.analyzer.Analyzer.velRMSFull.func(analyzer_bulk)[
             "Resultant"
-        ] == pytest.approx(
-            endaq.batch.analyzer.Analyzer.MPS_TO_MMPS
-            * rms(L2_norm(analyzer_bulk._velocityData, axis=0))
+        ]
+        expt_result = endaq.batch.analyzer.Analyzer.MPS_TO_MMPS * rms(
+            analyzer_bulk._velocityData.apply(L2_norm, axis="columns")
         )
+        assert calc_result == pytest.approx(expt_result)
 
     def test_disRMSFull(self, analyzer_bulk):
-        assert endaq.batch.analyzer.Analyzer.disRMSFull.func(analyzer_bulk)[
+        calc_result = endaq.batch.analyzer.Analyzer.disRMSFull.func(analyzer_bulk)[
             "Resultant"
-        ] == pytest.approx(
-            endaq.batch.analyzer.Analyzer.M_TO_MM
-            * rms(L2_norm(analyzer_bulk._displacementData, axis=0))
+        ]
+        expt_result = endaq.batch.analyzer.Analyzer.M_TO_MM * rms(
+            analyzer_bulk._displacementData.apply(L2_norm, axis="columns")
         )
+        assert calc_result == pytest.approx(expt_result)
 
     def test_accPeakFull(self, analyzer_bulk):
-        assert endaq.batch.analyzer.Analyzer.accPeakFull.func(analyzer_bulk)[
+        calc_result = endaq.batch.analyzer.Analyzer.accPeakFull.func(analyzer_bulk)[
             "Resultant"
-        ] == pytest.approx(
-            endaq.batch.analyzer.Analyzer.MPS2_TO_G
-            * L2_norm(analyzer_bulk._accelerationData, axis=0).max()
+        ]
+        expt_result = endaq.batch.analyzer.Analyzer.MPS2_TO_G * rms(
+            analyzer_bulk._accelerationData.apply(L2_norm, axis="columns").max()
         )
+
+        assert calc_result == pytest.approx(expt_result)
 
     def test_pseudoVelPeakFull(self, analyzer_bulk):
         pass
@@ -112,19 +147,28 @@ class TestAnalyzer:
         pass
 
     def test_micRMSFull(self, analyzer_bulk):
-        assert endaq.batch.analyzer.Analyzer.micRMSFull.func(analyzer_bulk)[
+        calc_result = endaq.batch.analyzer.Analyzer.micRMSFull.func(analyzer_bulk)[
             "Mic"
-        ] == pytest.approx(rms(analyzer_bulk._microphoneData))
+        ]
+        expt_result = rms(analyzer_bulk._microphoneData)
+
+        assert calc_result == pytest.approx(expt_result)
 
     def test_pressFull(self, analyzer_bulk):
-        assert endaq.batch.analyzer.Analyzer.pressFull.func(analyzer_bulk)[
+        calc_result = endaq.batch.analyzer.Analyzer.pressFull.func(analyzer_bulk)[
             "Control"
-        ] == pytest.approx(analyzer_bulk._pressureData.mean())
+        ]
+        expt_result = analyzer_bulk._pressureData.mean()
+
+        assert calc_result == pytest.approx(expt_result)
 
     def test_tempFull(self, analyzer_bulk):
-        assert endaq.batch.analyzer.Analyzer.tempFull.func(analyzer_bulk)[
+        calc_result = endaq.batch.analyzer.Analyzer.tempFull.func(analyzer_bulk)[
             "Control"
-        ] == pytest.approx(analyzer_bulk._temperatureData.mean())
+        ]
+        expt_result = analyzer_bulk._temperatureData.mean()
+
+        assert calc_result == pytest.approx(expt_result)
 
     ###########################################################################
     # Live File Tests
