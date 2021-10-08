@@ -21,6 +21,7 @@ TEST_REQUIRES = [
     "pytest",
     "pytest-cov",
     "sympy",
+    "numpy-quaternion==2020.11.2.17.0.49",
     ]
 
 DOCS_REQUIRES = [
