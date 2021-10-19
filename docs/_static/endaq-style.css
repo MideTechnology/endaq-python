@@ -92,7 +92,7 @@ ul.task-bullet > li:before {
 
 h1 {
 	font-weight: bold;
-    color: var(--pst-color-primary);
+    color: #e77025;
 }
 
 dl.field-list {
