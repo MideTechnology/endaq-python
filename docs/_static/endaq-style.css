@@ -92,9 +92,10 @@ ul.task-bullet > li:before {
 
 h1 {
 	font-weight: bold;
+    color: var(--pst-color-primary);
 }
 
-/*dl.field-list {
+dl.field-list {
     background-color: 243, 243, 243;
     padding: 7px;
-}*/
+}
