@@ -108,7 +108,8 @@ html_static_path = ['_static']
 
 # Appends custom .css file
 # https://docs.readthedocs.io/en/stable/guides/adding-custom-css.html#overriding-or-replacing-a-theme-s-stylesheet
-html_style = "endaq-style.css"
+#html_style = "endaq-style.css"
+html_style = "https://cdn2.hubspot.net/hub/637862/hub_generated/template_assets/57901590404/1634669105225/Custom/docs-endaq-style.min.css"
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
