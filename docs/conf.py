@@ -83,18 +83,33 @@ autodoc_typehints_description_target = "documented"
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'pydata_sphinx_theme'
+
+html_logo = '_static/endaq-logo-300x121.svg'
+
+html_favicon = '_static/endaq-favicon.ico'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+html_theme_options = {
+    "logo_link": "index",
+    "github_url": "https://github.com/MideTechnology/endaq-python",
+    "twitter_url": "https://twitter.com/enDAQ_sensors",
+    "collapse_navigation": True,
+    #"external_links": [{"name": "Learn", "url": "https://numpy.org/numpy-tutorials/"}],
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = []
+html_static_path = ['_static']
+
+# Appends custom .css file
+# https://docs.readthedocs.io/en/stable/guides/adding-custom-css.html#overriding-or-replacing-a-theme-s-stylesheet
+#html_style = "endaq-style.css"
+html_style = "https://cdn2.hubspot.net/hub/637862/hub_generated/template_assets/57901590404/1634669105225/Custom/docs-endaq-style.min.css"
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
