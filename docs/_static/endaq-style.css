@@ -1,101 +1,92 @@
 @charset "utf-8";
-/* CSS Document */
-
-
-/*****************************************************************************
-  * Color
-  * 
-  * Colors are defined in rgb string way, "red, green, blue"
-  **/
-  --pst-color-primary: 231, 112, 37;
-  --pst-color-success: 40, 167, 69;
-  --pst-color-info: 0, 123, 255;  /*23, 162, 184;*/
-  --pst-color-warning: 255, 193, 7;
-  --pst-color-danger: 220, 53, 69;
-  --pst-color-text-base: 51, 51, 51;
-
-  --pst-color-h1: var(--pst-color-primary);
-  --pst-color-h2: var(--pst-color-primary);
-  --pst-color-h3: var(--pst-color-text-base);
-  --pst-color-h4: var(--pst-color-text-base);
-  --pst-color-h5: var(--pst-color-text-base);
-  --pst-color-h6: var(--pst-color-text-base);
-  --pst-color-paragraph: var(--pst-color-text-base);
-  --pst-color-link: 231, 112, 37;
-  --pst-color-link-hover: 227, 46, 0;
-  --pst-color-headerlink: 198, 15, 15;
-  --pst-color-headerlink-hover: 255, 255, 255;
-  --pst-color-preformatted-text: 34, 34, 34;
-  --pst-color-preformatted-background: 250, 250, 250;
-  --pst-color-inline-code: 156, 35, 233;
-
-  --pst-color-active-navigation: 231, 112, 37;
-  --pst-color-navbar-link: 77, 77, 77;
-  --pst-color-navbar-link-hover: var(--pst-color-active-navigation);
-  --pst-color-navbar-link-active: var(--pst-color-active-navigation);
-  --pst-color-sidebar-link: 77, 77, 77;
-  --pst-color-sidebar-link-hover: var(--pst-color-active-navigation);
-  --pst-color-sidebar-link-active: var(--pst-color-active-navigation);
-  --pst-color-sidebar-expander-background-hover: 244, 244, 244;
-  --pst-color-sidebar-caption: 77, 77, 77;
-  --pst-color-toc-link: 119, 117, 122;
-  --pst-color-toc-link-hover: var(--pst-color-active-navigation);
-  --pst-color-toc-link-active: var(--pst-color-active-navigation);
- 
-
-cite {
-	    font-style: normal!important;
+--pst-color-primary:#f26722;
+--pst-color-success:40,167,69;
+--pst-color-info:0,123,255;
+--pst-color-warning:255,193,7;
+--pst-color-danger:220,53,69;
+--pst-color-text-base:51,51,51;
+--pst-color-h1:var(--pst-color-primary);
+--pst-color-h2:var(--pst-color-primary);
+--pst-color-h3:var(--pst-color-text-base);
+--pst-color-h4:var(--pst-color-text-base);
+--pst-color-h5:var(--pst-color-text-base);
+--pst-color-h6:var(--pst-color-text-base);
+--pst-color-paragraph:var(--pst-color-text-base);
+--pst-color-link:231,112,37;
+--pst-color-link-hover:227,46,0;
+--pst-color-headerlink:198,15,15;
+--pst-color-headerlink-hover:255,255,255;
+--pst-color-preformatted-text:34,34,34;
+--pst-color-preformatted-background:250,250,250;
+--pst-color-inline-code:156,35,233;
+--pst-color-active-navigation:231,112,37;
+--pst-color-navbar-link:77,77,77;
+--pst-color-navbar-link-hover:var(--pst-color-active-navigation);
+--pst-color-navbar-link-active:var(--pst-color-active-navigation);
+--pst-color-sidebar-link:77,77,77;
+--pst-color-sidebar-link-hover:var(--pst-color-active-navigation);
+--pst-color-sidebar-link-active:var(--pst-color-active-navigation);
+--pst-color-sidebar-expander-background-hover:244,244,244;
+--pst-color-sidebar-caption:77,77,77;
+--pst-color-toc-link:119,117,122;
+--pst-color-toc-link-hover:var(--pst-color-active-navigation);
+--pst-color-toc-link-active:var(--pst-color-active-navigation);
+cite{
+  font-style:normal !important
 }
-
-  /*****************************************************************************
-  * Icon
-  **/
-
-  /* font awesome icons*/
-  --pst-icon-check-circle: '\f058';
-  --pst-icon-info-circle: '\f05a';
-  --pst-icon-exclamation-triangle: '\f071';
-  --pst-icon-exclamation-circle: '\f06a';
-  --pst-icon-times-circle: '\f057';
-  --pst-icon-lightbulb: '\f0eb';
-
-
-.wy-side-nav-search {
-    display: block;
-    width: 300px;
-    padding: .809em;
-    margin-bottom: .809em;
-    z-index: 200;
-    background-color: #e77025;
-    text-align: center;
-    color: #fcfcfc;
+--pst-icon-check-circle:'\f058';
+--pst-icon-info-circle:'\f05a';
+--pst-icon-exclamation-triangle:'\f071';
+--pst-icon-exclamation-circle:'\f06a';
+--pst-icon-times-circle:'\f057';
+--pst-icon-lightbulb:'\f0eb';
+.wy-side-nav-search{
+  display:block;
+  width:300px;
+  padding:.809em;
+  margin-bottom:.809em;
+  z-index:200;
+  background-color:#e77025;
+  text-align:center;
+  color:#fcfcfc
 }
-
-ul.task-bullet > li:before {
-    content: "";
-    height: 2em;
-    width: 2em;
-    display: block;
-    float: left;
-    margin-left: -2em;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-color: #e77025;
-    border-radius: 50%;
-    background-size: 100%;
-    background-image: url(https://info.endaq.com/hubfs/readthedocs/question_mark_noback.svg);
+ul.task-bullet>li:before{
+  content:"";
+  height:2em;
+  width:2em;
+  display:block;
+  float:left;
+  margin-left:-2em;
+  background-position:center;
+  background-repeat:no-repeat;
+  background-color:#e77025;
+  border-radius:50%;
+  background-size:100%;
+  background-image:url(https://info.endaq.com/hubfs/readthedocs/question_mark_noback.svg)
 }
-
-.bd-search {
-    background-color: f4eeea;
+.bd-search{
+  background-color:f4eeea
 }
-
-h1 {
-	font-weight: bold;
-    color: #e77025;
+h1{
+  font-weight:bold;
+  color:#f26722
 }
-
-dl.field-list {
-    background-color: 243, 243, 243;
-    padding: 7px;
+dl.field-list{
+  background-color:#f3f3f3;
+  padding:7px
+}
+--pst-color-link:#e77025;
+.sig-name{
+  color:#9c23e9
+}
+.prev-next-area a p.prev-next-title{
+  color:#e77025;
+  font-weight:600;
+  font-size:1.1em
+}
+span.sig-name.descname>span{
+  color:#9c23e9
+}
+h1>cite,h2>cite{
+  font-style:normal
 }
