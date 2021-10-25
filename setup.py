@@ -7,6 +7,7 @@ INSTALL_REQUIRES = [
     'endaq-calc',
     'endaq-cloud',
     'endaq-ide',
+    'endaq-plot',
     ]
 
 TEST_REQUIRES = [
