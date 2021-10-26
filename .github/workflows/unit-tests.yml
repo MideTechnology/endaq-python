@@ -22,18 +22,25 @@ jobs:
 
     steps:
 
-      - uses: actions/setup-python@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      - run: python -m pip install --upgrade pip
 
-      - uses: actions/checkout@v2
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
 
-      - run: python -m pip install .[test]
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-      - run: python -m pytest tests --cov=endaq --hypothesis-profile=ci
+      - name: Install package & (test) dependencies
+        run: python -m pip install .[test]
 
-      - uses: codecov/codecov-action@v2
+      - name: Run Tests
+        run: python -m pytest tests --cov=endaq --hypothesis-profile=ci
+
+      - name: Generate Codecov Report
+        uses: codecov/codecov-action@v2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           env_vars: OS,PYTHON-VERSION
