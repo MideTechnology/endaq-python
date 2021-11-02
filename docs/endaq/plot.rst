@@ -3,7 +3,7 @@
 ############
 
 
-`endaq.plot.*`
+`endaq.plot`
 ==============
 
 .. automodule:: endaq.plot
