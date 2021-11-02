@@ -11,6 +11,13 @@
   :imported-members:
 
 
+`endaq.plot.dashboards`
+=======================
+
+.. automodule:: endaq.plot.dashboards
+  :members:
+
+
 `endaq.plot.utilities`
 ======================
 
