@@ -5,6 +5,6 @@
 This package consists of several submodules:
 * `endaq.calc` ([repo](https://github.com/MideTechnology/endaq-python-calc)): A computational backend for vibration analysis.
 * `endaq.cloud` ([repo](https://github.com/MideTechnology/endaq-python-cloud)): Tools for interacting with enDAQ Cloud services.
-* `endaq.ide` ([repo](https://github.com/MideTechnology/endaq-python-ide)): high-level utility functions to aid in importing and inspecting enDAQ IDE recording files.
+* `endaq.ide` ([repo](https://github.com/MideTechnology/endaq-python-ide)): High-level utility functions to aid in importing and inspecting enDAQ IDE recording files.
 <!-- * `endaq.io` ([repo](https://github.com/MideTechnology/endaq-python-io)) -->
-<!-- * `endaq.plot` ([repo](https://github.com/MideTechnology/endaq-python-plot)): Utility functions for plotting data. -->
+* `endaq.plot` ([repo](https://github.com/MideTechnology/endaq-python-plot)):  A package comprising a collection of plotting utilities for sensor data analysis.
