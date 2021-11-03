@@ -98,7 +98,7 @@ html_theme_options = {
     "github_url": "https://github.com/MideTechnology/endaq-python",
     "twitter_url": "https://twitter.com/enDAQ_sensors",
     "collapse_navigation": True,
-    #"external_links": [{"name": "Learn", "url": "https://numpy.org/numpy-tutorials/"}],
+    "google_analytics_id": "G-E9QXH4H5LP",
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
