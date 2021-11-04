@@ -37,3 +37,10 @@
 
 .. automodule:: endaq.calc.stats
   :members:
+
+
+`endaq.calc.utils`
+==================
+
+.. automodule:: endaq.calc.utils
+  :members:
