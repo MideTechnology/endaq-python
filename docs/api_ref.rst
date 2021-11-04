@@ -8,5 +8,6 @@ enDAQ API Reference
    endaq/ide
    endaq/calc
    endaq/cloud
+   endaq/plot
 
    endaq/cloud_API_wrapper

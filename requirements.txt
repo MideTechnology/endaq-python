@@ -1,5 +1,4 @@
-endaq-calc
-endaq-cloud
-endaq-ide
-endaq-io
-endaq-plot
+endaq-calc>=1.1.0
+endaq-cloud>=1.1.0
+endaq-ide>=1.1.0
+endaq-plot>=1.1.0

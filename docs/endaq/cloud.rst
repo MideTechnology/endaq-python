@@ -3,8 +3,8 @@
 #############
 
 
-`endaq.cloud.utilities`
-=======================
+`endaq.cloud.core`
+==================
 
-.. automodule:: endaq.cloud.utilities
+.. automodule:: endaq.cloud.core
   :members:

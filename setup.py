@@ -4,9 +4,10 @@ with open('README.md', 'r', encoding='utf-8') as fh:
     long_description = fh.read()
 
 INSTALL_REQUIRES = [
-    'endaq-calc',
-    'endaq-cloud',
-    'endaq-ide',
+    'endaq-calc>=1.1.0',
+    'endaq-cloud>=1.1.0',
+    'endaq-ide>=1.1.0',
+    'endaq-plot>=1.1.0',
     ]
 
 TEST_REQUIRES = [
@@ -14,7 +15,7 @@ TEST_REQUIRES = [
 
 DOCS_REQUIRES = [
     "sphinx",
-    "sphinx-rtd-theme",
+    "pydata-sphinx-theme",
     ]
 
 EXAMPLE_REQUIRES = [
@@ -22,7 +23,7 @@ EXAMPLE_REQUIRES = [
 
 setuptools.setup(
         name='endaq',
-        version='1.0.0b1',
+        version='1.1.0',
         author='Mide Technology',
         author_email='help@mide.com',
         description='A comprehensive, user-centric Python API for working with enDAQ data and devices',
