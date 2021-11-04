@@ -21,9 +21,14 @@ def _rel_displ_transfer_func(
 ) -> scipy.signal.ltisys.TransferFunctionDiscrete:
     """
     Generate the transfer function
-        H(s) = L{z(t)}(s) / L{y"(t)}(s) = (1/s²)(Z(s)/Y(s))
+    
+    .. math::
+        H(s) = \\frac{ \\mathcal{L}\\{z(t)\\}(s) } { \\mathcal{L}\\{y''(t)\\}(s) }
+        = \\frac{1}{s^2} \\left( \\frac{Z(s)} {Y(s)} \\right)
+
     for the PDE
-        z" + (2ζω)z' + (ω²)z = -y"
+    
+    .. math:: z'' + (2\\zeta\\omega)z' + (\\omega^2)z = -y''
 
     .. seealso::
 
@@ -46,10 +51,15 @@ def rel_displ(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
     """
     Calculate the relative displacement for a SDOF system.
 
-    The "relative" displacement follows the transfer function:
-        H(s) = L{z(t)}(s) / L{y"(t)}(s) = (1/s²)(Z(s)/Y(s))
-    for the PDE:
-        z" + (2ζω)z' + (ω²)z = -y"
+    The "relative" displacement follows the transfer function
+
+    .. math::
+        H(s) = \\frac{ \\mathcal{L}\\{z(t)\\}(s) } { \\mathcal{L}\\{y''(t)\\}(s) }
+        = \\frac{1}{s^2} \\left( \\frac{Z(s)} {Y(s)} \\right)
+
+    for the PDE
+
+    .. math:: z'' + (2\\zeta\\omega)z' + (\\omega^2)z = -y''
 
     :param accel: the absolute acceleration y"
     :param omega: the natural frequency ω of the SDOF system
@@ -82,9 +92,14 @@ def _abs_accel_transfer_func(
 ) -> scipy.signal.ltisys.TransferFunctionDiscrete:
     """
     Generate the transfer function
-        H(s) = L{x"(t)}(s) / L{y"(t)}(s) = X(s)/Y(s)
+
+    .. math::
+        H(s) = \\frac{ \\mathcal{L}\\{x''(t)\\}(s) } { \\mathcal{L}\\{y''(t)\\}(s) }
+        = \\frac{X(s)} {Y(s)}
+
     for the PDE
-        x" + (2ζω)x' + (ω²)x = (2ζω)y' + (ω²)y
+
+    .. math:: x'' + (2\\zeta\\omega)x' + (\\omega^2)x = (2\\zeta\\omega)y' + (\\omega^2)y
 
     .. seealso::
 
@@ -107,10 +122,15 @@ def abs_accel(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
     """
     Calculate the absolute acceleration for a SDOF system.
 
-    The "absolute acceleration" follows the transfer function:
-        H(s) = L{x"(t)}(s) / L{y"(t)}(s) = X(s)/Y(s)
+    The "absolute acceleration" follows the transfer function
+
+    .. math::
+        H(s) = \\frac{ \\mathcal{L}\\{x''(t)\\}(s) } { \\mathcal{L}\\{y''(t)\\}(s) }
+        = \\frac{X(s)} {Y(s)}
+
     for the PDE:
-        x" + (2ζω)x' + (ω²)x = (2ζω)y' + (ω²)y
+
+    .. math:: x'' + (2\\zeta\\omega)x' + (\\omega^2)x = (2\\zeta\\omega)y' + (\\omega^2)y
 
     :param accel: the absolute acceleration y"
     :param omega: the natural frequency ω of the SDOF system
