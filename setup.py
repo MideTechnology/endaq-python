@@ -4,7 +4,7 @@ with open('README.md', 'r', encoding='utf-8') as fh:
     long_description = fh.read()
 
 INSTALL_REQUIRES = [
-    'endaq-calc>=1.1.0',
+    'endaq-calc>=1.1.0.post2',
     'endaq-cloud>=1.1.0',
     'endaq-ide>=1.1.0',
     'endaq-plot>=1.1.0',
