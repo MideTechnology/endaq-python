@@ -15,7 +15,175 @@ from endaq.calc import shock
 
 
 @hyp.given(
-    freq=hyp_st.floats(12.5, 1000),
+    freq=hyp_st.floats(1, 1e3),
+    damp=hyp_st.floats(0, 1, exclude_max=True),
+)
+def test_transfer_function_abs_accel(freq, damp):
+    dt = 1e-4
+    omega = 2 * np.pi * freq
+
+    tf = shock.transfer_function("aa", freq, damp, dt)
+
+    # Constants
+    gamma = omega * dt * (-damp + 1j * np.sqrt(1 - damp ** 2))  # = -A + iB
+    exp_sin = np.imag(np.exp(gamma))
+    exp_cos = np.real(np.exp(gamma))
+    exp_2 = np.exp(2 * np.real(gamma))
+
+    # Tests
+    assert tf.den[-3] == 1
+    assert tf.den[-2] == pytest.approx(-2 * exp_cos)
+    assert tf.den[-1] == pytest.approx(exp_2)
+
+    assert tf.num[-3] == pytest.approx(1 - exp_sin / np.imag(gamma))
+    assert tf.num[-2] == pytest.approx(2 * exp_sin / np.imag(gamma) - 2 * exp_cos)
+    assert tf.num[-1] == pytest.approx(exp_2 - exp_sin / np.imag(gamma))
+
+
+@hyp.given(
+    freq=hyp_st.floats(1, 1e3),
+    damp=hyp_st.floats(0, 1, exclude_max=True),
+)
+def test_transfer_function_rel_vel(freq, damp):
+    dt = 1e-4
+    omega = 2 * np.pi * freq
+
+    tf = shock.transfer_function("rv", freq, damp, dt)
+
+    # Constants
+    gamma = omega * dt * (-damp + 1j * np.sqrt(1 - damp ** 2))  # = -A + iB
+    exp_sin = np.imag(np.exp(gamma))
+    exp_cos = np.real(np.exp(gamma))
+    exp_2 = np.exp(2 * np.real(gamma))
+    B_div_A = np.tan(np.angle(np.conj(-gamma)))
+
+    # Tests
+    assert tf.den[-3] == 1
+    assert tf.den[-2] == pytest.approx(-2 * exp_cos)
+    assert tf.den[-1] == pytest.approx(exp_2)
+
+    assert tf.num[-3] == pytest.approx(
+        (-1 + exp_cos + exp_sin / B_div_A) / (omega ** 2 * dt)
+    )
+    assert tf.num[-2] == pytest.approx(
+        (1 - exp_2 - 2 * exp_sin / B_div_A) / (omega ** 2 * dt)
+    )
+    assert tf.num[-1] == pytest.approx(
+        (exp_2 - exp_cos + exp_sin / B_div_A) / (omega ** 2 * dt)
+    )
+
+
+@hyp.given(
+    freq=hyp_st.floats(1, 1e3),
+    damp=hyp_st.floats(0, 1, exclude_max=True),
+)
+def test_transfer_function_rel_displ(freq, damp):
+    dt = 1e-4
+    omega = 2 * np.pi * freq
+
+    tf = shock.transfer_function("rd", freq, damp, dt)
+
+    # Constants
+    gamma = omega * dt * (-damp + 1j * np.sqrt(1 - damp ** 2))  # = -A + iB
+    exp_sin = np.imag(np.exp(gamma))
+    exp_cos = np.real(np.exp(gamma))
+    exp_2 = np.exp(2 * np.real(gamma))
+
+    q = (1 - 2 * damp ** 2) / np.sqrt(1 - damp ** 2)
+    w_dt = omega * dt
+
+    # Tests
+    assert tf.den[-3] == 1
+    assert tf.den[-2] == pytest.approx(-2 * exp_cos)
+    assert tf.den[-1] == pytest.approx(exp_2)
+
+    assert tf.num[-3] == pytest.approx(
+        (2 * damp * (1 - exp_cos) - q * exp_sin - w_dt) / (omega ** 3 * dt)
+    )
+    assert tf.num[-2] == pytest.approx(
+        (2 * w_dt * exp_cos - 2 * damp * (1 - exp_2) + 2 * q * exp_sin)
+        / (omega ** 3 * dt)
+    )
+    assert tf.num[-1] == pytest.approx(
+        (-(w_dt + 2 * damp) * exp_2 + 2 * damp * exp_cos - q * exp_sin)
+        / (omega ** 3 * dt)
+    )
+
+
+@hyp.given(
+    freq=hyp_st.floats(1, 1e3),
+    damp=hyp_st.floats(0, 1, exclude_max=True),
+)
+def test_transfer_function_pseudo_vel(freq, damp):
+    dt = 1e-4
+    omega = 2 * np.pi * freq
+
+    tf = shock.transfer_function("pv", freq, damp, dt)
+
+    # Constants
+    gamma = omega * dt * (-damp + 1j * np.sqrt(1 - damp ** 2))  # = -A + iB
+    exp_sin = np.imag(np.exp(gamma))
+    exp_cos = np.real(np.exp(gamma))
+    exp_2 = np.exp(2 * np.real(gamma))
+
+    q = (1 - 2 * damp ** 2) / np.sqrt(1 - damp ** 2)
+    w_dt = omega * dt
+
+    # Tests
+    assert tf.den[-3] == 1
+    assert tf.den[-2] == pytest.approx(-2 * exp_cos)
+    assert tf.den[-1] == pytest.approx(exp_2)
+
+    assert tf.num[-3] == pytest.approx(
+        (2 * damp * (1 - exp_cos) - q * exp_sin - w_dt) / (omega ** 2 * dt)
+    )
+    assert tf.num[-2] == pytest.approx(
+        (2 * w_dt * exp_cos - 2 * damp * (1 - exp_2) + 2 * q * exp_sin)
+        / (omega ** 2 * dt)
+    )
+    assert tf.num[-1] == pytest.approx(
+        (-(w_dt + 2 * damp) * exp_2 + 2 * damp * exp_cos - q * exp_sin)
+        / (omega ** 2 * dt)
+    )
+
+
+@hyp.given(
+    freq=hyp_st.floats(1, 1e3),
+    damp=hyp_st.floats(0, 1, exclude_max=True),
+)
+def test_transfer_function_rel_displ_static_accel(freq, damp):
+    dt = 1e-4
+    omega = 2 * np.pi * freq
+
+    tf = shock.transfer_function("rdsa", freq, damp, dt)
+
+    # Constants
+    gamma = omega * dt * (-damp + 1j * np.sqrt(1 - damp ** 2))  # = -A + iB
+    exp_sin = np.imag(np.exp(gamma))
+    exp_cos = np.real(np.exp(gamma))
+    exp_2 = np.exp(2 * np.real(gamma))
+
+    q = (1 - 2 * damp ** 2) / np.sqrt(1 - damp ** 2)
+    w_dt = omega * dt
+
+    # Tests
+    assert tf.den[-3] == 1
+    assert tf.den[-2] == pytest.approx(-2 * exp_cos)
+    assert tf.den[-1] == pytest.approx(exp_2)
+
+    assert tf.num[-3] == pytest.approx(
+        (2 * damp * (1 - exp_cos) - q * exp_sin - w_dt) / w_dt
+    )
+    assert tf.num[-2] == pytest.approx(
+        (2 * w_dt * exp_cos - 2 * damp * (1 - exp_2) + 2 * q * exp_sin) / w_dt
+    )
+    assert tf.num[-1] == pytest.approx(
+        (-(w_dt + 2 * damp) * exp_2 + 2 * damp * exp_cos - q * exp_sin) / w_dt
+    )
+
+
+@hyp.given(
+    freq=hyp_st.floats(12.5, 1e3),
     damp=hyp_st.floats(0, 1, exclude_max=True),
 )
 def test_rel_displ(freq, damp):
