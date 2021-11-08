@@ -23,8 +23,8 @@ def _rel_displ_transfer_func(
     Generate the transfer function
     
     .. math::
-        H(s) = \\frac{ \\mathcal{L}\\{z(t)\\}(s) } { \\mathcal{L}\\{y''(t)\\}(s) }
-        = \\frac{1}{s^2} \\left( \\frac{Z(s)} {Y(s)} \\right)
+        H(s) &= \\frac{ \\mathcal{L}\\{z(t)\\}(s) } { \\mathcal{L}\\{y''(t)\\}(s) } \\
+             &= \\frac{1}{s^2} \\left( \\frac{Z(s)} {Y(s)} \\right)
 
     for the PDE
     
@@ -54,8 +54,8 @@ def rel_displ(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
     The "relative" displacement follows the transfer function
 
     .. math::
-        H(s) = \\frac{ \\mathcal{L}\\{z(t)\\}(s) } { \\mathcal{L}\\{y''(t)\\}(s) }
-        = \\frac{1}{s^2} \\left( \\frac{Z(s)} {Y(s)} \\right)
+        H(s) &= \\frac{ \\mathcal{L}\\{z(t)\\}(s) } { \\mathcal{L}\\{y''(t)\\}(s) } \\
+             &= \\frac{1}{s^2} \\left( \\frac{Z(s)} {Y(s)} \\right)
 
     for the PDE
 
@@ -94,8 +94,8 @@ def _abs_accel_transfer_func(
     Generate the transfer function
 
     .. math::
-        H(s) = \\frac{ \\mathcal{L}\\{x''(t)\\}(s) } { \\mathcal{L}\\{y''(t)\\}(s) }
-        = \\frac{X(s)} {Y(s)}
+        H(s) &= \\frac{ \\mathcal{L}\\{x''(t)\\}(s) } { \\mathcal{L}\\{y''(t)\\}(s) } \\
+             &= \\frac{X(s)} {Y(s)}
 
     for the PDE
 
@@ -125,8 +125,8 @@ def abs_accel(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
     The "absolute acceleration" follows the transfer function
 
     .. math::
-        H(s) = \\frac{ \\mathcal{L}\\{x''(t)\\}(s) } { \\mathcal{L}\\{y''(t)\\}(s) }
-        = \\frac{X(s)} {Y(s)}
+        H(s) &= \\frac{ \\mathcal{L}\\{x''(t)\\}(s) } { \\mathcal{L}\\{y''(t)\\}(s) } \\
+             &= \\frac{X(s)} {Y(s)}
 
     for the PDE:
 
