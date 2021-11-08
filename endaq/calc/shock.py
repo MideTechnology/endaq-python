@@ -17,29 +17,90 @@ from endaq.calc.stats import L2_norm
 from endaq.calc import utils
 
 
-def _rel_displ_transfer_func(
-    omega: float, damp: float = 0.0, dt: float = 1.0
+def transfer_function(
+    mode: typing.Literal["aa", "rv", "rd", "pv", "rdsa"],
+    omega: float,
+    damp: float = 0.0,
+    dt: float = 1.0,
 ) -> scipy.signal.ltisys.TransferFunctionDiscrete:
     """
-    Generate the transfer function
-        H(s) = L{z(t)}(s) / L{y"(t)}(s) = (1/s²)(Z(s)/Y(s))
-    for the PDE
-        z" + (2ζω)z' + (ω²)z = -y"
+    Generate a transfer function for a given shock quantity.
+
+    The various shock quantities, as described in ISO 18431-4 Section 5.2
+    [#ISO-18431-4]_, are based on one of the following two partial differential
+    equations. Given an input acceleration :math: `y''` to a
+    single-degree-of-freedom system:
+
+    - the *absolute* acceleration :math: `x''` is expressed as:
+        .. math::
+            x'' + (2\\zeta\\omega)x' + (\\omega^2)x = (2\\zeta\\omega)y' + (\\omega^2)y
+
+    - the *relative* acceleration :math: `z''` is expressed as:
+        .. math::
+            z'' + (2\\zeta\\omega)z' + (\\omega^2)z = -y''
+
+    The various shock quantities follow the following transfer functions:
+
+    - absolute acceleration:
+        .. math::
+            H(s) &= \\frac{ \\mathcal{L}\\{x''(t)\\}(s) } { \\mathcal{L}\\{y''(t)\\}(s) } \\
+                 &= \\frac{X(s)} {Y(s)}
+    - relative velocity:
+        .. math::
+            H(s) &= \\frac{ \\mathcal{L}\\{z'(t)\\}(s) } { \\mathcal{L}\\{y''(t)\\}(s) } \\
+                 &= \\frac{1}{s} \\left( \\frac{Z(s)} {Y(s)} \\right)
+    - relatve displacement:
+        .. math::
+            H(s) &= \\frac{ \\mathcal{L}\\{z(t)\\}(s) } { \\mathcal{L}\\{y''(t)\\}(s) } \\
+                 &= \\frac{1}{s^2} \\left( \\frac{Z(s)} {Y(s)} \\right)
+    - pseudo velocity:
+        .. math::
+            H(s) &= \\frac{ \\mathcal{L}\\{\\omega_n z(t)\\}(s) } { \\mathcal{L}\\{y''(t)\\}(s) } \\
+                 &= \\frac{\\omega_n}{s^2} \\left( \\frac{Z(s)} {Y(s)} \\right)
+    - relative displacement, expressed as equivalent static acceleration:
+        .. math::
+            H(s) &= \\frac{ \\mathcal{L}\\{{\\omega_n}^2 z(t)\\}(s) } { \\mathcal{L}\\{y''(t)\\}(s) } \\
+                 &= \\frac{{\\omega_n}^2}{s^2} \\left( \\frac{Z(s)} {Y(s)} \\right)
+
+    :param mode: the type of spectrum for which to calculate the transfer
+        function; may be one of:
+        - `"aa"` (default) - absolute acceleration
+        - `"rv"` (default) - relative velocity
+        - `"rd"` (default) - relative displacement
+        - `"pv"` (default) - pseudo velocity
+        - `"rdsa"` (default) - relative displacement as static acceleration
+    :param omega: the angular natural frequency, :math: `\\omega_n`
+    :param damp: the damping value, :math: `\\zeta`, related to the Q-factor by
+        :math: `\\zeta = \\frac{1}{2Q}`; defaults to 0
+    :param dt: the sampling period, :math: `\\Delta t`; defaults to 1
+    :return: the discretized transfer function
+
+
+    .. [#ISO-18431-4] `(ISO 18431-4) Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis <https://www.iso.org/standard/35833.html>`_
 
     .. seealso::
 
-        - `Pseudo Velocity Shock Spectrum Rules For Analysis Of Mechanical Shock, Howard A. Gaberson <https://info.endaq.com/hubfs/pvsrs_rules.pdf>`_
-        - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
-          Documentation for the transfer function class used to characterize the
-          relative displacement calculation.
+        `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
+        Documentation for the transfer function class used to characterize the
+        relative displacement calculation.
     """
+    try:
+        num = dict(
+            aa=[2 * damp * omega, omega ** 2],
+            rv=[-1, 0],
+            rd=[-1],
+            pv=[omega],
+            rdsa=[omega ** 2],
+        )[mode]
+    except KeyError as e:
+        raise ValueError(f'invalid mode parameter "{mode}"')
+
+    den = [1, 2 * damp * omega, omega ** 2]
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", scipy.signal.BadCoefficients)
 
-        return scipy.signal.TransferFunction(
-            [-1],
-            [1, 2 * damp * omega, omega ** 2],
-        ).to_discrete(dt=dt)
+        return scipy.signal.TransferFunction(num, den).to_discrete(dt=dt)
 
 
 def rel_displ(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFrame:
@@ -67,37 +128,12 @@ def rel_displ(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
           function.
     """
     dt = utils.sample_spacing(accel)
-    tf = _rel_displ_transfer_func(omega, damp, dt)
+    tf = transfer_function("rd", omega, damp, dt)
 
     return accel.apply(
         functools.partial(scipy.signal.lfilter, tf.num, tf.den, axis=0),
         raw=True,
     )
-
-
-def _abs_accel_transfer_func(
-    omega: float, damp: float = 0.0, dt: float = 1.0
-) -> scipy.signal.ltisys.TransferFunctionDiscrete:
-    """
-    Generate the transfer function
-        H(s) = L{x"(t)}(s) / L{y"(t)}(s) = X(s)/Y(s)
-    for the PDE
-        x" + (2ζω)x' + (ω²)x = (2ζω)y' + (ω²)y
-
-    .. seealso::
-
-        - `An Introduction To The Shock Response Spectrum, Tom Irvine, 9 July 2012 <http://www.vibrationdata.com/tutorials2/srs_intr.pdf>`_
-        - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
-          Documentation for the transfer function class used to characterize the
-          relative displacement calculation.
-    """
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", scipy.signal.BadCoefficients)
-
-        return scipy.signal.TransferFunction(
-            [0, 2 * damp * omega, omega ** 2],
-            [1, 2 * damp * omega, omega ** 2],
-        ).to_discrete(dt=dt)
 
 
 def abs_accel(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFrame:
@@ -125,7 +161,7 @@ def abs_accel(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
           function.
     """
     dt = utils.sample_spacing(accel)
-    tf = _abs_accel_transfer_func(omega, damp, dt)
+    tf = transfer_function("aa", omega, damp, dt)
 
     return accel.apply(
         functools.partial(scipy.signal.lfilter, tf.num, tf.den, axis=0),
@@ -178,9 +214,9 @@ def shock_spectrum(
     omega = 2 * np.pi * freqs
 
     if mode == "srs":
-        make_tf = _abs_accel_transfer_func
+        tf_mode = "aa"
     elif mode == "pvss":
-        make_tf = _rel_displ_transfer_func
+        tf_mode = "pv"
     else:
         raise ValueError(f"invalid spectrum mode {mode:r}")
 
@@ -200,7 +236,7 @@ def shock_spectrum(
     zero_padding = np.zeros((int(T_padding // dt) + 1,) + accel.shape[1:])
 
     for i_nd in np.ndindex(freqs.shape):
-        tf = make_tf(omega[i_nd], damp, dt)
+        tf = transfer_function(tf_mode, omega[i_nd], damp, dt)
         rd, zf = scipy.signal.lfilter(tf.num, tf.den, accel.to_numpy(), zi=zi, axis=0)
         rd_padding, _ = scipy.signal.lfilter(
             tf.num, tf.den, zero_padding, zi=zf, axis=0
