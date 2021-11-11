@@ -1,11 +1,12 @@
 """
 Core enDAQ Cloud communication API
 """
+from __future__ import annotations
+
 from typing import Optional, Union
 
 from idelib.dataset import Dataset
 import numpy as np
-from pandas import DataFrame
 import pandas as pd
 import requests
 import json
@@ -80,7 +81,7 @@ class EndaqCloud:
 
 
     @property
-    def account_id(self) -> Union[str, None]:
+    def account_id(self) -> Optional[str]:
         """ The enDAQ Cloud account's unique ID. """
         if self._account_id is None:
             self.get_account_info()
@@ -88,7 +89,7 @@ class EndaqCloud:
 
 
     @property
-    def account_email(self) -> Union[str, None]:
+    def account_email(self) -> Optional[str]:
         """ The email address associated with the enDAQ Cloud account. """
         if self._account_email is None:
             self.get_account_info()
@@ -105,7 +106,9 @@ class EndaqCloud:
         .. todo:: This should be made to match `endaq.ide.get_doc()`
 
         :param file_id: The file's cloud ID.
-        :param local_name:
+        :param local_name: The downloaded file's destination pathname; defaults
+            to the file's original basename & located in the directory in which
+            the Python interpreter was launched
         :return: The imported file, as an `idelib.Dataset`.
         """
         file_url = self.domain + "/api/v1/files/download/" + file_id
@@ -169,7 +172,7 @@ class EndaqCloud:
 
     def get_file_table(self,
                        attributes: Union[list, str] = "all",
-                       limit: int = 100) -> DataFrame:
+                       limit: int = 100) -> pd.DataFrame:
         """
         Get a table of the data that would be similar to that you'd get doing
         the CSV export on the my recordings page, up to the first `limit`
@@ -186,8 +189,7 @@ class EndaqCloud:
 
         return self.file_table
 
-
-    def get_devices(self, limit: int = 100) -> DataFrame:
+    def get_devices(self, limit: int = 100) -> pd.DataFrame:
         """
         Get dataframe of devices and associated attributes (part_number,
         description, etc.) attached to the account.
@@ -251,7 +253,7 @@ class EndaqCloud:
 
 
 
-def count_tags(df: DataFrame) -> DataFrame:
+def count_tags(df: pd.DataFrame) -> pd.DataFrame:
     """
     Given the dataframe returned by `EndaqCloud.get_file_table()`, provide
     some info on the tags of the files in that account.
@@ -280,7 +282,7 @@ def count_tags(df: DataFrame) -> DataFrame:
 
 
 
-def json_table_to_df(data: list) -> DataFrame:
+def json_table_to_df(data: list) -> pd.DataFrame:
     """
     Convert JSON parsed from a custom report to a more user-friendly
     `pandas.DataFrame`.
