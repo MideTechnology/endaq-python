@@ -35,11 +35,10 @@ def _make_psd(analyzer, fstart=None, bins_per_octave=None):
     The PSD is scaled to units of g^2/Hz (g := gravity = 9.80665 meters per
     square second).
     """
-    accel_ch = analyzer._channels.get("acc", None)
-    if accel_ch is None:
+    df_psd = analyzer._PSDData
+    if df_psd.size == 0:
         return None
 
-    df_psd = analyzer._PSDData
     if bins_per_octave is not None:
         df_psd = calc_psd.to_octave(
             df_psd,
@@ -60,11 +59,10 @@ def _make_pvss(analyzer):
 
     The PVSS is scaled to units of mm/sec.
     """
-    accel_ch = analyzer._channels.get("acc", None)
-    if accel_ch is None:
+    df_pvss = analyzer._PVSSData
+    if df_pvss.size == 0:
         return None
 
-    df_pvss = analyzer._PVSSData
     df_pvss["Resultant"] = analyzer._PVSSResultantData
     df_pvss = df_pvss * analyzer.MPS_TO_MMPS
 
@@ -118,26 +116,24 @@ def _make_peak_windows(analyzer, margin_len):
     The acceleration is scaled to units of g (gravity = 9.80665 meters per
     square second).
     """
-    accel_ch = analyzer._channels.get("acc", None)
-    if accel_ch is None:
+    df_accel = analyzer._accelerationData.copy()
+    df_accel["Resultant"] = analyzer._accelerationResultantData
+    df_accel = analyzer.MPS2_TO_G * df_accel
+    if df_accel.size == 0:
         return None
-
-    data = analyzer._accelerationData.copy()
-    data["Resultant"] = analyzer._accelerationResultantData
-    data = analyzer.MPS2_TO_G * data
 
     dt = 1 / analyzer._accelerationFs
 
-    data_noidx = data.reset_index(drop=True)
+    data_noidx = df_accel.reset_index(drop=True)
     peak_indices = data_noidx.abs().idxmax(axis="rows")
     aligned_peak_data = pd.concat(
         [
             pd.Series(
-                data[col].to_numpy(),
+                df_accel[col].to_numpy(),
                 index=(data_noidx.index - peak_indices[col]),
                 name=col,
             )
-            for col in data.columns
+            for col in df_accel.columns
         ],
         axis="columns",
     )
@@ -149,7 +145,7 @@ def _make_peak_windows(analyzer, margin_len):
         pd.DataFrame(
             {
                 "axis": aligned_peak_data.columns.values,
-                "peak time": data.index[peak_indices],
+                "peak time": df_accel.index[peak_indices],
             }
         )
     )
@@ -168,12 +164,10 @@ def _make_vc_curves(analyzer):
     """
     Format the VC curves of the main accelerometer channel into a pandas object.
     """
-    accel_ch = analyzer._channels.get("acc", None)
-    if accel_ch is None:
-        return None
-
     df_vc = analyzer._VCCurveData * analyzer.MPS_TO_UMPS  # (m/s) -> (μm/s)
     df_vc["Resultant"] = calc_stats.L2_norm(df_vc.to_numpy(), axis=1)
+    if df_vc.size == 0:
+        return None
 
     return df_vc.stack(level="axis").reorder_levels(["axis", "frequency (Hz)"])
 
