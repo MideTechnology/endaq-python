@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import partial
-import logging
+import warnings
 import os
 
 import numpy as np
@@ -535,7 +535,7 @@ class OutputStruct:
                 fig.update_layout(title="Pseudo Velocity Shock Spectrum (PVSS)")
 
             elif k == "metrics":
-                logging.warning("HTML plot for metrics not currently implemented")
+                warnings.warn("HTML plot for metrics not currently implemented")
                 continue
 
             elif k == "peaks":

@@ -1,4 +1,3 @@
-import logging
 import sys
 import warnings
 
@@ -135,7 +134,7 @@ class Analyzer:
         """Populate the _acceleration* fields, including splitting and extending data."""
         ch_struct = self._channels.get("acc", None)
         if ch_struct is None:
-            logging.warning(f"no acceleration channel in {self._filename}")
+            warnings.warn(f"no acceleration channel in {self._filename}")
             return pd.DataFrame(
                 np.empty((0, 3), dtype=float),
                 index=pd.Series([], dtype="timedelta64[ns]", name="time"),
@@ -210,7 +209,7 @@ class Analyzer:
             return aData
 
         if not self._accel_highpass_cutoff:
-            logging.warning(
+            warnings.warn(
                 "no highpass filter used before integration; "
                 "velocity calculation may be unstable"
             )
@@ -224,7 +223,7 @@ class Analyzer:
             return vData
 
         if not self._accel_highpass_cutoff:
-            logging.warning(
+            warnings.warn(
                 "no highpass filter used before integration; "
                 "displacement calculation may be unstable"
             )
