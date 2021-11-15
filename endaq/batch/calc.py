@@ -11,7 +11,7 @@ import endaq.ide
 from endaq.calc import stats as calc_stats
 from endaq.calc import psd as calc_psd
 
-from endaq.batch.analyzer import Analyzer
+import endaq.batch.analyzer
 
 
 def _make_meta(dataset):
@@ -28,14 +28,14 @@ def _make_meta(dataset):
     )
 
 
-def _make_psd(analyzer, fstart=None, bins_per_octave=None):
+def _make_psd(ch_data_cache, fstart=None, bins_per_octave=None):
     """
     Format the PSD of the main accelerometer channel into a pandas object.
 
     The PSD is scaled to units of g^2/Hz (g := gravity = 9.80665 meters per
     square second).
     """
-    df_psd = analyzer._PSDData
+    df_psd = ch_data_cache._PSDData
     if df_psd.size == 0:
         return None
 
@@ -48,28 +48,28 @@ def _make_psd(analyzer, fstart=None, bins_per_octave=None):
         )
 
     df_psd["Resultant"] = np.sum(df_psd.to_numpy(), axis=1)
-    df_psd = df_psd * analyzer.MPS2_TO_G ** 2  # (m/s^2)^2/Hz -> g^2/Hz
+    df_psd = df_psd * endaq.batch.analyzer.MPS2_TO_G ** 2  # (m/s^2)^2/Hz -> g^2/Hz
 
     return df_psd.stack(level="axis").reorder_levels(["axis", "frequency (Hz)"])
 
 
-def _make_pvss(analyzer):
+def _make_pvss(ch_data_cache):
     """
     Format the PVSS of the main accelerometer channel into a pandas object.
 
     The PVSS is scaled to units of mm/sec.
     """
-    df_pvss = analyzer._PVSSData
+    df_pvss = ch_data_cache._PVSSData
     if df_pvss.size == 0:
         return None
 
-    df_pvss["Resultant"] = analyzer._PVSSResultantData
-    df_pvss = df_pvss * analyzer.MPS_TO_MMPS
+    df_pvss["Resultant"] = ch_data_cache._PVSSResultantData
+    df_pvss = df_pvss * endaq.batch.analyzer.MPS_TO_MMPS
 
     return df_pvss.stack(level="axis").reorder_levels(["axis", "frequency (Hz)"])
 
 
-def _make_metrics(analyzer):
+def _make_metrics(ch_data_cache):
     """
     Format the channel metrics of a recording into a pandas object.
 
@@ -86,17 +86,17 @@ def _make_metrics(analyzer):
     """
     df = pd.concat(
         [
-            analyzer.accRMSFull,
-            analyzer.velRMSFull,
-            analyzer.disRMSFull,
-            analyzer.accPeakFull,
-            analyzer.pseudoVelPeakFull,
-            analyzer.gpsLocFull,
-            analyzer.gpsSpeedFull,
-            analyzer.gyroRMSFull,
-            analyzer.micRMSFull,
-            analyzer.tempFull,
-            analyzer.pressFull,
+            ch_data_cache.accRMSFull,
+            ch_data_cache.velRMSFull,
+            ch_data_cache.disRMSFull,
+            ch_data_cache.accPeakFull,
+            ch_data_cache.pseudoVelPeakFull,
+            ch_data_cache.gpsLocFull,
+            ch_data_cache.gpsSpeedFull,
+            ch_data_cache.gyroRMSFull,
+            ch_data_cache.micRMSFull,
+            ch_data_cache.tempFull,
+            ch_data_cache.pressFull,
         ],
         axis="columns",
     )
@@ -108,7 +108,7 @@ def _make_metrics(analyzer):
     return series
 
 
-def _make_peak_windows(analyzer, margin_len):
+def _make_peak_windows(ch_data_cache, margin_len):
     """
     Store windows of the main accelerometer channel about its peaks in a pandas
     object.
@@ -116,13 +116,13 @@ def _make_peak_windows(analyzer, margin_len):
     The acceleration is scaled to units of g (gravity = 9.80665 meters per
     square second).
     """
-    df_accel = analyzer._accelerationData.copy()
-    df_accel["Resultant"] = analyzer._accelerationResultantData
-    df_accel = analyzer.MPS2_TO_G * df_accel
+    df_accel = ch_data_cache._accelerationData.copy()
+    df_accel["Resultant"] = ch_data_cache._accelerationResultantData
+    df_accel = endaq.batch.analyzer.MPS2_TO_G * df_accel
     if df_accel.size == 0:
         return None
 
-    dt = 1 / analyzer._accelerationFs
+    dt = 1 / ch_data_cache._accelerationFs
 
     data_noidx = df_accel.reset_index(drop=True)
     peak_indices = data_noidx.abs().idxmax(axis="rows")
@@ -160,11 +160,13 @@ def _make_peak_windows(analyzer, margin_len):
     return result
 
 
-def _make_vc_curves(analyzer):
+def _make_vc_curves(ch_data_cache):
     """
     Format the VC curves of the main accelerometer channel into a pandas object.
     """
-    df_vc = analyzer._VCCurveData * analyzer.MPS_TO_UMPS  # (m/s) -> (μm/s)
+    df_vc = (
+        ch_data_cache._VCCurveData * endaq.batch.analyzer.MPS_TO_UMPS
+    )  # (m/s) -> (μm/s)
     df_vc["Resultant"] = calc_stats.L2_norm(df_vc.to_numpy(), axis=1)
     if df_vc.size == 0:
         return None
@@ -253,7 +255,7 @@ class GetDataBuilder:
 
         self._metrics_queue = {}  # dict maintains insertion order, unlike set
 
-        self._analyzer_kwargs = dict(
+        self._ch_data_cache_kwargs = dict(
             preferred_chs=preferred_chs,
             accel_highpass_cutoff=accel_highpass_cutoff,
             accel_start_time=accel_start_time,
@@ -262,7 +264,7 @@ class GetDataBuilder:
             accel_end_margin=accel_end_margin,
         )
 
-        # Even unused parameters MUST be set; used to instantiate `Analyzer` in `_get_data`
+        # Even unused parameters MUST be set; used to instantiate `DatasetChannelCache` in `_get_data`
         self._psd_freq_bin_width = None
         self._psd_freq_start_octave = None
         self._psd_bins_per_octave = None
@@ -380,9 +382,9 @@ class GetDataBuilder:
 
         data = {}
         with endaq.ide.get_doc(filename) as ds:
-            analyzer = Analyzer(
+            ch_data_cache = endaq.batch.analyzer.DatasetChannelCache(
                 ds,
-                **self._analyzer_kwargs,
+                **self._ch_data_cache_kwargs,
                 psd_window=self._psd_window,
                 psd_freq_bin_width=self._psd_freq_bin_width,
                 pvss_init_freq=self._pvss_init_freq,
@@ -408,7 +410,7 @@ class GetDataBuilder:
                 vc_curves=_make_vc_curves,
             )
             for output_type in self._metrics_queue.keys():
-                data[output_type] = funcs[output_type](analyzer)
+                data[output_type] = funcs[output_type](ch_data_cache)
 
         return data
 
