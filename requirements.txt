@@ -9,3 +9,11 @@ plotly>=5.3.1
 python-dotenv>=0.18.0
 requests>=2.25.1
 scipy>=1.7.1
+
+# Testing
+hypothesis
+numpy-quaternion==2020.11.2.17.0.49
+plotly
+pytest
+pytest-cov
+sympy
