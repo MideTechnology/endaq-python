@@ -18,7 +18,6 @@ INSTALL_REQUIRES = [
 
 TEST_REQUIRES = [
     "hypothesis",
-    "numpy-quaternion==2020.11.2.17.0.49",
     "plotly",
     "pytest",
     "pytest-cov",
