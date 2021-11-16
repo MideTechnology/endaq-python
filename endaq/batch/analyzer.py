@@ -177,6 +177,10 @@ class DatasetChannelCache:
         return integrate._integrate(aData)
 
     @cached_property
+    def _velocityResultantData(self):
+        return self._velocityData.apply(stats.L2_norm, axis="columns").to_frame()
+
+    @cached_property
     def _displacementData(self):
         vData = self._velocityData
         if vData.size == 0:
@@ -189,6 +193,10 @@ class DatasetChannelCache:
             )
 
         return integrate._integrate(vData)
+
+    @cached_property
+    def _displacementResultantData(self):
+        return self._displacementData.apply(stats.L2_norm, axis="columns").to_frame()
 
     @cached_property
     def _PVSSData(self):
@@ -251,6 +259,10 @@ class DatasetChannelCache:
             window=self._psd_window,
             average="median",
         )
+
+    @cached_property
+    def _PSDResultantData(self):
+        return self._PSDData.apply(np.sum, axis="columns").to_frame()
 
     @cached_property
     def _VCCurveData(self):
