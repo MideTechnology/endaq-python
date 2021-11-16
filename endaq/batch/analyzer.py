@@ -194,7 +194,7 @@ class DatasetChannelCache:
     def _PVSSData(self):
         aData = self._accelerationData
         if aData.size == 0:
-            pvss = aData[:]
+            pvss = aData.copy()
             pvss.index.name = "frequency (Hz)"
             return pvss
 
@@ -217,7 +217,7 @@ class DatasetChannelCache:
     def _PVSSResultantData(self):
         aData = self._accelerationData
         if aData.size == 0:
-            pvss = self._accelerationResultantData[:]
+            pvss = self._accelerationResultantData.copy()
             pvss.index.name = "frequency (Hz)"
             return pvss
 
@@ -241,7 +241,7 @@ class DatasetChannelCache:
     def _PSDData(self):
         aData = self._accelerationData
         if aData.size == 0:
-            psdData = aData[:]
+            psdData = aData.copy()
             psdData.index.name = "frequency (Hz)"
             return psdData
 
@@ -257,7 +257,7 @@ class DatasetChannelCache:
         """Calculate Vibration Criteria (VC) Curves for the accelerometer."""
         psdData = self._PSDData
         if psdData.size == 0:
-            vcData = psdData[:]
+            vcData = psdData.copy()
             vcData.index.name = "frequency (Hz)"
             return vcData
 
