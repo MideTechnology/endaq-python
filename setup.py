@@ -4,13 +4,23 @@ with open('README.md', 'r', encoding='utf-8') as fh:
     long_description = fh.read()
 
 INSTALL_REQUIRES = [
-    'endaq-calc>=1.1.0.post2',
-    'endaq-cloud>=1.1.0',
-    'endaq-ide>=1.1.0',
-    'endaq-plot>=1.1.0',
+    "backports.cached-property; python_version<'3.8'",
+    "ebmlite>=3.2.0",
+    "idelib>=3.2.3",
+    "jinja2",
+    "numpy>=1.19.5",
+    "pandas>=1.3",
+    "plotly>=5.3.1",
+    "python-dotenv>=0.18.0",
+    "requests>=2.25.1",
+    "scipy>=1.7.1",
     ]
 
 TEST_REQUIRES = [
+    "hypothesis",
+    "pytest",
+    "pytest-cov",
+    "sympy",
     ]
 
 DOCS_REQUIRES = [
@@ -23,7 +33,7 @@ EXAMPLE_REQUIRES = [
 
 setuptools.setup(
         name='endaq',
-        version='1.1.1.post2',
+        version='1.2.0a1',
         author='Mide Technology',
         author_email='help@mide.com',
         description='A comprehensive, user-centric Python API for working with enDAQ data and devices',
