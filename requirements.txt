@@ -12,7 +12,6 @@ scipy>=1.7.1
 
 # Testing
 hypothesis
-plotly
 pytest
 pytest-cov
 sympy

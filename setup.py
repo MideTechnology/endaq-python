@@ -18,7 +18,6 @@ INSTALL_REQUIRES = [
 
 TEST_REQUIRES = [
     "hypothesis",
-    "plotly",
     "pytest",
     "pytest-cov",
     "sympy",
@@ -34,7 +33,7 @@ EXAMPLE_REQUIRES = [
 
 setuptools.setup(
         name='endaq',
-        version='1.1.1.post2',
+        version='1.2.0a1',
         author='Mide Technology',
         author_email='help@mide.com',
         description='A comprehensive, user-centric Python API for working with enDAQ data and devices',
