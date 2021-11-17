@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
 import sympy as sp
-import quaternion
 
 from endaq.batch import quat
 
@@ -64,26 +63,3 @@ def test_quat_div(p, q):
             # faster to check p*(q**-1) than p/q due to symbolic representations
             == sp.Quaternion(*p[i_nd]) * sp.Quaternion(*q[i_nd]) ** -1
         )
-
-
-def test_quat_to_angvel():
-    # Note - the math for calculating angular velocity requires calculating a
-    # derivative of each quaternion component; `quat_to_angvel` uses
-    # `np.gradient(edge_order=2)`, while `quaternion.angular_velocity` uses
-    # differentiated cubic splines. These two methods are identical when
-    # calculating over three quaternion data points.`
-    q = np.array(
-        [
-            [0.29998779, 0.33111572, 0.21844482],
-            [-0.58532715, -0.6151123, -0.59637451],
-            [-0.66094971, -0.62219238, -0.64056396],
-            [-0.36132812, -0.35339355, -0.43157959],
-        ]
-    ).T
-
-    calc_result = quat.quat_to_angvel(q, 2)
-    expt_result = quaternion.angular_velocity(
-        quaternion.as_quat_array(q), 2 * np.arange(0, q.shape[0])
-    )
-
-    np.testing.assert_allclose(calc_result, expt_result)
