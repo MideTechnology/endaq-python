@@ -347,12 +347,12 @@ def octave_psd_bar_plot(df: pd.DataFrame, bins_per_octave: int = 3, f_start: flo
         agg='sum',
     )
 
-    frequency_durations = np.diff(octave_psd_df.index)
+    bar_widths = octave_psd_df.index * (2 ** (.5/bins_per_octave) - 2 ** (-.5/bins_per_octave))
 
     bar = go.Bar(
         x=octave_psd_df.index.values,
         y=octave_psd_df.values.squeeze(),
-        width=frequency_durations,
+        width=bar_widths,
     )
     layout = go.Layout(
         yaxis={'title': yaxis_title},
@@ -445,7 +445,7 @@ def around_peak(df: pd.DataFrame, num: int = 1000, leading_ratio: float = 0.5):
 
     # These can go below and above the number of valid indices, but that can be ignored since
     # they'll only be used to slice the data in a way that is okay to go over/under
-    window_start = max_i - int(num * leading_ratio)
-    window_end = max_i + int(num * (1-leading_ratio))
+    window_start = max(0, max_i - int(num * leading_ratio))
+    window_end = min(len(df), max_i + int(num * (1-leading_ratio)))
 
     return px.line(df.iloc[window_start: window_end])

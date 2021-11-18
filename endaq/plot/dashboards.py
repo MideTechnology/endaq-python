@@ -304,8 +304,8 @@ def rolling_metric_dashboard(channel_df_dict: dict, desired_num_points: int = 25
      the `num_rows` parameter for more details on this parameter, and how the two interact.  This also follows the same
      approach to handling None when given
     :param rolling_metrics_to_plot: A tuple of strings which indicate what rolling metrics to plot for each subchannel.
-     The options are ['mean', 'std', 'absolute max'] which correspond to the mean, standard deviation, and maximum
-     of the absolute value.
+     The options are ['mean', 'std', 'absolute max', 'rms'] which correspond to the mean, standard deviation, maximum of
+     the absolute value, and root-mean-square.
     :param metric_colors: An 'array-like' object of strings containing colors to be cycled through for the metrics.
      If None is given (which is the default), then the `colorway` variable in Plotly's current theme/template will
      be used to color the metric data, repeating from the start of the `colorway` if all colors have been used.
@@ -368,9 +368,13 @@ def rolling_metric_dashboard(channel_df_dict: dict, desired_num_points: int = 25
                     data = subchannel_data.abs().rolling(n).max().iloc[::n]
                     name = 'Max'
                     color = colorway[3]
+                elif metric == 'rms':
+                    data = subchannel_data.pow(2).rolling(n).mean().apply(np.sqrt, raw=True).iloc[::n]
+                    name = 'RMS'
+                    color = colorway[4]
                 else:
                     raise ValueError(f"metric given to `rolling_metrics_to_plot` is not valid!  Was given {metric}"
-                                     " which is not in the allowed options of ['mean', 'std', 'absolute max']")
+                                     " which is not in the allowed options of ['mean', 'std', 'absolute max', 'rms']")
                 fig.add_trace(
                     go.Scatter(
                         x=time,
