@@ -39,8 +39,7 @@ jobs:
 
       - name: Get date
         id: date
-        shell: bash
-        run: echo "::set-output name=text::$(date +%Y/%m)"
+        run: python -c "import datetime; now = datetime.datetime.now(); print(f'::set-output name=text::{now.year}/{now.month}-part{1 + now.day // 8}')"
 
       - name: Load pip Cache
         uses: actions/cache@v2
