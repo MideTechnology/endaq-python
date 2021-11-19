@@ -20,6 +20,7 @@ TEST_REQUIRES = [
     "hypothesis",
     "pytest",
     "pytest-cov",
+    "pytest-xdist[psutil]",
     "sympy",
     ]
 
