@@ -48,7 +48,7 @@ jobs:
           key: $doctests-{{ runner.os }}-Python${{ matrix.python-version }}-${{ steps.date.outputs.text }}-pip-${{ hashFiles('**/setup.py', './.github/workflows/unit-tests.yml') }}
 
       - name: Install package & (test) dependencies
-        run: python -m pip install --upgrade --upgrade-strategy=eager .[docs]
+        run: python -m pip install .[docs]
 
       - name: Build docs
         run: sphinx-build -W -b html docs docs/_build
