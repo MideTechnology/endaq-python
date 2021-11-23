@@ -248,7 +248,7 @@ class GetDataBuilder:
             ``accel_start_time``
         :param accel_end_margin: the numper of samples after which to reject
             recording data; cannot be used in conjunction with
-            ``accel_end_margin``
+            ``accel_end_time``
         """
         if accel_start_time is not None and accel_start_margin is not None:
             raise ValueError(
