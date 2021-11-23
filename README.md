@@ -18,3 +18,11 @@ This package consists of several submodules, you can read more about how these a
 * `endaq.cloud` ([readme](https://github.com/MideTechnology/endaq-python/tree/main/endaq/cloud)): Tools for interacting with enDAQ Cloud services.
 * `endaq.ide` ([readme](https://github.com/MideTechnology/endaq-python/tree/main/endaq/ide)): High-level utility functions to aid in importing and inspecting enDAQ IDE recording files.
 * `endaq.plot` ([readme](https://github.com/MideTechnology/endaq-python/tree/main/endaq/plot)):  A package comprising a collection of plotting utilities for sensor data analysis.
+
+## Docs
+
+The docs for this package can be found [here](https://docs.endaq.com/en/latest/).
+
+## License 
+
+The endaq-python repository is licensed under the MIT license. The full text can be found in the [LICENSE file](https://github.com/MideTechnology/endaq-python/blob/main/LICENSE).
