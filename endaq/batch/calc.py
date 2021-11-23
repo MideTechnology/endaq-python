@@ -203,22 +203,22 @@ class GetDataBuilder:
       This includes the functions ``_get_data`` & ``aggregate_data``, which
       operates on one & multiple file(s), respectively.
 
-      A typical use case will look something like this:
+    A typical use case will look something like this:
 
-      .. code-block:: python
+    .. code-block:: python
 
-          filenames = [...]
+        filenames = [...]
 
-          calc_output = (
-              GetDataBuilder(accel_highpass_cutoff=1)
-              .add_psd(freq_bin_width=1)
-              .add_pvss(init_freq=1, bins_per_octave=12)
-              .add_metrics()
-              .add_peaks(margin_len=100)
-              .add_vc_curves(init_freq=1, bins_per_octave=3)
-              .aggregate_data(filenames)
-          )
-          file_data = calc_output.dataframes
+        calc_output = (
+            GetDataBuilder(accel_highpass_cutoff=1)
+            .add_psd(freq_bin_width=1)
+            .add_pvss(init_freq=1, bins_per_octave=12)
+            .add_metrics()
+            .add_peaks(margin_len=100)
+            .add_vc_curves(init_freq=1, bins_per_octave=3)
+            .aggregate_data(filenames)
+        )
+        file_data = calc_output.dataframes
     """
 
     def __init__(
