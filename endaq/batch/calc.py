@@ -301,7 +301,7 @@ class GetDataBuilder:
             log-spaced PSD; if not set, the PSD will be linearly-spaced as
             specified by `freq_bin_width`
         :param window: the window type used in the PSD calculation; see the
-            documentation for `scipy.signal.welch` for details
+            documentation for ``scipy.signal.welch`` for details
         """
         if all(i is None for i in (freq_bin_width, bins_per_octave)):
             raise ValueError(
@@ -497,8 +497,8 @@ class OutputStruct:
         Generate plots in HTML.
 
         :param folder_path: the output directory for saving .HTML
-            plots. If `None`, plots are not saved. Defaults to `None`.
-        :param show: whether to open plots after generation. Defaults to `False`.
+            plots; if `None` (default), plots are not saved
+        :param show: whether to open plots after generation; defaults to `False`
         """
         if not any((folder_path, show)):
             return
