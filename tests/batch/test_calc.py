@@ -110,8 +110,7 @@ def data_builder():
         os.path.join("tests", "batch", "test4.IDE"),
         os.path.join("tests", "batch", "test5.IDE"),
         os.path.join("tests", "batch", "GPS-Chick-Fil-A_003.IDE"),
-        # os.path.join("tests", "batch", "test_GPS_2.IDE"),
-        # os.path.join("tests", "batch", "test_GPS_3.IDE"),
+        os.path.join("tests", "batch", "High-Drop.IDE"),
     ],
 )
 def test_get_data(filename):
