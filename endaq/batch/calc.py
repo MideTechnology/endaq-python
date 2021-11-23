@@ -239,16 +239,16 @@ class GetDataBuilder:
             pre-filtering acceleration data
         :param accel_start_time: the relative timestamp before which to reject
             recording data; cannot be used in conjunction with
-            ``accel_start_margin``
+            `accel_start_margin`
         :param accel_end_time: the relative timestamp after which to reject
             recording data; cannot be used in conjunction with
-            ``accel_end_margin``
+            `accel_end_margin`
         :param accel_start_margin: the number of samples before which to reject
             recording data; cannot be used in conjunction with
-            ``accel_start_time``
+            `accel_start_time`
         :param accel_end_margin: the numper of samples after which to reject
             recording data; cannot be used in conjunction with
-            ``accel_end_time``
+            `accel_end_time`
         """
         if accel_start_time is not None and accel_start_margin is not None:
             raise ValueError(
