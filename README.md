@@ -3,11 +3,11 @@
 
 ## Installation
 
-endaq-calc is available on PYPI via `pip`:
+endaq is available on PYPI via `pip`:
 
     pip install endaq
 
-For the most recent features that are still under development, you can also use `pip` to install endaq-calc directly from GitHub:
+For the most recent features that are still under development, you can also use `pip` to install endaq directly from GitHub:
 
     pip install git+https://github.com/MideTechnology/endaq-python.git@development
 
