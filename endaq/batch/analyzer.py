@@ -243,7 +243,7 @@ class Analyzer:
             aData, self._pvss_init_freq, self._pvss_bins_per_octave
         )
         freqs = freqs[
-            (freqs >= self._accelerationFs / self._accelerationData.shape[-1])
+            (freqs >= self._accelerationFs / self._accelerationData.shape[0])
         ]
         pv = shock.shock_spectrum(
             self._accelerationData,
@@ -266,7 +266,7 @@ class Analyzer:
             aData, self._pvss_init_freq, self._pvss_bins_per_octave
         )
         freqs = freqs[
-            (freqs >= self._accelerationFs / self._accelerationData.shape[-1])
+            (freqs >= self._accelerationFs / self._accelerationData.shape[0])
         ]
         pv = shock.shock_spectrum(
             self._accelerationData,
