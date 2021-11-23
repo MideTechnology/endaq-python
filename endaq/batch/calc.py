@@ -232,10 +232,9 @@ class GetDataBuilder:
         accel_end_margin=None,
     ):
         """
-        Constructor.
-
-        :param preferred_chs: a sequence of channels; each gets priority over
-            others of its unit type
+        :param preferred_chs: a sequence of channels; each channel listed is
+            prioritized over others of the same type of physical measurement
+            (e.g., acceleration, temperature, pressure, etc.)
         :param accel_highpass_cutoff: the cutoff frequency used when
             pre-filtering acceleration data
         """
