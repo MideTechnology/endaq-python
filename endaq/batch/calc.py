@@ -181,40 +181,42 @@ class GetDataBuilder:
     The main interface for the calculations.
 
     This object has two types of functions:
+
     - configuration functions - these determine what calculations will be
       performed on IDE recordings, and pass in any requisite parameters for said
       calculations.
 
       This includes the following functions:
+
       - add_psd
       - add_pvss
       - add_metrics
       - add_peaks
       - add_vc_curves
+
     - execution functions - these functions take recording files as parameters,
       perform the configured calculations on the data therein, and return the
       calculated data as pandas objects.
 
-      This includes the functions `_get_data` & `aggregate_data`, which operates
-      on one & multiple file(s), respectively.
+      This includes the functions ``_get_data`` & ``aggregate_data``, which
+      operates on one & multiple file(s), respectively.
 
-    A typical use case will look something like this:
+      A typical use case will look something like this:
 
-    ```python
-    filenames = [...]
+    .. code-block:: python
 
-    calc_output = (
-        GetDataBuilder(accel_highpass_cutoff=1)
-        .add_psd(freq_bin_width=1)
-        .add_pvss(init_freq=1, bins_per_octave=12)
-        .add_metrics()
-        .add_peaks(margin_len=100)
-        .add_vc_curves(init_freq=1, bins_per_octave=3)
-        .aggregate_data(filenames)
-    )
-    file_data = calc_output.dataframes
-    ```
+        filenames = [...]
 
+        calc_output = (
+            GetDataBuilder(accel_highpass_cutoff=1)
+            .add_psd(freq_bin_width=1)
+            .add_pvss(init_freq=1, bins_per_octave=12)
+            .add_metrics()
+            .add_peaks(margin_len=100)
+            .add_vc_curves(init_freq=1, bins_per_octave=3)
+            .aggregate_data(filenames)
+        )
+        file_data = calc_output.dataframes
     """
 
     def __init__(
