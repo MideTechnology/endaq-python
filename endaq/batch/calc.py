@@ -349,7 +349,7 @@ class GetDataBuilder:
 
         return self
 
-    def add_vc_curves(self, init_freq, bins_per_octave):
+    def add_vc_curves(self, *, init_freq, bins_per_octave):
         """
         Add Vibration Criteria (VC) Curves to the calculation queue.
 
