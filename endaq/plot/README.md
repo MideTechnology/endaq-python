@@ -1,22 +1,12 @@
 # endaq-plot - Painless Plotting Of Sensor Data
 
-endaq-plot is a package comprising a collection of plotting utilities for sensor data analysis. It leverages Plotly in order to produce interactive plots, and makes creating powerful visualizations simple and easy for those new to Python.
+endaq-plot is a module comprising a collection of plotting utilities for sensor data analysis. It leverages Plotly in order to produce interactive plots, and makes creating powerful visualizations simple and easy for those new to Python.
 
-endaq-plot is a sub-package of the larger enDAQ ecosystem. See [the endaq package](https://github.com/MideTechnology/endaq-python) for more details.
-
-## Installation
-
-endaq-plot is available on PYPI via `pip`:
-
-    pip install endaq-plot
-
-For the most recent features that are still under development, you can also use `pip` to install endaq-plot directly from GitHub:
-
-    pip install git+https://github.com/MideTechnology/endaq-python-plot.git@development
+endaq-plot is a sub-module of the larger enDAQ ecosystem. See [the endaq package](https://github.com/MideTechnology/endaq-python) for more details.
 
 ## Usage Examples
 
-For these examples we assume there is a Pandas DataFrame named `df` which has it's index as time stamps and it's one column being sensor values (e.g. x-axis accleration, or pressure).   It also assumes there is a Pandas DataFrame `attribute_df` which contains all the attribute data about various data files.  More information can be found about how to get this data from enDAQ IDE files in the [endaq-cloud package](https://github.com/MideTechnology/endaq-python-cloud).
+For these examples we assume there is a Pandas DataFrame named `df` which has it's index as time stamps and it's one column being sensor values (e.g. x-axis accleration, or pressure).   It also assumes there is a Pandas DataFrame `attribute_df` which contains all the attribute data about various data files.  More information can be found about how to get this data from enDAQ IDE files in the [endaq-cloud readme](https://github.com/MideTechnology/endaq-python/tree/main/endaq/cloud).
 
 ```python
 from endaq.plot import octave_spectrogram, multi_file_plot_attributes, octave_psd_bar_plot

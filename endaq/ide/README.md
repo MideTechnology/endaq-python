@@ -6,8 +6,6 @@
 * `get_doc()`: Open an IDE, either locally or from a URL.
 * `to_pandas()`: Convert IDE data to a `pandas` `DataFrame`, for use with other packages.
 
-*Note: This is a component of the `endaq` package; it is separate to allow users to install it independently, avoiding the core `endaq-python` dependencies. It is included in a full `endaq` install.*
-
 ## `endaq.ide` usage examples
 Here are a few examples of `endaq.ide` in use. For more information, see the [full documentation](https://docs.endaq.com/en/latest/).
 
