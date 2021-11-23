@@ -1,0 +1,61 @@
+name: Docs test on push and PR
+
+
+on: [push, pull_request, workflow_dispatch]
+
+
+jobs:
+  unit-tests:
+    name: Run Docs Tests
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: [3.9]
+
+    env:
+      OS: ${{ matrix.os }}
+      PYTHON-VERSION: ${{ matrix.python-version }}
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Get pip cache location
+        id: pip-cache
+        run: echo "::set-output name=dir::$(pip cache dir)"
+
+      - name: Get date
+        id: date
+        run: >
+          python -c
+          "import datetime;
+          now = datetime.datetime.now();
+          print(f'::set-output name=text::{now.year}/{now.month}-part{1 + now.day // 8}')"
+
+      - name: Load pip cache
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.pip-cache.outputs.dir }}
+          key: $doctests-{{ runner.os }}-Python${{ matrix.python-version }}-${{ steps.date.outputs.text }}-pip-${{ hashFiles('**/setup.py', './.github/workflows/unit-tests.yml') }}
+
+      - name: Install package & (test) dependencies
+        run: python -m pip install --upgrade --upgrade-strategy=eager .[docs]
+
+      - name: Build docs
+        run: sphinx-build -W -b html docs docs/_build
+
+      - name: Run docs tests
+        run: sphinx-build -W -b doctest docs docs/_doctest
