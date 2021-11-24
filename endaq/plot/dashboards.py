@@ -25,21 +25,21 @@ def rolling_enveloped_dashboard(
 
     :param channel_df_dict: A dictionary mapping channel names to Pandas DataFrames of that channels data
     :param desired_num_points: The desired number of points to be plotted in each subplot.  The number of points
-     will be reduced from it's original sampling rate by applying metrics (e.g. min, max) over sliding windows
+     will be reduced from its original sampling rate by applying metrics (e.g. min, max) over sliding windows
      and then using that information to represent/visualize the data contained within the original data.  If less than
      the desired number of points are present, then a sliding window will NOT be used, and instead the points will be
      plotted as they were originally recorded  (also the subplot will NOT be plotted as a bar based plot even if
      `plot_as_bars` was set to true).
-    :param num_rows: The number of columns of subplots to be created inside the Plotly figure. If None is given, (then
-     `num_cols` must not be None), then this number will automatically be determined by what's needed.  If more rows
+    :param num_rows: The number of columns of subplots to be created inside the Plotly figure. If `None` is given, (then
+     `num_cols` must not be `None`), then this number will automatically be determined by what's needed.  If more rows
      are specified than are needed, the number of rows will be reduced to the minimum needed to contain all the subplots
     :param num_cols: The number of columns of subplots to be created inside the Plotly figure.  See the description of
      the `num_rows` parameter for more details on this parameter, and how the two interact.  This also follows the same
-     approach to handling None when given
+     approach to handling `None` when given
     :param width_for_subplot_row: The width of the area used for a single subplot (in pixels).
     :param height_for_subplot_row: The height of the area used for a single subplot (in pixels).
-    :param subplot_colors: An 'array-like' object of strings containing colors to be cycled through for the subplots.
-     If None is given (which is the default), then the `colorway` variable in Plotly's current theme/template will
+    :param subplot_colors: An "array-like" object of strings containing colors to be cycled through for the subplots.
+     If `None` is given (which is the default), then the `colorway` variable in Plotly's current theme/template will
      be used to color the data on each of the subplots uniquely, repeating from the start of the `colorway` if
      all colors have been used.
     :param min_points_to_plot: The minimum number of data points required to be present to create a subplot for a
@@ -48,8 +48,8 @@ def rolling_enveloped_dashboard(
      shaded rectangle is used to represent the maximum and minimum values of the data during the time window
      covered by the rectangle.  These maximum and minimum values are visualized by the locations of the top and bottom
      edges of the rectangle respectively, unless the height of the rectangle would be 0, in which case a line segment
-     will be displayed in it's place.  If this parameter is `False`, two lines will be plotted for each
-     of the subplots in the figure being created, creating an 'envelope' around the data.  An 'envelope' around the
+     will be displayed in its place.  If this parameter is `False`, two lines will be plotted for each
+     of the subplots in the figure being created, creating an "envelope" around the data.  An "envelope" around the
      data consists of a line plotted for the maximum values contained in each of the time windows, and another line
      plotted for the minimum values.  Together these lines create a boundary which contains all the data points
      recorded in the originally recorded data.
@@ -141,7 +141,7 @@ def rolling_enveloped_dashboard(
                 pd.isnull(min_max_tuple[0]),
                 pd.isnull(min_max_tuple[1])))
 
-        # If it's going to be plotted as bars, force it's time stamps to be uniformly spaced
+        # If it's going to be plotted as bars, force its time stamps to be uniformly spaced
         # so that the bars don't have any discontinuities in the X-axis
         if len(channel_data) >= desired_num_points and plot_as_bars:
             if isinstance(channel_data.index, pd.core.indexes.datetimes.DatetimeIndex):
@@ -198,8 +198,8 @@ def rolling_enveloped_dashboard(
                     y_patch_line_segs = np.repeat(equal_data_df.values, 3)
 
                     # All X axis values are the same, but these values are supposed to represent pairs of start and end
-                    # times for line segments, so the time stamp is shifted half it's duration backwards for the start
-                    # time, and half it's duration forward for the end time
+                    # times for line segments, so the time stamp is shifted half its duration backwards for the start
+                    # time, and half its duration forward for the end time
                     x_patch_line_segs[::3] -= half_dt
                     x_patch_line_segs[1::3] += half_dt
 
@@ -292,22 +292,22 @@ def rolling_metric_dashboard(channel_df_dict: dict, desired_num_points: int = 25
 
     :param channel_df_dict: A dictionary mapping channel names to Pandas DataFrames of that channels data
     :param desired_num_points:  The desired number of points to be plotted in each subplot.  The number of points
-     will be reduced from it's original sampling rate by applying metrics (e.g. min, max) over sliding windows
+     will be reduced from its original sampling rate by applying metrics (e.g. min, max) over sliding windows
      and then using that information to represent/visualize the data contained within the original data.  If less than
      the desired number of points are present, then a sliding window will NOT be used, and instead the points will be
      plotted as they were originally recorded  (also the subplot will NOT be plotted as a bar based plot even if
      `plot_as_bars` was set to true).
-    :param num_rows: The number of columns of subplots to be created inside the Plotly figure. If None is given, (then
-     `num_cols` must not be None), then this number will automatically be determined by what's needed.  If more rows
+    :param num_rows: The number of columns of subplots to be created inside the Plotly figure. If `None` is given, (then
+     `num_cols` must not be `None`), then this number will automatically be determined by what's needed.  If more rows
      are specified than are needed, the number of rows will be reduced to the minimum needed to contain all the subplots
     :param num_cols: The number of columns of subplots to be created inside the Plotly figure.  See the description of
      the `num_rows` parameter for more details on this parameter, and how the two interact.  This also follows the same
-     approach to handling None when given
+     approach to handling `None` when given
     :param rolling_metrics_to_plot: A tuple of strings which indicate what rolling metrics to plot for each subchannel.
      The options are ['mean', 'std', 'absolute max', 'rms'] which correspond to the mean, standard deviation, maximum of
      the absolute value, and root-mean-square.
-    :param metric_colors: An 'array-like' object of strings containing colors to be cycled through for the metrics.
-     If None is given (which is the default), then the `colorway` variable in Plotly's current theme/template will
+    :param metric_colors: An "array-like" object of strings containing colors to be cycled through for the metrics.
+     If `None` is given (which is the default), then the `colorway` variable in Plotly's current theme/template will
      be used to color the metric data, repeating from the start of the `colorway` if all colors have been used.
      The first value corresponds to the color if not enough points of data exist for a rolling metric,
      and the others correspond to the metric in `rolling_metrics_to_plot` in the same order they are given

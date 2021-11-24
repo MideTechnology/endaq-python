@@ -106,10 +106,10 @@ def get_doc(name=None, filename=None, url=None, parsed=True, start=0, end=None,
     * `str` (formatted as a time from the recording start, e.g., `MM:SS`,
       `HH:MM:SS`, `DDd HH:MM:SS`). More examples:
 
-        * ``":01"`` or ``":1"`` or ``"1s"`` (1 second)
-        * ``"22:11"`` (22 minutes, 11 seconds)
-        * ``"3:22:11"`` (3 hours, 22 minutes, 11 seconds)
-        * ``"1d 3:22:11"`` (1 day, 3 hours, 22 minutes, 11 seconds)
+      * ``":01"`` or ``":1"`` or ``"1s"`` (1 second)
+      * ``"22:11"`` (22 minutes, 11 seconds)
+      * ``"3:22:11"`` (3 hours, 22 minutes, 11 seconds)
+      * ``"1d 3:22:11"`` (1 day, 3 hours, 22 minutes, 11 seconds)
     * `datetime.timedelta` or `pandas.Timedelta` (time from the
       recording start)
     * `datetime.datetime` (an explicit UTC time)
@@ -222,10 +222,10 @@ def extract_time(doc, out, start=0, end=None, channels=None, **kwargs):
     * `str` (formatted as a time from the recording start, e.g., `MM:SS`,
       `HH:MM:SS`, `DDd HH:MM:SS`). More examples:
 
-        * ``":01"`` or ``":1"`` or ``"1s"`` (1 second)
-        * ``"22:11"`` (22 minutes, 11 seconds)
-        * ``"3:22:11"`` (3 hours, 22 minutes, 11 seconds)
-        * ``"1d 3:22:11"`` (1 day, 3 hours, 22 minutes, 11 seconds)
+      * ``":01"`` or ``":1"`` or ``"1s"`` (1 second)
+      * ``"22:11"`` (22 minutes, 11 seconds)
+      * ``"3:22:11"`` (3 hours, 22 minutes, 11 seconds)
+      * ``"1d 3:22:11"`` (1 day, 3 hours, 22 minutes, 11 seconds)
     * `datetime.timedelta` or `pandas.Timedelta` (time from the
       recording start)
     * `datetime.datetime` (an explicit UTC time)

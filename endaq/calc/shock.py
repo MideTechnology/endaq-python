@@ -27,11 +27,10 @@ def _rel_displ_transfer_func(
 
     .. seealso::
 
-        `Pseudo Velocity Shock Spectrum Rules For Analysis Of Mechanical Shock, Howard A. Gaberson <https://info.endaq.com/hubfs/pvsrs_rules.pdf>`_
-
-        `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
-        Documentation for the transfer function class used to characterize the
-        relative displacement calculation.
+        - `Pseudo Velocity Shock Spectrum Rules For Analysis Of Mechanical Shock, Howard A. Gaberson <https://info.endaq.com/hubfs/pvsrs_rules.pdf>`_
+        - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
+          Documentation for the transfer function class used to characterize the
+          relative displacement calculation.
     """
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", scipy.signal.BadCoefficients)
@@ -58,15 +57,13 @@ def rel_displ(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
 
     .. seealso::
 
-        `Pseudo Velocity Shock Spectrum Rules For Analysis Of Mechanical Shock, Howard A. Gaberson <https://info.endaq.com/hubfs/pvsrs_rules.pdf>`_
-
-        `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
-        Documentation for the transfer function class used to characterize the
-        relative displacement calculation.
-
-        `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`_
-        Documentation for the biquad function used to implement the transfer
-        function.
+        - `Pseudo Velocity Shock Spectrum Rules For Analysis Of Mechanical Shock, Howard A. Gaberson <https://info.endaq.com/hubfs/pvsrs_rules.pdf>`_
+        - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
+          Documentation for the transfer function class used to characterize the
+          relative displacement calculation.
+        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`_
+          Documentation for the biquad function used to implement the transfer
+          function.
     """
     dt = utils.sample_spacing(accel)
     tf = _rel_displ_transfer_func(omega, damp, dt)
@@ -88,11 +85,10 @@ def _abs_accel_transfer_func(
 
     .. seealso::
 
-        `An Introduction To The Shock Response Spectrum, Tom Irvine, 9 July 2012 <http://www.vibrationdata.com/tutorials2/srs_intr.pdf>`_
-
-        `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
-        Documentation for the transfer function class used to characterize the
-        relative displacement calculation.
+        - `An Introduction To The Shock Response Spectrum, Tom Irvine, 9 July 2012 <http://www.vibrationdata.com/tutorials2/srs_intr.pdf>`_
+        - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
+          Documentation for the transfer function class used to characterize the
+          relative displacement calculation.
     """
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", scipy.signal.BadCoefficients)
@@ -119,15 +115,13 @@ def abs_accel(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
 
     .. seealso::
 
-        `An Introduction To The Shock Response Spectrum, Tom Irvine, 9 July 2012 <http://www.vibrationdata.com/tutorials2/srs_intr.pdf>`_
-
-        `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
-        Documentation for the transfer function class used to characterize the
-        relative displacement calculation.
-
-        `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`_
-        Documentation for the biquad function used to implement the transfer
-        function.
+        - `An Introduction To The Shock Response Spectrum, Tom Irvine, 9 July 2012 <http://www.vibrationdata.com/tutorials2/srs_intr.pdf>`_
+        - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
+          Documentation for the transfer function class used to characterize the
+          relative displacement calculation.
+        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`_
+          Documentation for the biquad function used to implement the transfer
+          function.
     """
     dt = utils.sample_spacing(accel)
     tf = _abs_accel_transfer_func(omega, damp, dt)
@@ -155,8 +149,8 @@ def shock_spectrum(
         defaults to 0
     :param mode: the type of spectrum to calculate:
 
-        - ``'srs'`` (default) specifies the Shock Response Spectrum (SRS)
-        - ``'pvss'`` specifies the Pseudo-Velocity Shock Spectrum (PVSS)
+        - `'srs'` (default) specifies the Shock Response Spectrum (SRS)
+        - `'pvss'` specifies the Pseudo-Velocity Shock Spectrum (PVSS)
     :param two_sided: whether to return for each frequency:
         both the maximum negative and positive shocks (`True`),
         or simply the maximum absolute shock (`False`; default)
@@ -166,17 +160,14 @@ def shock_spectrum(
 
     .. seealso::
 
-        `Pseudo Velocity Shock Spectrum Rules For Analysis Of Mechanical Shock, Howard A. Gaberson <https://info.endaq.com/hubfs/pvsrs_rules.pdf>`_
-
-        `An Introduction To The Shock Response Spectrum, Tom Irvine, 9 July 2012 <http://www.vibrationdata.com/tutorials2/srs_intr.pdf>`_
-
-        `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
-        Documentation for the transfer function class used to characterize the
-        relative displacement calculation.
-
-        `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`_
-        Documentation for the biquad function used to implement the transfer
-        function.
+        - `Pseudo Velocity Shock Spectrum Rules For Analysis Of Mechanical Shock, Howard A. Gaberson <https://info.endaq.com/hubfs/pvsrs_rules.pdf>`_
+        - `An Introduction To The Shock Response Spectrum, Tom Irvine, 9 July 2012 <http://www.vibrationdata.com/tutorials2/srs_intr.pdf>`_
+        - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
+          Documentation for the transfer function class used to characterize the
+          relative displacement calculation.
+        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`_
+          Documentation for the biquad function used to implement the transfer
+          function.
     """
     if two_sided and aggregate_axes:
         raise ValueError("cannot enable both options `two_sided` and `aggregate_axes`")

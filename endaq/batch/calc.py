@@ -184,19 +184,17 @@ class GetDataBuilder:
 
     This object has two types of functions:
 
-    - configuration functions - these determine what calculations will be
+    - *configuration functions* - these determine what calculations will be
       performed on IDE recordings, and pass in any requisite parameters for said
-      calculations.
+      calculations. This includes the following functions:
 
-      This includes the following functions:
+      - ``add_psd``
+      - ``add_pvss``
+      - ``add_metrics``
+      - ``add_peaks``
+      - ``add_vc_curves``
 
-      - add_psd
-      - add_pvss
-      - add_metrics
-      - add_peaks
-      - add_vc_curves
-
-    - execution functions - these functions take recording files as parameters,
+    - *execution functions* - these functions take recording files as parameters,
       perform the configured calculations on the data therein, and return the
       calculated data as pandas objects.
 

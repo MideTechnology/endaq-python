@@ -17,10 +17,10 @@ def L2_norm(
     Compute the L2 norm (a.k.a. the Euclidean Norm).
 
     :param array: the input array
-    :param axis: the axis/axes along which to aggregate; if `None`, the L2 norm
-        is computed along the flattened array
+    :param axis: the axis/axes along which to aggregate; if `None` (default),
+        the L2 norm is computed along the flattened array
     :param keepdims: if `True`, the axes which are reduced are left in the
-        result as dimensions with size one; if `False` (default), the reduced
+        result as dimensions of size one; if `False` (default), the reduced
         axes are removed
     :return: an array containing the computed values
     """
@@ -36,18 +36,18 @@ def max_abs(
     Compute the maximum of the absolute value of an array.
 
     This function should be equivalent to, but generally use less memory than
-    `np.amax(np.abs(array))`.
+    ``np.amax(np.abs(array))``.
 
-    Specifically, it generates the absolute-value maximum from `np.amax(array)`
-    and `-np.amin(array)`. Thus instead of allocating space for the intermediate
-    array `np.abs(array)`, it allocates for the axis-collapsed smaller arrays
-    `np.amax(array)` & `np.amin(array)`.
+    Specifically, it generates the absolute-value maximum from ``np.amax(array)``
+    and ``-np.amin(array)``. Thus instead of allocating space for the
+    intermediate array ``np.abs(array)``, it allocates for the axis-collapsed
+    smaller arrays ``np.amax(array)`` & ``np.amin(array)``.
 
-    Note - this method does **not** work on complex-valued arrays.
+    .. note:: This method does **not** work on complex-valued arrays.
 
     :param array: the input data
-    :param axis: the axis/axes along which to aggregate; if `None`, the
-        absolute maximum is computed along the flattened array
+    :param axis: the axis/axes along which to aggregate; if `None` (default),
+        the absolute maximum is computed along the flattened array
     :param keepdims: if `True`, the axes which are reduced are left in the
         result as dimensions with size one; if `False` (default), the reduced
         axes are removed
@@ -72,8 +72,8 @@ def rms(
     Calculate the root-mean-square (RMS) along a given axis.
 
     :param array: the input array
-    :param axis: the axis/axes along which to aggregate; if `None`, the RMS is
-        computed along the flattened array
+    :param axis: the axis/axes along which to aggregate; if `None` (default),
+        the RMS is computed along the flattened array
     :param keepdims: if `True`, the axes which are reduced are left in the
         result as dimensions with size one; if `False` (default), the reduced
         axes are removed
@@ -94,14 +94,15 @@ def rolling_rms(
 
     :param df: the input data
     :param window_len: the length of the rolling window
-    :param args: the positional arguments to pass into `df.rolling().mean`
-    :param kwargs: the keyword arguments to pass into `df.rolling().mean`
+    :param args: the positional arguments to pass into ``df.rolling().mean``
+    :param kwargs: the keyword arguments to pass into ``df.rolling().mean``
     :return: the rolling-windowed RMS
 
     .. seealso::
-
-        `Pandas Rolling Mean method <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.core.window.rolling.Rolling.mean.html>`_
-        `Pandas Rolling Standard Deviation method <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.core.window.rolling.Rolling.std.html>`_
-        - similar to this function, but first removes the windowed mean before squaring
+        
+        - `Pandas Rolling Mean <https://pandas.pydata.org/docs/reference/api/pandas.core.window.rolling.Rolling.mean.html>`_
+          - official documentation for ``df.rolling().mean``
+        - `Pandas Rolling Standard Deviation method <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.core.window.rolling.Rolling.std.html>`_
+          - similar to this function, but first removes the windowed mean before squaring
     """
     return df.pow(2).rolling(window_len).mean(*args, **kwargs).apply(np.sqrt, raw=True)

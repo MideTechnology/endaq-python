@@ -1,8 +1,8 @@
 # endaq-cloud
 
-The `cloud` subpackage for `endaq-python`
+The `cloud` sub-module for `endaq-python`
 
-This package houses tools and functions to make both interacting with the enDAQ Cloud API and the `enDAQ Cloud <https://cloud.endaq.com>`_ itself easier.
+This module houses tools and functions to make both interacting with the enDAQ Cloud API and the [enDAQ Cloud](https://cloud.endaq.com) itself easier.
 
 ## Tools:
 
@@ -20,8 +20,6 @@ To access the cloud, this tool requires an API key associated with a user's enDA
 
 #### warning
 For security reasons, it is generally discouraged to make an authentication key visible on-screen or accessible through the clipboard, such as when using the `--key` option; we provide the `key` option solely as a convenience.
-
-Runs on Python 3.6 and higher
 
 #### Commands
 
@@ -59,6 +57,6 @@ Flag | Description
 
 
 
-### Utilities
+### Utilities:
 
 Convienience functions for interacting with the cloud API and the enDAQ custom cloud report generation.

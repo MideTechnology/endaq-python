@@ -1,26 +1,13 @@
 # endaq-calc - a computational backend for vibration analysis
 
-endaq-calc is a package comprising a collection of common calculations for vibration analysis. It leverages the standard Python scientific stack (NumPy, SciPy, Pandas) in order to enable engineers to perform domain-specific calculations in a few lines of code, without having to first master Python and its scientific stack in their entireties.
+endaq-calc is a module comprising a collection of common calculations for vibration analysis. It leverages the standard Python scientific stack (NumPy, SciPy, Pandas) in order to enable engineers to perform domain-specific calculations in a few lines of code, without having to first master Python and its scientific stack in their entireties.
 
-endaq-calc is a sub-package of the larger enDAQ ecosystem. See [the endaq package](https://github.com/MideTechnology/endaq-python) for more details.
-
-## Installation
-
-endaq-calc is available on PYPI via `pip`:
-
-    pip install endaq-calc
-
-For the most recent features that are still under development, you can also use `pip` to install endaq-calc directly from GitHub:
-
-    pip install git+https://github.com/MideTechnology/endaq-python-calc.git@development
+endaq-calc is a sub-module of the larger enDAQ package. See [the endaq package](https://github.com/MideTechnology/endaq-python) for more details.
 
 ## Usage Examples
 
 ``` python
-import endaq.calc.filters
-import endaq.calc.integrate
-import endaq.calc.psd
-import endaq.calc.shock
+import endaq
 ```
 
 ### Filters

@@ -76,21 +76,20 @@ def welch(
     :param bin_width: the desired width of the resulting frequency bins, in Hz;
         defaults to 1 Hz
     :param scaling: the scaling of the output; `"density"` & `"spectrum"`
-        correspond to the same options in `scipy.signal.welch`; `"parseval"`
+        correspond to the same options in ``scipy.signal.welch``; `"parseval"`
         will maintain the "energy" between the input & output, s.t.
-        `welch(df, scaling="parseval").sum(axis="rows")` is roughly equal to
-        `df.abs().pow(2).sum(axis="rows")`
-    :param kwargs: other parameters to pass directly to `scipy.signal.welch`
+        ``welch(df, scaling="parseval").sum(axis="rows")`` is roughly equal to
+        ``df.abs().pow(2).sum(axis="rows")``
+    :param kwargs: other parameters to pass directly to ``scipy.signal.welch``
     :return: a periodogram
 
     .. seealso::
 
-        `SciPy Welch's method <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.welch.html>`_
-        Documentation for the periodogram function wrapped internally.
-
-        `Parseval's Theorem <https://en.wikipedia.org/wiki/Parseval's_theorem>_`
-        - the theorem relating the RMS of a time-domain signal to that of its
-        frequency spectrum
+        - `SciPy Welch's method <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.welch.html>`_
+          Documentation for the periodogram function wrapped internally.
+        - `Parseval's Theorem <https://en.wikipedia.org/wiki/Parseval's_theorem>`_
+          - the theorem relating the RMS of a time-domain signal to that of its
+          frequency spectrum
     """
     dt = utils.sample_spacing(df)
     fs = 1 / dt
@@ -140,11 +139,11 @@ def to_jagged(
     """
     Calculate a periodogram over non-uniformly spaced frequency bins.
 
-    :param df: the returned values from `endaq.calc.psd.welch`
+    :param df: the returned values from ``endaq.calc.psd.welch``
     :param freq_splits: the boundaries of the frequency bins; must be strictly
         increasing
-    :param agg: the method for aggregating values into bins; 'mean' preserves
-        the PSD's area-under-the-curve, 'sum' preserves the PSD's "energy"
+    :param agg: the method for aggregating values into bins; `'mean'` preserves
+        the PSD's area-under-the-curve, `'sum'` preserves the PSD's "energy"
     :return: a periodogram with the given frequency spacing
     """
     freq_splits = np.asarray(freq_splits)
@@ -199,11 +198,11 @@ def to_octave(
     """
     Calculate a periodogram over log-spaced frequency bins.
 
-    :param df: the returned values from `endaq.calc.psd.welch`
+    :param df: the returned values from ``endaq.calc.psd.welch``
     :param fstart: the first frequency bin, in Hz; defaults to 1 Hz
     :param octave_bins: the number of frequency bins in each octave; defaults
         to 12
-    :param kwargs: other parameters to pass directly to `to_jagged`
+    :param kwargs: other parameters to pass directly to ``to_jagged``
     :return: a periodogram with the given logarithmic frequency spacing
     """
     max_f = df.index.max()
