@@ -88,7 +88,7 @@ def welch(
         `SciPy Welch's method <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.welch.html>`_
         Documentation for the periodogram function wrapped internally.
 
-        `Parseval's Theorem <https://en.wikipedia.org/wiki/Parseval's_theorem>_`
+        `Parseval's Theorem <https://en.wikipedia.org/wiki/Parseval's_theorem>`_
         - the theorem relating the RMS of a time-domain signal to that of its
         frequency spectrum
     """
