@@ -94,11 +94,14 @@ def general_get_correlation_figure(merged_df: pd.DataFrame,
     corresponding to the selected attributes from the drop-down menu.
 
     :param merged_df: A Pandas DataFrame of data to use for producing the plot
-    :param recording_colors: The colors of each of the points to be plotted
+    :param color_col: The column name in the given dataframe (as merged_df) that is used to color
+     data points with.   This is used in combination with the color_discrete_map parameter
+    :param color_discrete_map: A dictionary which maps the values given to color data points based on (see the
+     color_col parameter description) to the colors that these data points should be
     :param hover_names: The names of the points to display when they are hovered on
     :param characteristics_to_show_on_hover: The set of characteristics of the data to display when hovered over
     :param starting_cols: The two starting columns for the dropdown menus (will be the first two available
-     if `None` is given)
+     if None is given)
     :return: The interactive Plotly figure
     """
     cols = [col for col, t in zip(merged_df.columns, merged_df.dtypes) if t != np.object]
@@ -184,7 +187,10 @@ def get_pure_numpy_2d_pca(df: pd.DataFrame,
     which components are being used for the X and Y axis.
 
     :param df: The dataframe of points to compute the PCA with
-    :param recording_colors: See the same parameter in the general_get_correlation_figure function
+    :param color_col: The column name in the given dataframe (as merged_df) that is used to color
+     data points with.   This is used in combination with the color_discrete_map parameter
+    :param color_discrete_map: A dictionary which maps the values given to color data points based on (see the
+     color_col parameter description) to the colors that these data points should be
     :return: A plotly figure as described in the main function description
 
     .. todo::
