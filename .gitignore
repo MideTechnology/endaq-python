@@ -2,6 +2,8 @@
 ### Example user template template
 ### Example user template
 
+.DS_Store
+
 # IntelliJ project files
 .idea
 *.iml
@@ -234,3 +236,6 @@ fabric.properties
 
 # Android studio 3.1+ serialized cache file
 .idea/caches/build_file_checksums.ser
+
+# Test files
+*_scratch.ipynb
