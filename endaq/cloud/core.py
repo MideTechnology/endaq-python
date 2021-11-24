@@ -45,7 +45,7 @@ class EndaqCloud:
          If you do not have one created yet, they can be created on the following web page:
          https://cloud.endaq.com/account/api-keys
         :param env: The cloud environment to connect to, which can be production, staging, or development.
-         These can be easily accessed with the variables ENV_PRODUCTION, ENV_STAGING, and ENV_DEVELOP
+         These can be easily accessed with the variables `ENV_PRODUCTION`, `ENV_STAGING`, and `ENV_DEVELOP`
         :param test: If `True` (default), the connection to enDAQ Cloud will
             be tested before being returned. A failed test will generate a
             meaningful error message describing the problem.
@@ -255,11 +255,11 @@ class EndaqCloud:
 
 def count_tags(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Given the dataframe returned by `EndaqCloud.get_file_table()`, provide
+    Given the dataframe returned by ``EndaqCloud.get_file_table()``, provide
     some info on the tags of the files in that account.
 
     :param df: A `DataFrame` of file information, as returned by
-        `EndaqCloud.get_file_table()`.
+        ``EndaqCloud.get_file_table()``.
     :return: A `DataFrame` summarizing the tags in `df`.
     """
     # NOTE: Called `tags_count()` in Confluence docs. Function names should

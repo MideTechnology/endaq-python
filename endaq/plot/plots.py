@@ -98,7 +98,7 @@ def general_get_correlation_figure(merged_df: pd.DataFrame,
     :param hover_names: The names of the points to display when they are hovered on
     :param characteristics_to_show_on_hover: The set of characteristics of the data to display when hovered over
     :param starting_cols: The two starting columns for the dropdown menus (will be the first two available
-     if None is given)
+     if `None` is given)
     :return: The interactive Plotly figure
     """
     cols = [col for col, t in zip(merged_df.columns, merged_df.dtypes) if t != np.object]

@@ -37,7 +37,7 @@ def logfreqs(
     Calculate a sequence of log-spaced frequencies for a given dataframe.
 
     :param df: the input data
-    :param init_freq: the initial frequency in the sequence; if None (default),
+    :param init_freq: the initial frequency in the sequence; if `None` (default),
         use the frequency corresponding to the data's duration
     :param bins_per_octave: the number of frequencies per octave
     :return: an array of log-spaced frequencies
@@ -73,7 +73,7 @@ def to_dB(data: np.ndarray, reference: float, squared: bool = False) -> np.ndarr
     By convention, "decibel" units tend to operate on units of *power*. For
     units that are proportional to power *when squared* (e.g., volts, amps,
     pressure, etc.), their "decibel" representation is typically doubled (i.e.,
-    :math:`dB = 10 \\log20(...)`). Users can specify which scaling to use
+    :math:`dB = 20 \\log10(...)`). Users can specify which scaling to use
     with the `squared` parameter.
 
     .. note::
@@ -87,6 +87,11 @@ def to_dB(data: np.ndarray, reference: float, squared: bool = False) -> np.ndarr
     :param reference: the reference value corresponding to 0dB
     :param squared: whether the input data & reference value are pre-squared;
         defaults to `False`
+
+    .. seealso::
+        - ``endaq.calc.stats.rms``
+        - ``endaq.calc.stats.rolling_rms``
+        - ``endaq.calc.psd.welch``
     """
     if reference <= 0:
         raise ValueError("reference value must be strictly positive")
