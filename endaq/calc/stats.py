@@ -100,7 +100,6 @@ def rolling_rms(
 
     .. seealso::
 
-        `Pandas Rolling Mean method <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.core.window.rolling.Rolling.mean.html>`_
         `Pandas Rolling Standard Deviation method <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.core.window.rolling.Rolling.std.html>`_
         - similar to this function, but first removes the windowed mean before squaring
     """
