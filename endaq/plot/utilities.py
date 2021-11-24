@@ -3,6 +3,7 @@ from __future__ import annotations
 import plotly.io as pio
 import plotly.graph_objects as go
 import numpy as np
+import typing
 from typing import Union
 
 
@@ -98,12 +99,13 @@ def define_theme(template_name: str = "endaq_cloud", default_plotly_template: st
     return pio.templates[template_name]
 
 
-def set_theme(theme: str = 'endaq') -> go.layout._template.Template:
+def set_theme(theme: typing.Literal['endaq', 'endaq_light', 'endaq_arial', 'endaq_light_arial'] = 'endaq',
+              ) -> go.layout._template.Template:
     """
-    Sets the plot appearances based on a known 'theme'.
+    Set the plot appearances based on a known 'theme'.
 
     :param theme: A string denoting which plot appearance color scheme to use.
-     Current options are 'endaq', 'endaq_light', 'endaq_arial' and 'endaq_light_arial'.
+     Current options are `'endaq'`, `'endaq_light'`, `'endaq_arial'` and `'endaq_light_arial'`.
     :return: The plotly template which was set
     """
     if not isinstance(theme, str):
@@ -191,12 +193,12 @@ def determine_plotly_map_zoom(
         margin: float = 1.2,
 ) -> float:
     """
+    Finds optimal zoom for a plotly mapbox. Must be passed (lons & lats) or lonlats.
+
     Originally based on the following post:
     https://stackoverflow.com/questions/63787612/plotly-automatic-zooming-for-mapbox-maps
-    Finds optimal zoom for a plotly mapbox.
-    Must be passed (lons & lats) or lonlats.
     
-    Temporary solution awaiting official implementation, see:
+    This is a temporary solution awaiting an official implementation:
     https://github.com/plotly/plotly.js/issues/3434
     
     :param lons: tuple, optional, longitude component of each location

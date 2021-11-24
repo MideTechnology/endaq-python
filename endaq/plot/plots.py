@@ -183,7 +183,7 @@ def get_pure_numpy_2d_pca(df: pd.DataFrame,
                           color_discrete_map: Optional[dict] = None,
                           ) -> go.Figure:
     """
-    Get a Plotly figure of the 2d PCA for the given DataFrame.   This will have dropdown menus to select
+    Get a Plotly figure of the 2D PCA for the given DataFrame.   This will have dropdown menus to select
     which components are being used for the X and Y axis.
 
     :param df: The dataframe of points to compute the PCA with
@@ -280,13 +280,14 @@ def octave_spectrogram(df: pd.DataFrame, window: float, bins_per_octave: int = 3
     :param bins_per_octave: The number of frequency bins per octave
     :param freq_start: The center of the first frequency bin
     :param max_freq: The maximum frequency to plot
-    :param db_scale: If the spectrogram should be log scaled for visibility (with 10*log10(x))
+    :param db_scale: If the spectrogram should be log-scaled for visibility (with 10*log10(x))
     :param log_scale_y_axis: If the y-axis of the plot should be log scaled
     :return: a tuple containing:
-     - the frequency bins
-     - the time bins
-     - the spectrogram data
-     - the corresponding plotly figure
+
+        - the frequency bins
+        - the time bins
+        - the spectrogram data
+        - the corresponding plotly figure
     """
     if len(df.columns) != 1:
         raise ValueError("The parameter 'df' must have only one column of data!")
@@ -401,8 +402,8 @@ def rolling_min_max_envelope(df: pd.DataFrame, desired_num_points: int = 250, pl
      recorded in the originally recorded data.
     :param plot_title: The title for the plot
     :param opacity: The opacity to use for plotting bars/lines
-    :param colors_to_use: An 'array-like' object of strings containing colors to be cycled through for the sub-channels.
-     If None is given (which is the default), then the `colorway` variable in Plotly's current theme/template will
+    :param colors_to_use: An "array-like" object of strings containing colors to be cycled through for the sub-channels.
+     If `None` is given (which is the default), then the `colorway` variable in Plotly's current theme/template will
      be used to color the data on each of the sub-channels uniquely, repeating from the start of the `colorway` if
      all colors have been used.
     :return: The Plotly Figure with the data plotted
@@ -421,7 +422,7 @@ def rolling_min_max_envelope(df: pd.DataFrame, desired_num_points: int = 250, pl
 def around_peak(df: pd.DataFrame, num: int = 1000, leading_ratio: float = 0.5):
     """
     A function to plot the data surrounding the largest peak (or valley) in the given data.
-    The 'peak' is defined by the point in the absolute value of the given data with the largest value.
+    The "peak" is defined by the point in the absolute value of the given data with the largest value.
 
     :param df: A dataframe indexed by time stamps
     :param num: The number of points to plot
