@@ -59,7 +59,8 @@ class ChannelTableFormattingTests(unittest.TestCase):
         self.assertEqual(info.format_channel_id(dataset.channels[59]), '59.*')
         self.assertEqual(info.format_channel_id(dataset.channels[59][0]), '59.0')
 
-        self.assertEqual(info.format_channel_id(None), "None")
+        with pytest.warns(UserWarning):
+            self.assertEqual(info.format_channel_id(None), "None")
 
 
     def test_format_timedelta(self):
@@ -73,7 +74,8 @@ class ChannelTableFormattingTests(unittest.TestCase):
 
         # Number instead of timedelta. Unlikely but not not impossible.
         self.assertTrue(info.format_timedelta(100000000).startswith('01:40.'))
-        self.assertEqual(info.format_timedelta(None), "None")
+        with pytest.warns(UserWarning):
+            self.assertEqual(info.format_timedelta(None), "None")
 
 
     def test_format_timestamp(self):
@@ -81,8 +83,10 @@ class ChannelTableFormattingTests(unittest.TestCase):
             self.assertTrue(info.format_timestamp(i).startswith(str(i)))
             self.assertTrue(info.format_timestamp(str(i)).startswith(str(i)))
 
-        self.assertEqual(info.format_timestamp('bogus'), 'bogus')
-        self.assertEqual(info.format_timestamp(None), "None")
+        with pytest.warns(UserWarning):
+            self.assertEqual(info.format_timestamp('bogus'), 'bogus')
+        with pytest.warns(UserWarning):
+            self.assertEqual(info.format_timestamp(None), "None")
 
 
 class ChannelTableTests(unittest.TestCase):

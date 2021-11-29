@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import Container
+from collections.abc import Container
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go

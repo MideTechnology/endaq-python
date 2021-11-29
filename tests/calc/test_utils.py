@@ -23,6 +23,7 @@ def logfreq_input(draw):
 
 
 @hyp.given(input_vars=logfreq_input())
+@pytest.mark.filterwarnings("ignore:the data's duration is too short:RuntimeWarning")
 def test_logfreqs(input_vars):
     (dframe, init_freq, bins_per_octave) = input_vars
 

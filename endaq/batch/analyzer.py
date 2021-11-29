@@ -137,8 +137,8 @@ class Analyzer:
         if ch_struct is None:
             logging.warning(f"no acceleration channel in {self._filename}")
             return pd.DataFrame(
-                np.empty((0, 3), dtype=np.float),
-                index=pd.Series([], name="time"),
+                np.empty((0, 3), dtype=float),
+                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
                 columns=pd.Series(["X", "Y", "Z"], name="axis"),
             )
 
@@ -188,8 +188,8 @@ class Analyzer:
         ch_struct = self._channels.get("mic", None)
         if ch_struct is None:
             return pd.DataFrame(
-                np.empty((0, 1), dtype=np.float),
-                index=pd.Series([], name="time"),
+                np.empty((0, 1), dtype=float),
+                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
                 columns=pd.Series(["mic"], name="axis"),
             )
 
@@ -314,8 +314,8 @@ class Analyzer:
         ch_struct = self._channels.get("pre", None)
         if ch_struct is None:
             return pd.DataFrame(
-                np.empty((0, 1), dtype=np.float),
-                index=pd.Series([], name="time"),
+                np.empty((0, 1), dtype=float),
+                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
                 columns=pd.Series(["Pressure"], name="axis"),
             )
 
@@ -341,8 +341,8 @@ class Analyzer:
         ch_struct = self._channels.get("tmp", None)
         if ch_struct is None:
             return pd.DataFrame(
-                np.empty((0, 1), dtype=np.float),
-                index=pd.Series([], name="time"),
+                np.empty((0, 1), dtype=float),
+                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
                 columns=pd.Series(["Temperature"], name="axis"),
             )
 
@@ -370,8 +370,8 @@ class Analyzer:
         ch_struct = self._channels.get("gyr", None)
         if ch_struct is None:
             return pd.DataFrame(
-                np.empty((0, 3), dtype=np.float),
-                index=pd.Series([], name="time"),
+                np.empty((0, 3), dtype=float),
+                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
                 columns=pd.Series(["X", "Y", "Z"], name="axis"),
             )
 
@@ -423,8 +423,8 @@ class Analyzer:
         ch_struct = self._channels.get("gps", None)
         if ch_struct is None:
             return pd.DataFrame(
-                np.empty((0, 2), dtype=np.float),
-                index=pd.Series([], name="time"),
+                np.empty((0, 2), dtype=float),
+                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
                 columns=pd.Series(["Latitude", "Longitude"], name="axis"),
             )
 
@@ -445,8 +445,8 @@ class Analyzer:
         ch_struct = self._channels.get("spd", None)
         if ch_struct is None:
             return pd.DataFrame(
-                np.empty((0, 1), dtype=np.float),
-                index=pd.Series([], name="time"),
+                np.empty((0, 1), dtype=float),
+                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
                 columns=pd.Series(["GPS Speed"], name="axis"),
             )
 

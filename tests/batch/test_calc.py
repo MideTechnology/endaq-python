@@ -2,7 +2,6 @@ from collections import namedtuple
 import os
 import tempfile
 
-
 import idelib
 import numpy as np
 import pandas as pd
@@ -113,6 +112,7 @@ def data_builder():
         os.path.join("tests", "batch", "High-Drop.IDE"),
     ],
 )
+@pytest.mark.filterwarnings("ignore:empty frequency bins:RuntimeWarning")
 def test_get_data(filename):
     """Test `_get_data` over several varieties of recording files."""
     (
@@ -275,6 +275,12 @@ def assert_output_is_valid(output: endaq.batch.calc.OutputStruct):
             freq_bin_width=0.2, bins_per_octave=3
         ),
     ],
+)
+@pytest.mark.filterwarnings("ignore:empty frequency bins:RuntimeWarning")
+@pytest.mark.filterwarnings(
+    "ignore"
+    ":nperseg .* is greater than input length .*, using nperseg .*"
+    ":UserWarning"
 )
 def test_aggregate_data(getdata_builder):
     """Test `aggregate_data` over several configurations of `GetDataBuilder`."""
