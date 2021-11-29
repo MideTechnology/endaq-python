@@ -39,7 +39,11 @@ jobs:
 
       - name: Get date
         id: date
-        run: python -c "import datetime; now = datetime.datetime.now(); print(f'::set-output name=text::{now.year}/{now.month}-part{1 + now.day // 8}')"
+        run: >
+          python -c
+          "import datetime;
+          now = datetime.datetime.now();
+          print(f'::set-output name=text::{now.year}/{now.month}-part{1 + now.day // 8}')"
 
       - name: Load pip Cache
         uses: actions/cache@v2
@@ -51,7 +55,11 @@ jobs:
         run: python -m pip install --upgrade --upgrade-strategy=eager .[test]
 
       - name: Run Tests
-        run: python -m pytest tests --cov=endaq --hypothesis-profile=ci --numprocesses auto
+        run: >
+          python -m pytest tests
+          --cov=endaq
+          --hypothesis-profile=ci
+          --numprocesses auto
 
       - name: Generate Codecov Report
         uses: codecov/codecov-action@v2
