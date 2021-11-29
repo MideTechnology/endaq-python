@@ -28,29 +28,59 @@ def _make_meta(dataset):
     )
 
 
-def _make_psd(ch_data_cache, fstart=None, bins_per_octave=None):
+def _make_psd(ch_data_cache, fstart=None, bins_per_octave=None, integrals=0):
     """
     Format the PSD of the main accelerometer channel into a pandas object.
 
     The PSD is scaled to units of g^2/Hz (g := gravity = 9.80665 meters per
     square second).
     """
-    df_psd = ch_data_cache._PSDData
-    if df_psd.size == 0:
+    if integrals not in (0, 1, 2):
+        raise ValueError(f"invalid integration count {integrals}; expected 0-2")
+
+    if ch_data_cache._PSDData.size == 0:
         return None
 
+    MEASURE_NAMES = ["Acceleration", "Velocity", "Displacement"]
+    MEASURE_SCALES = [
+        endaq.batch.analyzer.MPS2_TO_G ** 2,  # (m/s^2)^2/Hz -> g^2/Hz
+        endaq.batch.analyzer.MPS_TO_MMPS ** 2,  # (m/s)^2/Hz -> (mm/s)^2/Hz
+        endaq.batch.analyzer.M_TO_MM ** 2,  # (m)^2/Hz -> (mm)^2/Hz
+    ]
+
+    def iter_integrals(df):
+        yield df
+        while True:
+            df = calc_psd.differentiate(df, n=-1)
+            yield df
+
+    def format_df(df, i):
+        df = df * MEASURE_SCALES[i]  # do this first to generate a new df copy
+        df["Resultant"] = df.apply(np.sum, axis="columns")
+        df.columns = pd.MultiIndex.from_product(
+            [pd.Series([MEASURE_NAMES[i]], name="measure"), df.columns]
+        )
+        return df
+
+    dfs_psd = [
+        format_df(df_integ, i)
+        for i, df_integ in zip(
+            range(integrals + 1), iter_integrals(ch_data_cache._PSDData)
+        )
+    ]
+    df_psds = pd.concat(dfs_psd, axis="columns")
+
     if bins_per_octave is not None:
-        df_psd = calc_psd.to_octave(
-            df_psd,
+        df_psds = calc_psd.to_octave(
+            df_psds,
             fstart=(fstart or 1),
             octave_bins=bins_per_octave,
             agg=np.mean,
         )
 
-    df_psd["Resultant"] = np.sum(df_psd.to_numpy(), axis=1)
-    df_psd = df_psd * endaq.batch.analyzer.MPS2_TO_G ** 2  # (m/s^2)^2/Hz -> g^2/Hz
-
-    return df_psd.stack(level="axis").reorder_levels(["axis", "frequency (Hz)"])
+    return df_psds.stack(level=["measure", "axis"]).reorder_levels(
+        ["measure", "axis", "frequency (Hz)"]
+    )
 
 
 def _make_pvss(ch_data_cache):
@@ -282,6 +312,7 @@ class GetDataBuilder:
         freq_start_octave=None,
         bins_per_octave=None,
         window="hanning",
+        integrals=0,
     ):
         """
         Add the acceleration PSD to the calculation queue.
@@ -315,6 +346,7 @@ class GetDataBuilder:
         self._psd_freq_start_octave = freq_start_octave
         self._psd_bins_per_octave = bins_per_octave
         self._psd_window = window
+        self._psd_integrals = integrals
 
         return self
 
@@ -400,6 +432,7 @@ class GetDataBuilder:
                     _make_psd,
                     fstart=self._psd_freq_start_octave,
                     bins_per_octave=self._psd_bins_per_octave,
+                    integrals=self._psd_integrals,
                 ),
                 pvss=_make_pvss,
                 metrics=_make_metrics,
