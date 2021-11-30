@@ -79,6 +79,7 @@ def test_to_jagged_modes(psd_df, freq_splits, agg1, agg2):
         ("sum", np.sum),
     ],
 )
+@pytest.mark.filterwarnings("ignore:empty frequency bins:RuntimeWarning")
 def test_to_jagged_modes(psd_df, freq_splits, agg1, agg2):
     """Test `to_jagged(..., mode='mean')` against the equivalent `mode=np.mean`."""
     result1 = psd.to_jagged(psd_df, freq_splits, agg=agg1)
@@ -169,6 +170,7 @@ _TestStruct = namedtuple("_TestStruct", "psd_df, agg, expt_f, expt_array")
         ),
     ],
 )
+@pytest.mark.filterwarnings("ignore:empty frequency bins:RuntimeWarning")
 def test_to_octave(psd_df, agg, expt_f, expt_array):
     calc_df = psd.to_octave(psd_df, fstart=1, octave_bins=1, agg=agg)
     assert calc_df.index.to_numpy().tolist() == expt_f

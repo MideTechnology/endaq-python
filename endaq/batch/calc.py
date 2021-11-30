@@ -122,7 +122,7 @@ def _make_peak_windows(analyzer, margin_len):
     if accel_ch is None:
         return None
 
-    data = analyzer._accelerationData[:]
+    data = analyzer._accelerationData.copy()
     data["Resultant"] = analyzer._accelerationResultantData
     data = analyzer.MPS2_TO_G * data
 

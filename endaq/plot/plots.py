@@ -7,7 +7,7 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 from scipy import signal
 from typing import Optional
-from collections import Container
+from collections.abc import Container
 
 from endaq.calc import sample_spacing
 from endaq.calc.psd import to_octave, welch
