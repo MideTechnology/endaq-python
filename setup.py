@@ -59,6 +59,11 @@ setuptools.setup(
         #     'idelib': ['schemata/*'],
         # },
         # test_suite='./testing',
+        project_urls={
+            "Bug Tracker": "https://github.com/MideTechnology/endaq-python/issues",
+            "Documentation": "https://docs.endaq.com/en/latest/",
+            "Source Code": "https://github.com/MideTechnology/endaq-python",
+            },
         install_requires=INSTALL_REQUIRES,
         extras_require={
             'test': INSTALL_REQUIRES + TEST_REQUIRES,
