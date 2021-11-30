@@ -32,8 +32,8 @@ def butterworth(
 
     .. seealso::
 
-        `SciPy Butterworth filter design <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html>`_
-        Documentation for the butterworth filter design function.
+        - `SciPy Butterworth filter design <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html>`_
+          Documentation for the butterworth filter design function.
     """
     cutoff_freqs: Union[float, Tuple[float, float]]
     filter_type: str
