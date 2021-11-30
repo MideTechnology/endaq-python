@@ -46,7 +46,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
-          key: $doctests-{{ runner.os }}-Python3.9-${{ steps.date.outputs.text }}-pip-${{ hashFiles('**/setup.py', './.github/workflows/unit-tests.yml') }}
+          key: doctests-${{ runner.os }}-Python3.9-${{ steps.date.outputs.text }}-pip-${{ hashFiles('**/setup.py', './.github/workflows/unit-tests.yml') }}
 
       - name: Install package & (test) dependencies
         run: python -m pip install --upgrade --upgrade-strategy=eager .[docs]
