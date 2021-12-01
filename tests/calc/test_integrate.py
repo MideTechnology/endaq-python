@@ -17,21 +17,25 @@ from endaq.calc import integrate
         shape=(20, 2),
         dtype=np.float64,
     ).map(lambda array: pd.DataFrame(array, index=0.2 * np.arange(20))),
+    offset_mode=hyp_st.sampled_from([None, "mean", "median"]),
 )
-def test_integrate(df):
+def test_integrate(df, offset_mode):
     """Test `_integrate` via differentiation."""
     dt = endaq.calc.sample_spacing(df)
 
     # Ensure derivative looks correct
-    calc_result = integrate._integrate(df)
+    calc_result = integrate._integrate(df, offset_mode)
     expt_result_diff = 0.5 * dt * (df.to_numpy()[:-1] + df.to_numpy()[1:])
     assert np.diff(calc_result.to_numpy(), axis=0) == pytest.approx(expt_result_diff)
 
     # Ensure offset results in zero-mean data
     # Note: symbols cannot be directly tested, since scalar factors are floats
-    np.testing.assert_allclose(
-        calc_result.mean(), 0, atol=1e-7 * df.abs().mean().mean()
-    )
+    zero_quantity = {
+        None: calc_result.iloc[0],
+        "mean": calc_result.mean(),
+        "median": calc_result.median(),
+    }[offset_mode]
+    np.testing.assert_allclose(zero_quantity, 0, atol=1e-7 * df.abs().mean().mean())
 
 
 def test_integrals():

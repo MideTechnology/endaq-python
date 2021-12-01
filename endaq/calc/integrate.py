@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import List, Optional, Iterable
+import typing
+from typing import List, Optional, Iterable, Union, Callable
 import functools
 
 import numpy as np
@@ -10,7 +11,10 @@ import scipy.integrate
 from endaq.calc import filters, utils
 
 
-def _integrate(df: pd.DataFrame) -> pd.DataFrame:
+def _integrate(
+    df: pd.DataFrame,
+    offset_mode: Union[typing.Literal[None, "mean", "median"], Callable] = None,
+) -> pd.DataFrame:
     """Integrate data over an axis."""
     dt = utils.sample_spacing(df)
 
@@ -21,13 +25,18 @@ def _integrate(df: pd.DataFrame) -> pd.DataFrame:
     )
     # In lieu of explicit initial offset, set integration bias to remove mean
     # -> avoids trend artifacts after successive integrations
-    result = result - result.to_numpy().mean(axis=0, keepdims=True)
+    if offset_mode is None:
+        return result
 
-    return result
+    if offset_mode in ("mean", "median"):
+        offset_mode = dict(mean=np.mean, median=np.median)[offset_mode]
+
+    return result - result.apply(offset_mode, axis="index", raw=True)
 
 
 def iter_integrals(
     df: pd.DataFrame,
+    offset_mode: Union[typing.Literal[None, "mean", "median"], Callable] = None,
     highpass_cutoff: Optional[float] = None,
     filter_half_order: int = 3,
     tukey_percent: float = 0.0,
@@ -67,12 +76,13 @@ def iter_integrals(
 
     while True:
         yield df.copy()  # otherwise, edits to the yielded item would alter the results
-        df = _integrate(df)
+        df = _integrate(df, offset_mode)
 
 
 def integrals(
     df: pd.DataFrame,
     n: int = 1,
+    offset_mode: Union[typing.Literal[None, "mean", "median"], Callable] = None,
     highpass_cutoff: Optional[float] = None,
     tukey_percent: float = 0.0,
 ) -> List[pd.DataFrame]:
@@ -105,6 +115,7 @@ def integrals(
             range(n + 1),
             iter_integrals(
                 df,
+                offset_mode=offset_mode,
                 highpass_cutoff=highpass_cutoff,
                 filter_half_order=n // 2 + 1,  # ensures zero DC content in nth integral
                 tukey_percent=tukey_percent,
