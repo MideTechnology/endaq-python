@@ -62,11 +62,8 @@ def iter_integrals(
         half_order=filter_half_order,
         low_cutoff=highpass_cutoff,
         high_cutoff=None,
+        tukey_percent=tukey_percent,
     )
-
-    if tukey_percent > 0:
-        tukey_window = scipy.signal.windows.tukey(len(df.index), alpha=tukey_percent)
-        df = df.mul(tukey_window, axis="rows")
 
     while True:
         yield df.copy()  # otherwise, edits to the yielded item would alter the results
