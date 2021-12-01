@@ -31,7 +31,7 @@ def sample_spacing(
 
 
 def logfreqs(
-    df: pd.DataFrame, init_freq: Optional[float] = None, bins_per_octave: float = 12
+    df: pd.DataFrame, init_freq: Optional[float] = None, bins_per_octave: float = 12.0
 ) -> np.ndarray:
     """
     Calculate a sequence of log-spaced frequencies for a given dataframe.

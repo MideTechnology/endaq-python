@@ -30,7 +30,7 @@ def iter_integrals(
     df: pd.DataFrame,
     highpass_cutoff: Optional[float] = None,
     filter_half_order: int = 3,
-    tukey_percent: float = 0,
+    tukey_percent: float = 0.0,
 ) -> Iterable[pd.DataFrame]:
     """
     Iterate over conditioned integrals of the given original data.
@@ -77,7 +77,7 @@ def integrals(
     df: pd.DataFrame,
     n: int = 1,
     highpass_cutoff: Optional[float] = None,
-    tukey_percent: float = 0,
+    tukey_percent: float = 0.0,
 ) -> List[pd.DataFrame]:
     """
     Calculate `n` integrations of the given data.
