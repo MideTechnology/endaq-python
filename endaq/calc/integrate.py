@@ -66,16 +66,15 @@ def iter_integrals(
         - `SciPy Tukey window <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.windows.tukey.html>`_
           Documentation for the Tukey window function used in preprocessing.
     """
-    df = filters.butterworth(
-        df,
-        half_order=filter_half_order,
-        low_cutoff=highpass_cutoff,
-        high_cutoff=None,
-        tukey_percent=tukey_percent,
-    )
-
     while True:
         yield df.copy()  # otherwise, edits to the yielded item would alter the results
+        df = filters.butterworth(
+            df,
+            half_order=filter_half_order,
+            low_cutoff=highpass_cutoff,
+            high_cutoff=None,
+            tukey_percent=tukey_percent,
+        )
         df = _integrate(df, offset_mode)
 
 

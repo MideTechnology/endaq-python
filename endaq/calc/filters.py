@@ -42,10 +42,6 @@ def butterworth(
         - `SciPy Tukey window <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.windows.tukey.html>`_
           Documentation for the Tukey window function used in preprocessing.
     """
-    if tukey_percent > 0:
-        tukey_window = scipy.signal.windows.tukey(len(df.index), alpha=tukey_percent)
-        df = df.mul(tukey_window, axis="rows")
-
     cutoff_freqs: Union[float, Tuple[float, float]]
     filter_type: str
 
@@ -59,17 +55,22 @@ def butterworth(
         cutoff_freqs = high_cutoff
         filter_type = "lowpass"
     else:
-        return df
+        filter_type = ""
 
-    dt = utils.sample_spacing(df)
+    if filter_type:
+        dt = utils.sample_spacing(df)
 
-    sos_coeffs = scipy.signal.butter(
-        N=half_order,
-        Wn=cutoff_freqs,
-        btype=filter_type,
-        fs=1 / dt,
-        output="sos",
-    )
-    return df.apply(
-        functools.partial(scipy.signal.sosfiltfilt, sos_coeffs), axis=0, raw=True
-    )
+        sos_coeffs = scipy.signal.butter(
+            N=half_order,
+            Wn=cutoff_freqs,
+            btype=filter_type,
+            fs=1 / dt,
+            output="sos",
+        )
+        df = df.apply(functools.partial(scipy.signal.sosfiltfilt, sos_coeffs), axis=0)
+
+    if tukey_percent > 0:
+        tukey_window = scipy.signal.windows.tukey(len(df.index), alpha=tukey_percent)
+        df = df.mul(tukey_window, axis="rows")
+
+    return df
