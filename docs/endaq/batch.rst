@@ -9,3 +9,5 @@
 
 .. autoclass:: endaq.batch.core.OutputStruct
   :members:
+
+  .. autoattribute:: dataframes

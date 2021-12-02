@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import List
+
 from functools import partial
 import warnings
 import os
@@ -192,7 +194,7 @@ class GetDataBuilder:
 
     - *execution functions* - these functions take recording files as parameters,
       perform the configured calculations on the data therein, and return the
-      calculated data as pandas objects.
+      calculated data as a `OutputStruct` object that wraps pandas objects.
 
       This includes the functions ``_get_data`` & ``aggregate_data``, which
       operates on one & multiple file(s), respectively.
@@ -472,7 +474,7 @@ class OutputStruct:
     """
 
     def __init__(self, data):
-        self.dataframes = data
+        self.dataframes: List[pd.DataFrame] = data
 
     def to_csv_folder(self, folder_path):
         """
