@@ -7,5 +7,5 @@
   :members:
   :imported-members:
 
-.. autoclass:: endaq.batch.calc.OutputStruct
+.. autoclass:: endaq.batch.core.OutputStruct
   :members:

@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import endaq.batch.calc
+import endaq.batch.core
 import endaq.batch.analyzer
 from endaq.batch.utils import ide_utils
 
@@ -31,7 +31,7 @@ from endaq.batch.utils import ide_utils
 )
 def test_make_meta(filename, expt_result):
     with idelib.importFile(filename) as ds:
-        meta = endaq.batch.calc._make_meta(ds)
+        meta = endaq.batch.core._make_meta(ds)
 
     assert np.all(meta.index == ["serial number", "start time"])
     assert np.all(meta == expt_result)
@@ -66,8 +66,8 @@ def test_make_peak_windows(filename):
             vc_init_freq=None,
             vc_bins_per_octave=None,
         )
-        calc_meta = endaq.batch.calc._make_meta(ds)
-        calc_peaks = endaq.batch.calc._make_peak_windows(analyzer, margin_len=10)
+        calc_meta = endaq.batch.core._make_meta(ds)
+        calc_peaks = endaq.batch.core._make_peak_windows(analyzer, margin_len=10)
         i_max = np.argmax(np.abs(analyzer._accelerationData.to_numpy()), axis=0)
 
     assert calc_peaks.index.names == ["axis", "peak time", "peak offset"]
@@ -90,7 +90,7 @@ def test_make_peak_windows(filename):
 @pytest.fixture
 def data_builder():
     return (
-        endaq.batch.calc.GetDataBuilder(accel_highpass_cutoff=1)
+        endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1)
         .add_psd(freq_bin_width=1)
         .add_pvss(init_freq=1, bins_per_octave=12)
         .add_metrics()
@@ -117,7 +117,7 @@ def data_builder():
 def test_get_data(filename):
     """Test `_get_data` over several varieties of recording files."""
     (
-        endaq.batch.calc.GetDataBuilder(accel_highpass_cutoff=1)
+        endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1)
         .add_psd(freq_bin_width=1)
         .add_pvss(init_freq=1, bins_per_octave=12)
         .add_metrics()
@@ -127,9 +127,9 @@ def test_get_data(filename):
     )
 
 
-def assert_output_is_valid(output: endaq.batch.calc.OutputStruct):
+def assert_output_is_valid(output: endaq.batch.core.OutputStruct):
     """Validate the contents & structure of an `OutputStruct` object."""
-    assert isinstance(output, endaq.batch.calc.OutputStruct)
+    assert isinstance(output, endaq.batch.core.OutputStruct)
     assert isinstance(output.dataframes, dict)
     assert {
         "meta",
@@ -217,23 +217,23 @@ def assert_output_is_valid(output: endaq.batch.calc.OutputStruct):
     "getdata_builder",
     [
         # Each builder piece individually
-        endaq.batch.calc.GetDataBuilder(accel_highpass_cutoff=1),
-        endaq.batch.calc.GetDataBuilder(accel_highpass_cutoff=1).add_psd(
+        endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1),
+        endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1).add_psd(
             freq_bin_width=1
         ),
-        endaq.batch.calc.GetDataBuilder(accel_highpass_cutoff=1).add_pvss(
+        endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1).add_pvss(
             init_freq=1, bins_per_octave=12
         ),
-        endaq.batch.calc.GetDataBuilder(accel_highpass_cutoff=1).add_metrics(),
-        endaq.batch.calc.GetDataBuilder(accel_highpass_cutoff=1).add_peaks(
+        endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1).add_metrics(),
+        endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1).add_peaks(
             margin_len=1000
         ),
-        endaq.batch.calc.GetDataBuilder(accel_highpass_cutoff=1).add_vc_curves(
+        endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1).add_vc_curves(
             init_freq=1, bins_per_octave=3
         ),
         # All builder pieces altogether
         (
-            endaq.batch.calc.GetDataBuilder(accel_highpass_cutoff=1)
+            endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1)
             .add_psd(freq_bin_width=1)
             .add_pvss(init_freq=1, bins_per_octave=12)
             .add_metrics()
@@ -241,38 +241,38 @@ def assert_output_is_valid(output: endaq.batch.calc.OutputStruct):
             .add_vc_curves(init_freq=1, bins_per_octave=3)
         ),
         # Disable highpass filter
-        endaq.batch.calc.GetDataBuilder(accel_highpass_cutoff=None).add_psd(
+        endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=None).add_psd(
             freq_bin_width=1
         ),
         # Test time restrictions on acceleration data
-        endaq.batch.calc.GetDataBuilder(
+        endaq.batch.core.GetDataBuilder(
             accel_highpass_cutoff=1,
             accel_start_time=np.timedelta64(5, "s"),
             accel_end_time=np.timedelta64(10, "s"),
         ).add_psd(freq_bin_width=1),
-        endaq.batch.calc.GetDataBuilder(
+        endaq.batch.core.GetDataBuilder(
             accel_highpass_cutoff=1,
             accel_start_margin=np.timedelta64(2, "s"),
             accel_end_margin=np.timedelta64(2, "s"),
         ).add_psd(freq_bin_width=1),
-        endaq.batch.calc.GetDataBuilder(
+        endaq.batch.core.GetDataBuilder(
             accel_highpass_cutoff=1,
             accel_start_time=np.timedelta64(5, "s"),
             accel_end_margin=np.timedelta64(2, "s"),
         ).add_psd(freq_bin_width=1),
-        endaq.batch.calc.GetDataBuilder(
+        endaq.batch.core.GetDataBuilder(
             accel_highpass_cutoff=1,
             accel_start_margin=np.timedelta64(2, "s"),
             accel_end_time=np.timedelta64(10, "s"),
         ).add_psd(freq_bin_width=1),
         # Octave-spaced PSD parameters
-        endaq.batch.calc.GetDataBuilder(accel_highpass_cutoff=1).add_psd(
+        endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1).add_psd(
             bins_per_octave=1
         ),
-        endaq.batch.calc.GetDataBuilder(accel_highpass_cutoff=1).add_psd(
+        endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1).add_psd(
             freq_start_octave=0.1, bins_per_octave=12
         ),
-        endaq.batch.calc.GetDataBuilder(accel_highpass_cutoff=1).add_psd(
+        endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1).add_psd(
             freq_bin_width=0.2, bins_per_octave=3
         ),
     ],
@@ -588,7 +588,7 @@ def output_struct():
         columns=[fieldname_mods.get(i, i) for i in RowStruct._fields],
     )
 
-    result = endaq.batch.calc.OutputStruct(data)
+    result = endaq.batch.core.OutputStruct(data)
     assert_output_is_valid(result)
 
     return result
