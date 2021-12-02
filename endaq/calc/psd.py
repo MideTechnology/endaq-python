@@ -225,6 +225,37 @@ def to_octave(
     return result
 
 
+def loglog_linear_approx(
+    df: pd.DataFrame, knots: List[int], window: int = 1, minimal: bool = True
+):
+    """
+    Calculate a piecewise-linear approximation of data, in the log-log space.
+
+    :param df: the input data; each column is approximated independently
+    :param knots: the inner boundary points separating the piecewise regions
+    :apram window: the size of the pre-processing smoothing window
+    :param minimal: whether to return the approximated values at the provided
+        knots (`True`; default) or to generate interpolations at the input's
+        index values (`False`)
+    """
+    if window != 1:
+        df = df.rolling(window).mean().dropna()
+
+    index_log = np.log2(df.index.to_numpy())
+    data_log = np.log2(df.to_numpy())
+
+    tck = scipy.interpolate.splrep(index_log, data_log, k=1, t=np.log(knots))
+
+    if minimal:
+        index_log = tck[0]
+
+    return pd.DataFrame(
+        2 ** scipy.interpolate.splev(index_log, tck),
+        index=2 ** index_log,
+        columns=df.columns,
+    )
+
+
 def vc_curves(
     accel_psd: pd.DataFrame, fstart: float = 1, octave_bins: float = 12
 ) -> pd.DataFrame:
