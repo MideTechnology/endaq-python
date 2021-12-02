@@ -113,6 +113,7 @@ def data_builder():
     ],
 )
 @pytest.mark.filterwarnings("ignore:empty frequency bins:RuntimeWarning")
+@pytest.mark.filterwarnings("ignore:no acceleration channel in:UserWarning")
 def test_get_data(filename):
     """Test `_get_data` over several varieties of recording files."""
     (
@@ -277,6 +278,7 @@ def assert_output_is_valid(output: endaq.batch.calc.OutputStruct):
     ],
 )
 @pytest.mark.filterwarnings("ignore:empty frequency bins:RuntimeWarning")
+@pytest.mark.filterwarnings("ignore:no acceleration channel in:UserWarning")
 @pytest.mark.filterwarnings(
     "ignore"
     ":nperseg .* is greater than input length .*, using nperseg .*"
@@ -607,6 +609,9 @@ def test_output_to_csv_folder(output_struct):
             assert v.astype(str).compare(read_result.astype(str)).size == 0
 
 
+@pytest.mark.filterwarnings(
+    "ignore:HTML plot for metrics not currently implemented:UserWarning"
+)
 def test_output_to_html_plots(output_struct):
     with tempfile.TemporaryDirectory() as dirpath:
         output_struct.to_html_plots(folder_path=dirpath, show=False)
