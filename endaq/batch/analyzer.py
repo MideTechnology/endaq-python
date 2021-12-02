@@ -1,4 +1,3 @@
-import logging
 import sys
 import warnings
 
@@ -18,64 +17,24 @@ from endaq.batch import quat
 from endaq.batch.utils import ide_utils
 
 
-class Analyzer:
-    """
-    A class which will run the analyses for the endaq cloud work.  Take the
-    important info from the IDE document so that it can be released from memory.
-    """
+MPS2_TO_G = 1 / 9.80665
+MPS_TO_MMPS = 1000
+MPS_TO_UMPS = 10 ** 6
+MPS_TO_KMPH = 3600 / 1e3
+M_TO_MM = 1000
 
-    # TODO: This needs to be reworked, it's currently not very efficient.
-    #       -
-    #       The current strategy is to:
-    #         1. Create a list of time indices for each segment, where the
-    #            beginning of the first segment is the earliest data present
-    #            among all channels (not al channels start and end at the same time)
-    #         2. Create a numpy array from each channel, and grab metadata such
-    #            as sampling frequency.
-    #         3. For channels with a low sampling frequency, resample them to
-    #            five times the segment frequency.
-    #         4. Pad each channel with nans so that data exists for each channel
-    #            in each time segment.
-    #         5. Split each of these by the times created in step 1
-    #         6. Lazily run analyses as they're called and cache results.
-    #       -
-    #       The issue is that this is somewhat memory intensive and just doesn't
-    #       need to be. I think we can more efficiently do piecewise evaluation
-    #       and re-use intermediate calculations without saving all of the file
-    #       as an array.
-    #       _
-    #       Proposed strategy:
-    #         1. Same as above, create a list of time indices for each segment,
-    #            where the beginning of the first segment is the earliest data
-    #            present among all channels (not al channels start and end at
-    #            the same time)
-    #         2. For each sensor type:
-    #              a. If the sensor is not present, create a list of NaNs in the
-    #                 correct shape.
-    #              b. For sensors with low sampling rates, use some sort of
-    #                 wrapper or generator that will still lazily load data from
-    #                 the file but will return interpolated data as if it had a
-    #                 higher sample rate (five times the segment frequency)
-    #              c. Iterate through the segments.  If the segment is out of
-    #                 range, skip it and place Nans in each analysis for that
-    #                 channel type.
-    #              d. Do the analyses for that segment.  This will allow us to
-    #                 reuse intermediate calculations, such as the FFT of the
-    #                 acceleration.  This is used to calculate the RMS for the
-    #                 acceleration and its integrals.
-    #
 
-    MPS2_TO_G = 1 / 9.80665
-    MPS_TO_MMPS = 1000
-    MPS_TO_UMPS = 10 ** 6
-    MPS_TO_KMPH = 3600 / 1e3
-    M_TO_MM = 1000
+class DatasetChannelCache:
+    """
+    A wrapper for `idelib.dataset.Dataset` that caches channel data streams as
+    `pandas.Dataset`s.
+    """
 
     PV_NATURAL_FREQS = np.logspace(0, 12, base=2, num=12 * 12 + 1, endpoint=True)
 
     def __init__(
         self,
-        doc,
+        dataset,
         *,
         preferred_chs=[],
         accel_highpass_cutoff,
@@ -106,13 +65,13 @@ class Analyzer:
         self._channels = ide_utils.dict_chs_best(
             (
                 (utype, ch_struct)
-                for (utype, ch_struct) in ide_utils.chs_by_utype(doc)
+                for (utype, ch_struct) in ide_utils.chs_by_utype(dataset)
                 if len(ch_struct.eventarray) > 0
             ),
             max_key=lambda x: (x.channel.id in preferred_chs, len(x.eventarray)),
         )
 
-        self._filename = doc.filename
+        self._filename = dataset.filename
         self._accelerationFs = None  # gets set in `_accelerationData`
         self._accel_highpass_cutoff = accel_highpass_cutoff
         self._accel_start_time = accel_start_time
@@ -135,7 +94,7 @@ class Analyzer:
         """Populate the _acceleration* fields, including splitting and extending data."""
         ch_struct = self._channels.get("acc", None)
         if ch_struct is None:
-            logging.warning(f"no acceleration channel in {self._filename}")
+            warnings.warn(f"no acceleration channel in {self._filename}")
             return pd.DataFrame(
                 np.empty((0, 3), dtype=float),
                 index=pd.Series([], dtype="timedelta64[ns]", name="time"),
@@ -145,7 +104,7 @@ class Analyzer:
         aUnits = ch_struct.units[1]
         try:
             conversionFactor = {  # core units = m/s^2
-                "g": 1 / self.MPS2_TO_G,
+                "g": 1 / MPS2_TO_G,
                 "m/s\u00b2": 1,
             }[aUnits.lower()]
         except KeyError:
@@ -210,12 +169,16 @@ class Analyzer:
             return aData
 
         if not self._accel_highpass_cutoff:
-            logging.warning(
+            warnings.warn(
                 "no highpass filter used before integration; "
                 "velocity calculation may be unstable"
             )
 
         return integrate._integrate(aData)
+
+    @cached_property
+    def _velocityResultantData(self):
+        return self._velocityData.apply(stats.L2_norm, axis="columns").to_frame()
 
     @cached_property
     def _displacementData(self):
@@ -224,7 +187,7 @@ class Analyzer:
             return vData
 
         if not self._accel_highpass_cutoff:
-            logging.warning(
+            warnings.warn(
                 "no highpass filter used before integration; "
                 "displacement calculation may be unstable"
             )
@@ -232,10 +195,14 @@ class Analyzer:
         return integrate._integrate(vData)
 
     @cached_property
+    def _displacementResultantData(self):
+        return self._displacementData.apply(stats.L2_norm, axis="columns").to_frame()
+
+    @cached_property
     def _PVSSData(self):
         aData = self._accelerationData
         if aData.size == 0:
-            pvss = aData[:]
+            pvss = aData.copy()
             pvss.index.name = "frequency (Hz)"
             return pvss
 
@@ -258,7 +225,7 @@ class Analyzer:
     def _PVSSResultantData(self):
         aData = self._accelerationData
         if aData.size == 0:
-            pvss = self._accelerationResultantData[:]
+            pvss = self._accelerationResultantData.copy()
             pvss.index.name = "frequency (Hz)"
             return pvss
 
@@ -282,7 +249,7 @@ class Analyzer:
     def _PSDData(self):
         aData = self._accelerationData
         if aData.size == 0:
-            psdData = aData[:]
+            psdData = aData.copy()
             psdData.index.name = "frequency (Hz)"
             return psdData
 
@@ -294,11 +261,15 @@ class Analyzer:
         )
 
     @cached_property
+    def _PSDResultantData(self):
+        return self._PSDData.apply(np.sum, axis="columns").to_frame()
+
+    @cached_property
     def _VCCurveData(self):
         """Calculate Vibration Criteria (VC) Curves for the accelerometer."""
         psdData = self._PSDData
         if psdData.size == 0:
-            vcData = psdData[:]
+            vcData = psdData.copy()
             vcData.index.name = "frequency (Hz)"
             return vcData
 
@@ -454,7 +425,7 @@ class Analyzer:
         if units != "m/s":
             raise ValueError(f'unknown GPS ground speed channel units "{units}"')
 
-        data = self.MPS_TO_KMPH * ch_struct.to_pandas(time_mode="timedelta")
+        data = MPS_TO_KMPH * ch_struct.to_pandas(time_mode="timedelta")
 
         self._gpsSpeedName = ch_struct.channel.name
         self._gpsSpeedFs = ch_struct.fs
@@ -476,7 +447,7 @@ class Analyzer:
 
         rms["Resultant"] = stats.L2_norm(rms.to_numpy())
         rms.name = "RMS Acceleration"
-        return self.MPS2_TO_G * rms
+        return MPS2_TO_G * rms
 
     @cached_property
     def velRMSFull(self):
@@ -489,7 +460,7 @@ class Analyzer:
 
         rms["Resultant"] = stats.L2_norm(rms.to_numpy())
         rms.name = "RMS Velocity"
-        return self.MPS_TO_MMPS * rms
+        return MPS_TO_MMPS * rms
 
     @cached_property
     def disRMSFull(self):
@@ -502,7 +473,7 @@ class Analyzer:
 
         rms["Resultant"] = stats.L2_norm(rms.to_numpy())
         rms.name = "RMS Displacement"
-        return self.M_TO_MM * rms
+        return M_TO_MM * rms
 
     @cached_property
     def accPeakFull(self):
@@ -511,7 +482,7 @@ class Analyzer:
         max_abs_res = self._accelerationResultantData.max(axis="rows")
         max_abs["Resultant"] = max_abs_res.iloc[0]
         max_abs.name = "Peak Absolute Acceleration"
-        return self.MPS2_TO_G * max_abs
+        return MPS2_TO_G * max_abs
 
     @cached_property
     def pseudoVelPeakFull(self):
@@ -520,7 +491,7 @@ class Analyzer:
         max_pv_res = self._PVSSResultantData.max(axis="rows")
         max_pv["Resultant"] = max_pv_res.iloc[0]
         max_pv.name = "Peak Pseudo Velocity Shock Spectrum"
-        return self.MPS2_TO_G * max_pv
+        return MPS2_TO_G * max_pv
 
     @cached_property
     def gpsLocFull(self):

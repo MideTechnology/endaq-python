@@ -22,13 +22,15 @@ def ide_SSX70065():
 @pytest.fixture()
 def analyzer_raw():
     analyzer_mock = mock.create_autospec(
-        endaq.batch.analyzer.Analyzer, spec_set=False, instance=True
+        endaq.batch.analyzer.DatasetChannelCache, spec_set=False, instance=True
     )
 
-    analyzer_mock.MPS2_TO_G = endaq.batch.analyzer.Analyzer.MPS2_TO_G
-    analyzer_mock.MPS_TO_MMPS = endaq.batch.analyzer.Analyzer.MPS_TO_MMPS
-    analyzer_mock.M_TO_MM = endaq.batch.analyzer.Analyzer.M_TO_MM
-    analyzer_mock.PV_NATURAL_FREQS = endaq.batch.analyzer.Analyzer.PV_NATURAL_FREQS
+    analyzer_mock.MPS2_TO_G = endaq.batch.analyzer.MPS2_TO_G
+    analyzer_mock.MPS_TO_MMPS = endaq.batch.analyzer.MPS_TO_MMPS
+    analyzer_mock.M_TO_MM = endaq.batch.analyzer.M_TO_MM
+    analyzer_mock.PV_NATURAL_FREQS = (
+        endaq.batch.analyzer.DatasetChannelCache.PV_NATURAL_FREQS
+    )
 
     return analyzer_mock
 
@@ -97,38 +99,38 @@ def analyzer_bulk(analyzer_raw):
 
 class TestAnalyzer:
     def test_accRMSFull(self, analyzer_bulk):
-        calc_result = endaq.batch.analyzer.Analyzer.accRMSFull.func(analyzer_bulk)[
-            "Resultant"
-        ]
-        expt_result = endaq.batch.analyzer.Analyzer.MPS2_TO_G * rms(
+        calc_result = endaq.batch.analyzer.DatasetChannelCache.accRMSFull.func(
+            analyzer_bulk
+        )["Resultant"]
+        expt_result = endaq.batch.analyzer.MPS2_TO_G * rms(
             analyzer_bulk._accelerationData.apply(L2_norm, axis="columns")
         )
 
         assert calc_result == pytest.approx(expt_result)
 
     def test_velRMSFull(self, analyzer_bulk):
-        calc_result = endaq.batch.analyzer.Analyzer.velRMSFull.func(analyzer_bulk)[
-            "Resultant"
-        ]
-        expt_result = endaq.batch.analyzer.Analyzer.MPS_TO_MMPS * rms(
+        calc_result = endaq.batch.analyzer.DatasetChannelCache.velRMSFull.func(
+            analyzer_bulk
+        )["Resultant"]
+        expt_result = endaq.batch.analyzer.MPS_TO_MMPS * rms(
             analyzer_bulk._velocityData.apply(L2_norm, axis="columns")
         )
         assert calc_result == pytest.approx(expt_result)
 
     def test_disRMSFull(self, analyzer_bulk):
-        calc_result = endaq.batch.analyzer.Analyzer.disRMSFull.func(analyzer_bulk)[
-            "Resultant"
-        ]
-        expt_result = endaq.batch.analyzer.Analyzer.M_TO_MM * rms(
+        calc_result = endaq.batch.analyzer.DatasetChannelCache.disRMSFull.func(
+            analyzer_bulk
+        )["Resultant"]
+        expt_result = endaq.batch.analyzer.M_TO_MM * rms(
             analyzer_bulk._displacementData.apply(L2_norm, axis="columns")
         )
         assert calc_result == pytest.approx(expt_result)
 
     def test_accPeakFull(self, analyzer_bulk):
-        calc_result = endaq.batch.analyzer.Analyzer.accPeakFull.func(analyzer_bulk)[
-            "Resultant"
-        ]
-        expt_result = endaq.batch.analyzer.Analyzer.MPS2_TO_G * rms(
+        calc_result = endaq.batch.analyzer.DatasetChannelCache.accPeakFull.func(
+            analyzer_bulk
+        )["Resultant"]
+        expt_result = endaq.batch.analyzer.MPS2_TO_G * rms(
             analyzer_bulk._accelerationData.apply(L2_norm, axis="columns").max()
         )
 
@@ -147,25 +149,25 @@ class TestAnalyzer:
         pass
 
     def test_micRMSFull(self, analyzer_bulk):
-        calc_result = endaq.batch.analyzer.Analyzer.micRMSFull.func(analyzer_bulk)[
-            "Mic"
-        ]
+        calc_result = endaq.batch.analyzer.DatasetChannelCache.micRMSFull.func(
+            analyzer_bulk
+        )["Mic"]
         expt_result = rms(analyzer_bulk._microphoneData)
 
         assert calc_result == pytest.approx(expt_result)
 
     def test_pressFull(self, analyzer_bulk):
-        calc_result = endaq.batch.analyzer.Analyzer.pressFull.func(analyzer_bulk)[
-            "Control"
-        ]
+        calc_result = endaq.batch.analyzer.DatasetChannelCache.pressFull.func(
+            analyzer_bulk
+        )["Control"]
         expt_result = analyzer_bulk._pressureData.mean()
 
         assert calc_result == pytest.approx(expt_result)
 
     def test_tempFull(self, analyzer_bulk):
-        calc_result = endaq.batch.analyzer.Analyzer.tempFull.func(analyzer_bulk)[
-            "Control"
-        ]
+        calc_result = endaq.batch.analyzer.DatasetChannelCache.tempFull.func(
+            analyzer_bulk
+        )["Control"]
         expt_result = analyzer_bulk._temperatureData.mean()
 
         assert calc_result == pytest.approx(expt_result)
@@ -174,7 +176,7 @@ class TestAnalyzer:
     # Live File Tests
 
     def testLiveFile(self, ide_SSX70065):
-        analyzer = endaq.batch.analyzer.Analyzer(
+        analyzer = endaq.batch.analyzer.DatasetChannelCache(
             ide_SSX70065,
             accel_start_time=None,
             accel_end_time=None,
@@ -219,7 +221,7 @@ class TestAnalyzer:
     )
     def testLiveFiles12(self, filename):
         ds = idelib.importFile(filename)
-        analyzer = endaq.batch.analyzer.Analyzer(
+        analyzer = endaq.batch.analyzer.DatasetChannelCache(
             ds,
             accel_start_time=None,
             accel_end_time=None,
@@ -268,7 +270,7 @@ class TestAnalyzer:
     )
     def testLiveFile3(self, filename):
         ds = idelib.importFile(filename)
-        analyzer = endaq.batch.analyzer.Analyzer(
+        analyzer = endaq.batch.analyzer.DatasetChannelCache(
             ds,
             accel_start_time=None,
             accel_end_time=None,
@@ -298,7 +300,7 @@ class TestAnalyzer:
     )
     def testLiveFileGPS(self, filename, sample_index):
         ds = idelib.importFile(filename)
-        analyzer = endaq.batch.analyzer.Analyzer(
+        analyzer = endaq.batch.analyzer.DatasetChannelCache(
             ds,
             accel_start_time=None,
             accel_end_time=None,
