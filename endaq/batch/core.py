@@ -226,6 +226,8 @@ class GetDataBuilder:
         accel_end_time=None,
         accel_start_margin=None,
         accel_end_margin=None,
+        accel_integral_tukey_percent=0,
+        accel_integral_offset_mode=None,
     ):
         """
         :param preferred_chs: a sequence of channels; each channel listed is
@@ -264,6 +266,8 @@ class GetDataBuilder:
             accel_end_time=accel_end_time,
             accel_start_margin=accel_start_margin,
             accel_end_margin=accel_end_margin,
+            accel_integral_tukey_percent=accel_integral_tukey_percent,
+            accel_integral_offset_mode=accel_integral_offset_mode,
         )
 
         # Even unused parameters MUST be set; used to instantiate `DatasetChannelCache` in `_get_data`
