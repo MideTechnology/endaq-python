@@ -246,7 +246,6 @@ def test_pseudo_velocity_zero_padding(
     ).map(lambda array: pd.DataFrame(array, index=np.arange(1, 41))),
     damp=hyp_st.floats(0, 0.2),
 )
-@hyp.settings(deadline=None)  # this test tends to timeout
 def test_enveloping_half_sine(df_pvss, damp):
     env_half_sine = shock.enveloping_half_sine(df_pvss, damp=damp)
     ampl, T = env_half_sine
