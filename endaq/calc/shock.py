@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import typing
-from typing import Tuple
+from typing import NamedTuple
 from collections import namedtuple
 import functools
 import warnings
@@ -232,10 +232,15 @@ def shock_spectrum(
     )
 
 
+class HalfSineWavePulse(NamedTuple):
+    amplitude: float
+    duration: float
+
+
 def enveloping_half_sine(
     pvss: pd.DataFrame,
     damp: float = 0.0,
-) -> Tuple[pd.Series, pd.Series]:
+) -> HalfSineWavePulse:
     """
     Characterize a half-sine pulse whose PVSS envelopes the input.
 
@@ -274,7 +279,7 @@ def enveloping_half_sine(
     max_pvss = pvss.max()
     max_f_pvss = pvss.mul(pvss.index, axis=0).max()
 
-    return namedtuple("HalfSinePulseParameters", "amplitude, period")(
+    return HalfSineWavePulse(
         amplitude=2 * np.pi * max_f_pvss,
-        period=max_pvss / (4 * amp_factor(damp) * max_f_pvss),
+        duration=max_pvss / (4 * amp_factor(damp) * max_f_pvss),
     )
