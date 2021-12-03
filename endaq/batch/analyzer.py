@@ -248,7 +248,14 @@ class CalcCache:
                 "displacement calculation may be unstable"
             )
 
-        return integrate._integrate(vData)
+        return integrate._integrate(
+            filters.butterworth(
+                vData,
+                low_cutoff=self._accel_highpass_cutoff,
+                tukey_percent=self._accel_integral_tukey_percent,
+            ),
+            zero=self._accel_integral_zero,
+        )
 
     @cached_property
     def _displacementResultantData(self):
