@@ -61,7 +61,7 @@ def test_make_peak_windows(filename):
             accel_start_margin=None,
             accel_end_margin=None,
             accel_integral_tukey_percent=0,
-            accel_integral_offset_mode="mean",
+            accel_integral_zero="mean",
             psd_freq_bin_width=None,
             pvss_init_freq=None,
             pvss_bins_per_octave=None,

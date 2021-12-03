@@ -39,7 +39,7 @@ class DatasetChannelCache:
         preferred_chs=[],
         accel_highpass_cutoff,
         accel_integral_tukey_percent,
-        accel_integral_offset_mode,
+        accel_integral_zero,
         accel_start_time,
         accel_end_time,
         accel_start_margin,
@@ -81,7 +81,7 @@ class DatasetChannelCache:
         self._accel_start_margin = accel_start_margin
         self._accel_end_margin = accel_end_margin
         self._accel_integral_tukey_percent = accel_integral_tukey_percent
-        self._accel_integral_offset_mode = accel_integral_offset_mode
+        self._accel_integral_zero = accel_integral_zero
         self._psd_window = psd_window
         self._psd_freq_bin_width = psd_freq_bin_width
         self._pvss_init_freq = pvss_init_freq
@@ -184,7 +184,7 @@ class DatasetChannelCache:
                 low_cutoff=self._accel_highpass_cutoff,
                 tukey_percent=self._accel_integral_tukey_percent,
             ),
-            offset_mode=self._accel_integral_offset_mode,
+            zero=self._accel_integral_zero,
         )
 
     @cached_property

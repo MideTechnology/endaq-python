@@ -13,7 +13,7 @@ from endaq.calc import filters, utils
 
 def _integrate(
     df: pd.DataFrame,
-    offset_mode: Union[typing.Literal[None, "mean", "median"], Callable] = None,
+    zero: Union[typing.Literal["start", "mean", "median"], Callable] = "start",
 ) -> pd.DataFrame:
     """Integrate data over an axis."""
     dt = utils.sample_spacing(df)
@@ -25,18 +25,18 @@ def _integrate(
     )
     # In lieu of explicit initial offset, set integration bias to remove mean
     # -> avoids trend artifacts after successive integrations
-    if offset_mode is None:
+    if zero == "start":
         return result
 
-    if offset_mode in ("mean", "median"):
-        offset_mode = dict(mean=np.mean, median=np.median)[offset_mode]
+    if zero in ("mean", "median"):
+        zero = dict(mean=np.mean, median=np.median)[zero]
 
-    return result - result.apply(offset_mode, axis="index", raw=True)
+    return result - result.apply(zero, axis="index", raw=True)
 
 
 def iter_integrals(
     df: pd.DataFrame,
-    offset_mode: Union[typing.Literal[None, "mean", "median"], Callable] = None,
+    zero: Union[typing.Literal["start", "mean", "median"], Callable] = "start",
     highpass_cutoff: Optional[float] = None,
     filter_half_order: int = 3,
     tukey_percent: float = 0.0,
@@ -45,6 +45,10 @@ def iter_integrals(
     Iterate over conditioned integrals of the given original data.
 
     :param df: the input data
+    :param zero: the output quantity driven to zero by the integration constant;
+        `"start"` (default) chooses an integration constant of ``-output[0]``,
+        `"mean"` chooses ``-np.mean(output)`` & `"median"` chooses
+        ``-np.median(output)``
     :param highpass_cutoff: the cutoff frequency of a preconditioning highpass
         filter; if None, no filter is applied
     :param filter_half_order: the half-order of the preconditioning highpass
@@ -75,13 +79,13 @@ def iter_integrals(
             high_cutoff=None,
             tukey_percent=tukey_percent,
         )
-        df = _integrate(df, offset_mode)
+        df = _integrate(df, zero)
 
 
 def integrals(
     df: pd.DataFrame,
     n: int = 1,
-    offset_mode: Union[typing.Literal[None, "mean", "median"], Callable] = None,
+    zero: Union[typing.Literal["start", "mean", "median"], Callable] = "start",
     highpass_cutoff: Optional[float] = None,
     tukey_percent: float = 0.0,
 ) -> List[pd.DataFrame]:
@@ -89,7 +93,11 @@ def integrals(
     Calculate `n` integrations of the given data.
 
     :param df: the data to integrate, indexed with timestamps
-    :param n: the number of integrals to calculate
+    :param n: the number of integrals to calculate; defaults to `1`
+    :param zero: the output quantity driven to zero by the integration constant;
+        `"start"` (default) chooses an integration constant of ``-output[0]``,
+        `"mean"` chooses ``-np.mean(output)`` & `"median"` chooses
+        ``-np.median(output)``
     :param highpass_cutoff: the cutoff frequency for the initial highpass filter;
         this is used to remove artifacts caused by DC trends
     :param tukey_percent: the alpha parameter of a preconditioning tukey filter;
@@ -114,7 +122,7 @@ def integrals(
             range(n + 1),
             iter_integrals(
                 df,
-                offset_mode=offset_mode,
+                zero=zero,
                 highpass_cutoff=highpass_cutoff,
                 filter_half_order=n // 2 + 1,  # ensures zero DC content in nth integral
                 tukey_percent=tukey_percent,
