@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import warnings
+
 import pytest
 import hypothesis as hyp
 import hypothesis.strategies as hyp_st
@@ -248,9 +250,8 @@ def test_pseudo_velocity_zero_padding(
 )
 def test_enveloping_half_sine(df_pvss, damp):
     env_half_sine = shock.enveloping_half_sine(df_pvss, damp=damp)
-    ampl, T = env_half_sine
-    hyp.note(f"pulse amplitude: {ampl}")
-    hyp.note(f"pulse duration: {T}")
+    hyp.note(f"pulse amplitude: {env_half_sine.amplitude}")
+    hyp.note(f"pulse duration: {env_half_sine.duration}")
 
     pulse = env_half_sine.to_time_series()
     pulse_pvss = shock.shock_spectrum(
@@ -259,3 +260,31 @@ def test_enveloping_half_sine(df_pvss, damp):
 
     # This is an approximation -> give the result a fudge-factor for correctness
     assert (df_pvss / pulse_pvss).max().max() < 1.2
+
+
+class TestHalfSineWavePulse:
+    @pytest.mark.parametrize(
+        "dt, t0, trange, warning_type",
+        [
+            # dt warnings
+            (0.12, 0, (None, None), None),  # dt < duration / 8 => OK
+            (0.13, 0, (None, None), UserWarning),  # dt > duration / 8 => WARNING
+            # trange warnings
+            (None, 0, (None, 0.5), UserWarning),  # trange[1] < t0 + duration => WARNING
+            (None, 0, (0.5, None), UserWarning),  # trange[0] > t0 => WARNING
+            (None, 1, (0.5, None), None),  # OK
+        ],
+    )
+    def test_to_time_series_warnings(self, dt, t0, trange, warning_type):
+        env_half_sine = shock.HalfSineWavePulse(
+            amplitude=pd.Series([1]),
+            duration=pd.Series([1]),
+        )
+
+        if warning_type is None:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error")
+                env_half_sine.to_time_series(dt=dt, t0=t0, trange=trange)
+        else:
+            with pytest.warns(warning_type):
+                env_half_sine.to_time_series(dt=dt, t0=t0, trange=trange)
