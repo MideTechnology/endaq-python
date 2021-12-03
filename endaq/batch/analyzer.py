@@ -38,6 +38,8 @@ class DatasetChannelCache:
         *,
         preferred_chs=[],
         accel_highpass_cutoff,
+        accel_integral_tukey_percent,
+        accel_integral_zero,
         accel_start_time,
         accel_end_time,
         accel_start_margin,
@@ -78,6 +80,8 @@ class DatasetChannelCache:
         self._accel_end_time = accel_end_time
         self._accel_start_margin = accel_start_margin
         self._accel_end_margin = accel_end_margin
+        self._accel_integral_tukey_percent = accel_integral_tukey_percent
+        self._accel_integral_zero = accel_integral_zero
         self._psd_window = psd_window
         self._psd_freq_bin_width = psd_freq_bin_width
         self._pvss_init_freq = pvss_init_freq
@@ -174,7 +178,14 @@ class DatasetChannelCache:
                 "velocity calculation may be unstable"
             )
 
-        return integrate._integrate(aData)
+        return integrate._integrate(
+            filters.butterworth(
+                aData,
+                low_cutoff=self._accel_highpass_cutoff,
+                tukey_percent=self._accel_integral_tukey_percent,
+            ),
+            zero=self._accel_integral_zero,
+        )
 
     @cached_property
     def _velocityResultantData(self):
@@ -209,9 +220,7 @@ class DatasetChannelCache:
         freqs = endaq.calc.logfreqs(
             aData, self._pvss_init_freq, self._pvss_bins_per_octave
         )
-        freqs = freqs[
-            (freqs >= self._accelerationFs / self._accelerationData.shape[0])
-        ]
+        freqs = freqs[(freqs >= self._accelerationFs / self._accelerationData.shape[0])]
         pv = shock.shock_spectrum(
             self._accelerationData,
             freqs,
@@ -232,9 +241,7 @@ class DatasetChannelCache:
         freqs = endaq.calc.logfreqs(
             aData, self._pvss_init_freq, self._pvss_bins_per_octave
         )
-        freqs = freqs[
-            (freqs >= self._accelerationFs / self._accelerationData.shape[0])
-        ]
+        freqs = freqs[(freqs >= self._accelerationFs / self._accelerationData.shape[0])]
         pv = shock.shock_spectrum(
             self._accelerationData,
             freqs,

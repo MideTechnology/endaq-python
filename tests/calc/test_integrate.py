@@ -1,29 +1,41 @@
 import pytest
+import hypothesis as hyp
+import hypothesis.strategies as hyp_st
+import hypothesis.extra.numpy as hyp_np
+
 import numpy as np
 import pandas as pd
 import sympy as sp
 
+import endaq
 from endaq.calc import integrate
 
 
-def test_integrate():
+@hyp.given(
+    df=hyp_np.arrays(
+        elements=hyp_st.floats(-1e7, 1e7),
+        shape=(20, 2),
+        dtype=np.float64,
+    ).map(lambda array: pd.DataFrame(array, index=0.2 * np.arange(20))),
+    zero=hyp_st.sampled_from(["start", "mean", "median"]),
+)
+def test_integrate(df, zero):
     """Test `_integrate` via differentiation."""
-    n = 20
-    array = np.array([sp.symbols(f"x:{n}"), sp.symbols(f"y:{n}")]).T
-    dt = sp.symbols("dt")
+    dt = endaq.calc.sample_spacing(df)
 
     # Ensure derivative looks correct
-    calc_result = integrate._integrate(
-        pd.DataFrame(array, index=dt * np.arange(len(array)))
-    )
-    expt_result_diff = 0.5 * dt * (array[:-1] + array[1:])
-    assert np.all(np.diff(calc_result, axis=0) - expt_result_diff == 0)
+    calc_result = integrate._integrate(df, zero)
+    expt_result_diff = 0.5 * dt * (df.to_numpy()[:-1] + df.to_numpy()[1:])
+    assert np.diff(calc_result.to_numpy(), axis=0) == pytest.approx(expt_result_diff)
 
     # Ensure offset results in zero-mean data
     # Note: symbols cannot be directly tested, since scalar factors are floats
-    assert calc_result.to_numpy().mean().subs(
-        [(dt, 1)] + list(zip(array.flatten(), np.ones(array.size)))
-    ) == pytest.approx(0)
+    zero_quantity = {
+        "start": calc_result.iloc[0],
+        "mean": calc_result.mean(),
+        "median": calc_result.median(),
+    }[zero]
+    np.testing.assert_allclose(zero_quantity, 0, atol=1e-7 * df.abs().mean().mean())
 
 
 def test_integrals():
