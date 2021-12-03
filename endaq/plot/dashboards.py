@@ -13,7 +13,7 @@ def rolling_enveloped_dashboard(
     channel_df_dict: dict, desired_num_points: int = 250, num_rows: Optional[int] = None,
     num_cols: Optional[int] = 3, width_for_subplot_row: int = 400, height_for_subplot_row: int = 400,
     subplot_colors: Optional[Container] = None, min_points_to_plot: int = 1, plot_as_bars: bool = False,
-    plot_full_single_channel: bool = False, opacity: float = 1, y_axis_bar_plot_padding: float = 0.06
+    plot_full_single_channel: bool = False, opacity: float = 1.0, y_axis_bar_plot_padding: float = 0.06
 ) -> go.Figure:
     """
     A function to create a Plotly Figure with sub-plots for each of the available data sub-channels, designed to reduce

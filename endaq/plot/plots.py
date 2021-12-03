@@ -375,7 +375,7 @@ def octave_psd_bar_plot(df: pd.DataFrame, bins_per_octave: int = 3, f_start: flo
 
 
 def rolling_min_max_envelope(df: pd.DataFrame, desired_num_points: int = 250, plot_as_bars: bool = False,
-                             plot_title: str = "", opacity: float = 1,
+                             plot_title: str = "", opacity: float = 1.0,
                              colors_to_use: Optional[Container] = None) -> go.Figure:
     """
     A function to create a Plotly Figure to plot the data for each of the available data sub-channels, designed to

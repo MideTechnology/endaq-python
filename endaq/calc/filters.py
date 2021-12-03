@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Optional, Union, Tuple
+import functools
 
 import pandas as pd
 import scipy.signal
@@ -32,8 +33,8 @@ def butterworth(
 
     .. seealso::
 
-        `SciPy Butterworth filter design <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html>`_
-        Documentation for the butterworth filter design function.
+        - `SciPy Butterworth filter design <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html>`_
+          Documentation for the butterworth filter design function.
     """
     cutoff_freqs: Union[float, Tuple[float, float]]
     filter_type: str
@@ -59,6 +60,6 @@ def butterworth(
         fs=1 / dt,
         output="sos",
     )
-    array = scipy.signal.sosfiltfilt(sos_coeffs, df.to_numpy(), axis=0)
-
-    return pd.DataFrame(array, index=df.index, columns=df.columns)
+    return df.apply(
+        functools.partial(scipy.signal.sosfiltfilt, sos_coeffs), axis=0, raw=True
+    )
