@@ -284,9 +284,8 @@ class HalfSineWavePulse(NamedTuple):
     """
     The output data type for ``enveloping_half_sine``.
 
-    The significant data members are `amplitude` and `duration`. Because this
-    class inherits from ``collections.namedtuple``, these two members can simply
-    be unpacked as if from a plain tuple:
+    The significant data members are `amplitude` and `duration`, which can
+    simply be unpacked as if from a plain tuple:
 
     .. code-block:: python
 
@@ -298,8 +297,8 @@ class HalfSineWavePulse(NamedTuple):
     .. note:: This class is not intended to be instantiated manually.
     """
 
-    amplitude: float
-    duration: float
+    amplitude: pd.Series
+    duration: pd.Series
 
     def to_time_series(
         self,
