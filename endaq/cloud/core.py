@@ -124,6 +124,44 @@ class EndaqCloud:
 
         return Dataset(f)
 
+    def download_all_ide_files(
+            self, output_directory: str = "", force_recompute_file_table: bool = False, file_limit: int = 100):
+        """
+        Downloads all IDE files from the enDAQ Cloud (up to a specified file limit).
+
+        :param output_directory: The directory to download the ide files to
+        :param force_recompute_file_table: If the file table to use as reference for what files exist in the cloud
+         should be recomputed even if it is already stored (as `self.file_table`)
+        :param file_limit: The maximum number of files to download.  If the `force_recompute_file_table` parameter
+         is True then this will also be used to limit the number of files put in the file table it creates.
+        :return: An array of the filenames which were just downloaded
+
+        TO-DO:
+         - Would be nice to have a parameter to get only ones with a certain tag
+         - Maybe Have a blacklist and/or whitelist parameter
+        """
+        if not isinstance(output_directory, str):
+            raise TypeError('the "output_directory" parameter must be given a string,'
+                            f'but was given a value of type{type(output_directory)}')
+
+        if not isinstance(force_recompute_file_table, bool):
+            raise TypeError('the "force_recompute_file_table" parameter must be given a value of type bool,'
+                            f'but was given a value of type{type(force_recompute_file_table)}')
+
+        if not isinstance(file_limit, (int, np.integer)):
+            raise TypeError('the "file_limit" parameter must be given a value of type int or np.integer,'
+                            f'but was given a value of type{type(file_limit)}')
+
+        if self.file_table is None or force_recompute_file_table:
+            self.get_file_table(attributes=[], file_limit=file_limit)
+
+        # The range in this iterator is just a way to force stop the loop
+        for file_id, _ in zip(self.file_table['id'].values, range(file_limit)):
+            self.get_file(file_id, output_directory)
+
+        downloaded_filename_ary = self.file_table.index.values
+        return downloaded_filename_ary
+
     def _get_files_json_response(self, limit: int = 100, attributes: Union[list, str] = "all") -> list:
         """
         A function to get attribute data about the most recent files uploaded to the cloud.
