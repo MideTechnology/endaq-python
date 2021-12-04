@@ -153,7 +153,7 @@ class EndaqCloud:
                             f'but was given a value of type{type(file_limit)}')
 
         if self.file_table is None or force_recompute_file_table:
-            self.get_file_table(attributes=[], file_limit=file_limit)
+            self.get_file_table(attributes=[], limit=file_limit)
 
         # The range in this iterator is just a way to force stop the loop
         for file_id, _ in zip(self.file_table['id'].values, range(file_limit)):
