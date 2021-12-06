@@ -161,7 +161,9 @@ def get_doc(name=None, filename=None, url=None, parsed=True, start=0, end=None,
             filename = name
         else:
             parsed_url = urlparse(name.replace('\\', '/'))
-            if parsed_url.netloc:
+            if parsed_url.scheme == 'file':
+                filename = parsed_url.path
+            elif parsed_url.netloc:
                 url = name
             else:
                 filename = name
