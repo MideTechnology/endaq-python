@@ -1,5 +1,6 @@
 from collections import namedtuple
 import timeit
+import textwrap
 
 import pytest
 import hypothesis as hyp
@@ -101,20 +102,22 @@ def test_to_jagged_mode_times():
     Check that a situation exists where the histogram method is more
     performant.
     """
-    setup = """
-from endaq.calc import psd
-import numpy as np
-import pandas as pd
+    setup = textwrap.dedent(
+        """
+        from endaq.calc import psd
+        import numpy as np
+        import pandas as pd
 
-n = 10 ** 4
+        n = 10 ** 4
 
-axis = -1
-psd_array = np.random.random((3, n))
-f = np.arange(n) / 3
-psd_df = pd.DataFrame(psd_array.T, index=f)
-#freq_splits = np.logspace(0, np.log2(n), num=100, base=2)
-freq_splits = f[1:-1]
-    """
+        axis = -1
+        psd_array = np.random.random((3, n))
+        f = np.arange(n) / 3
+        psd_df = pd.DataFrame(psd_array.T, index=f)
+        #freq_splits = np.logspace(0, np.log2(n), num=100, base=2)
+        freq_splits = f[1:-1]
+        """
+    )
 
     t_direct = timeit.timeit(
         "psd.to_jagged(psd_df, freq_splits, agg=np.sum)",
