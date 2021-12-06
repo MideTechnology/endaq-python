@@ -27,13 +27,14 @@ __all__ = ['get_doc', 'extract_time']
 # ============================================================================
 
 
-def _get_url(url, localfile=None, params=None, cookies=None):
+def _get_url(url, localfile=None, headers=None, params=None, cookies=None):
     """
     Retrieve an IDE from a (HTTP/HTTPS) URL, including Google Drive shared
     links.
 
     :param url: The file's URL.
     :param localfile: The local filename (if saving the file).
+    :param headers: Additional (optional) request headers.
     :param params: Additional (optional) request parameters.
     :param cookies: Optional browser cookies for the session.
     :return: An open file stream containing the IDE data and the number of
@@ -44,9 +45,11 @@ def _get_url(url, localfile=None, params=None, cookies=None):
 
     netloc = parsed_url.netloc.lower()
     if netloc.endswith('.google.com') or netloc == "google.com":
-        response, filename = gdrive_download(url, localfile, params=params, cookies=cookies)
+        response, filename = gdrive_download(url, localfile, params=params,
+                                             cookies=cookies)
     else:
-        response = session.get(parsed_url.geturl(), params=params, cookies=cookies)
+        response = session.get(parsed_url.geturl(), headers=headers,
+                               params=params, cookies=cookies)
         filename = None
 
     if not response.ok:
@@ -83,7 +86,7 @@ def _get_url(url, localfile=None, params=None, cookies=None):
 # ============================================================================
 
 def get_doc(name=None, filename=None, url=None, parsed=True, start=0, end=None,
-            localfile=None, params=None, cookies=None, **kwargs):
+            localfile=None, params=None, headers=None, cookies=None, **kwargs):
     """
     Retrieve an IDE file from either a file or URL.
 
@@ -135,6 +138,8 @@ def get_doc(name=None, filename=None, url=None, parsed=True, start=0, end=None,
         applicable when opening a URL.
     :param params: Additional URL request parameters. Only applicable when
         opening a URL.
+    :param headers: Additional URL request headers. Only applicable when
+        opening a URL.
     :param cookies: Additional browser cookies for use in the URL request.
         Only applicable when opening a URL.
     :return: The fetched IDE data.
@@ -150,27 +155,32 @@ def get_doc(name=None, filename=None, url=None, parsed=True, start=0, end=None,
     parsed_url = None
 
     if name:
+        # Infer filename vs. URL
+        name = name.strip()
         if os.path.isfile(name):
             filename = name
         else:
             parsed_url = urlparse(name.replace('\\', '/'))
-            if not parsed_url.scheme or parsed_url.scheme == "file":
-                filename = parsed_url.path
-            else:
+            if parsed_url.netloc:
                 url = name
+            else:
+                filename = name
+
+    if url:
+        kwargs.setdefault('name', url)
+        parsed_url = parsed_url or urlparse(url)
+        if parsed_url.scheme == 'file':
+            filename = parsed_url.path
+        elif parsed_url.scheme.startswith('http'):
+            stream, _total = _get_url(url, localfile=localfile, headers=headers,
+                                      params=params, cookies=cookies)
+        else:
+            # future: more fetching schemes before this `else` (ftp, etc.)?
+            raise ValueError(f"Unsupported transfer scheme: {parsed_url.scheme}")
 
     if filename:
         filename = os.path.abspath(os.path.expanduser(filename))
         stream = open(filename, 'rb')
-
-    elif url:
-        kwargs.setdefault('name', url)
-        parsed_url = parsed_url or urlparse(url)
-        if parsed_url.scheme.startswith('http'):
-            stream, _total = _get_url(url, localfile=localfile, params=params, cookies=cookies)
-        else:
-            # future: more fetching schemes before this `else` (ftp, etc.)?
-            raise ValueError(f"Unsupported transfer scheme: {parsed_url.scheme}")
 
     if stream:
         if not validate(stream):
