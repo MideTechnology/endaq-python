@@ -226,34 +226,48 @@ def to_octave(
 
 
 def loglog_linear_approx(
-    df: pd.DataFrame, knots: List[int], window: int = 1, minimal: bool = True
+    df: pd.DataFrame,
+    knots: typing.List[int],
+    window: int = 1,
+    freqs_out: typing.Union[typing.Literal["knots", "input"], np.ndarray] = "knots",
 ):
     """
     Calculate a piecewise-linear approximation of data, in the log-log space.
 
     :param df: the input data; each column is approximated independently
     :param knots: the inner boundary points separating the piecewise regions
-    :apram window: the size of the pre-processing smoothing window
-    :param minimal: whether to return the approximated values at the provided
-        knots (`True`; default) or to generate interpolations at the input's
-        index values (`False`)
+    :apram window: the length of the pre-processing smoothing window
+    :param freqs_out: the frequencies at which to interpolate the output; these
+        may be explicit frequencies, or one of the following `str` options:
+
+        - `"knots"` (default): the knot frequencies
+        - `"input"`: the frequencies on the input data (i.e., ``df.index``)
     """
     if window != 1:
         df = df.rolling(window).mean().dropna()
 
     index_log = np.log2(df.index.to_numpy())
     data_log = np.log2(df.to_numpy())
+    knots_log = np.log2(knots)
 
-    tck = scipy.interpolate.splrep(index_log, data_log, k=1, t=np.log(knots))
+    tcks = [
+        scipy.interpolate.splrep(index_log, dlog, k=1, t=knots_log)
+        for dlog in data_log.T
+    ]
 
-    if minimal:
-        index_log = tck[0]
+    if isinstance(freqs_out, str):
+        if freqs_out == "knots":
+            index_log = knots_log
+        elif freqs_out == "input":
+            index_log = np.log2(df.index.to_numpy())
+        else:
+            raise ValueError(f"invalid option {freqs_out} for parameter `freqs_out`")
+    else:
+        index_log = np.log2(freqs_out)
 
-    return pd.DataFrame(
-        2 ** scipy.interpolate.splev(index_log, tck),
-        index=2 ** index_log,
-        columns=df.columns,
-    )
+    out_log = np.array([scipy.interpolate.splev(index_log, tck) for tck in tcks]).T
+
+    return pd.DataFrame(2 ** out_log, index=2 ** index_log, columns=df.columns)
 
 
 def vc_curves(

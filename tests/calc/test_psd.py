@@ -1,4 +1,5 @@
 from collections import namedtuple
+import pathlib
 import timeit
 import textwrap
 
@@ -10,7 +11,7 @@ import hypothesis.extra.numpy as hyp_np
 import numpy as np
 import pandas as pd
 
-from endaq.calc import psd, stats
+from endaq.calc import psd, stats, utils
 
 
 @hyp.given(
@@ -158,3 +159,38 @@ def test_to_octave(psd_df, agg, expt_f, expt_array):
     calc_df = psd.to_octave(psd_df, fstart=1, octave_bins=1, agg=agg)
     assert calc_df.index.to_numpy().tolist() == expt_f
     assert calc_df.to_numpy().flatten().tolist() == expt_array
+
+
+def test_loglog_linear_approx():
+    filepath = pathlib.Path("./tests/calc/navmat-p-9492.csv")
+    df = pd.read_csv(
+        filepath, delimiter="\t", header=None, index_col=0, names=["accel"]
+    )
+    df_psd = psd.welch(df, bin_width=0.5).loc[20:2000]
+
+    knots = [80, 350]
+    calc_result = psd.loglog_linear_approx(
+        df_psd,
+        knots=knots,
+        window=20,
+        freqs_out=utils.logfreqs(df, init_freq=20, bins_per_octave=4),
+    )
+    calc_dB = calc_result.apply(utils.to_dB, raw=True, reference=1, squared=True)
+
+    calc_dB_rampup = calc_dB.loc[: knots[0]]
+    dlog2f = np.diff(np.log2(calc_dB_rampup.index.to_numpy()))
+    ddB = np.diff(calc_dB_rampup["accel"].to_numpy())
+    dB_per_octave = ddB / dlog2f
+    assert np.all(dB_per_octave == pytest.approx(3, rel=0.2))
+
+    calc_dB_plateau = calc_dB.loc[knots[0]: knots[1]]
+    dlog2f = np.diff(np.log2(calc_dB_plateau.index.to_numpy()))
+    ddB = np.diff(calc_dB_plateau["accel"].to_numpy())
+    dB_per_octave = ddB / dlog2f
+    assert np.all(dB_per_octave == pytest.approx(0, abs=0.6))
+
+    calc_dB_rampdown = calc_dB.loc[knots[1]:]
+    dlog2f = np.diff(np.log2(calc_dB_rampdown.index.to_numpy()))
+    ddB = np.diff(calc_dB_rampdown["accel"].to_numpy())
+    dB_per_octave = ddB / dlog2f
+    assert np.all(dB_per_octave == pytest.approx(-3, rel=0.2))
