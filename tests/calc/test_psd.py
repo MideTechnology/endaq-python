@@ -40,26 +40,6 @@ def test_welch_parseval(df):
     assert df_psd.to_numpy().sum() == pytest.approx(stats.rms(df.to_numpy()) ** 2)
 
 
-@pytest.mark.parametrize(
-    "agg1, agg2",
-    [
-        ("mean", lambda x, axis=-1: np.nan_to_num(np.mean(x, axis=axis))),
-        ("sum", np.sum),
-    ],
-)
-def test_to_jagged_modes(psd_df, freq_splits, agg1, agg2):
-    """Test `to_jagged(..., mode='mean')` against the equivalent `mode=np.mean`."""
-    result1 = psd.to_jagged(psd_df, freq_splits, agg=agg1)
-    result2 = psd.to_jagged(psd_df, freq_splits, agg=agg2)
-
-    assert np.all(result1.index == result2.index)
-    np.testing.assert_allclose(
-        result1.to_numpy(),
-        result2.to_numpy(),
-        atol=psd_df.min().min() * 1e-7,
-    )
-
-
 @hyp.given(
     psd_df=hyp_np.arrays(
         dtype=np.float64,
