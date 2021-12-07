@@ -284,7 +284,7 @@ class HalfSineWavePulse(NamedTuple):
             trange[1] if trange[1] is not None else t0 + self.duration.max(),
         )
 
-        if t0 < trange[0] or trange[1] < t0 + self.duration.max():
+        if not (trange[0] <= t0 <= trange[1] - self.duration.max()):
             warnings.warn(
                 "half-sine pulse extends beyond the bounds of the time series"
             )
