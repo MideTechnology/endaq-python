@@ -235,10 +235,11 @@ def loglog_linear_approx(
     Calculate a piecewise-linear approximation of data, in the log-log space.
 
     :param df: the input data; each column is approximated independently
-    :param knots: the inner boundary points separating the piecewise regions
+    :param knots: the interior points separating the piecewise regions
     :apram window: the length of the pre-processing smoothing window
     :param freqs_out: the frequencies at which to interpolate the output; these
-        may be explicit frequencies, or one of the following `str` options:
+        may be an array-like of explicit frequencies, or one of the following
+        `str` options:
 
         - `"knots"` (default): the knot frequencies
         - `"input"`: the frequencies on the input data (i.e., ``df.index``)
