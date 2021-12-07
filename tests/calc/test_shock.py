@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from unittest import mock
 import warnings
 
 import pytest
@@ -292,3 +293,13 @@ class TestHalfSineWavePulse:
                 env_half_sine.to_time_series(
                     tstart=tstart, tstop=tstop, dt=dt, tpulse=tpulse
                 )
+
+    def test_tuple_like(self):
+        env_half_sine = shock.HalfSineWavePulse(
+            amplitude=mock.sentinel.amplitude,
+            duration=mock.sentinel.duration,
+        )
+
+        ampl, T = env_half_sine
+        assert ampl == mock.sentinel.amplitude
+        assert T == mock.sentinel.duration

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import typing
-from typing import Optional, Tuple, NamedTuple
+from typing import Optional
 from collections import namedtuple
+from dataclasses import dataclass
 import functools
 import warnings
 
@@ -232,7 +233,8 @@ def shock_spectrum(
     )
 
 
-class HalfSineWavePulse(NamedTuple):
+@dataclass
+class HalfSineWavePulse:
     """
     The output data type for ``enveloping_half_sine``.
 
@@ -251,6 +253,9 @@ class HalfSineWavePulse(NamedTuple):
 
     amplitude: pd.Series
     duration: pd.Series
+
+    def __iter__(self):
+        return iter((self.amplitude, self.duration))
 
     def to_time_series(
         self,
