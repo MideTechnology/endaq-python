@@ -264,18 +264,18 @@ def test_enveloping_half_sine(df_pvss, damp):
 
 class TestHalfSineWavePulse:
     @pytest.mark.parametrize(
-        "dt, t0, trange, warning_type",
+        "tstart, tstop, dt, tpulse, warning_type",
         [
             # dt warnings
-            (0.12, 0, (None, None), None),  # dt < duration / 8 => OK
-            (0.13, 0, (None, None), UserWarning),  # dt > duration / 8 => WARNING
+            (None, None, 0.12, 0, None),  # dt < duration / 8 => OK
+            (None, None, 0.13, 0, UserWarning),  # dt > duration / 8 => WARNING
             # trange warnings
-            (None, 0, (None, 0.5), UserWarning),  # trange[1] < t0 + duration => WARNING
-            (None, 0, (0.5, None), UserWarning),  # trange[0] > t0 => WARNING
-            (None, 1, (0.5, None), None),  # OK
+            (None, 0.5, None, 0, UserWarning),  # trange[1] < t0 + duration => WARNING
+            (0.5, None, None, 0, UserWarning),  # trange[0] > t0 => WARNING
+            (0.5, None, None, 1, None),  # OK
         ],
     )
-    def test_to_time_series_warnings(self, dt, t0, trange, warning_type):
+    def test_to_time_series_warnings(self, tstart, tstop, dt, tpulse, warning_type):
         env_half_sine = shock.HalfSineWavePulse(
             amplitude=pd.Series([1]),
             duration=pd.Series([1]),
@@ -284,7 +284,11 @@ class TestHalfSineWavePulse:
         if warning_type is None:
             with warnings.catch_warnings():
                 warnings.simplefilter("error")
-                env_half_sine.to_time_series(dt=dt, t0=t0, trange=trange)
+                env_half_sine.to_time_series(
+                    tstart=tstart, tstop=tstop, dt=dt, tpulse=tpulse
+                )
         else:
             with pytest.warns(warning_type):
-                env_half_sine.to_time_series(dt=dt, t0=t0, trange=trange)
+                env_half_sine.to_time_series(
+                    tstart=tstart, tstop=tstop, dt=dt, tpulse=tpulse
+                )

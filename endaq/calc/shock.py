@@ -254,20 +254,26 @@ class HalfSineWavePulse(NamedTuple):
 
     def to_time_series(
         self,
+        tstart: Optional[float] = None,
+        tstop: Optional[float] = None,
         dt: Optional[float] = None,
-        t0: float = 0.0,
-        trange: Tuple[Optional[float], Optional[float]] = (None, None),
+        tpulse: Optional[float] = None,
     ) -> pd.DataFrame:
         """
         Generate a time-series of the half-sine pulse.
 
+        :param tstart: the starting time of the resulting waveform; if `None`
+            (default), the range starts at `tpulse`
+        :param tstop: the ending time of the resulting waveform; if `None`
+            (default), the range ends at `tpulse + duration`
         :param dt: the sampling period of the resulting waveform; defaults to
             1/20th of the pulse duration
-        :param t0: the starting time of the pulse within the resulting waveform;
-            defaults to 0
-        :param trange: the time range of the resulting waveform; if
-            `trange[0]` is `None` (default), the range starts at `t0`; if
-            `trange[1]` is `None` (default), the range ends at `t0 + duration`
+        :param tpulse: the starting time of the pulse within the resulting
+            waveform; if `None` (default), the pulse starts at either:
+
+            - ``tstart``, if provided
+            - ``tstop - self.duration.max())``, if `tstop` is provided
+            - ``0.0`` otherwise
         :return: a time-series of the half-sine pulse
         """
         if dt is None:
@@ -279,23 +285,32 @@ class HalfSineWavePulse(NamedTuple):
                 f" the half-sine pulse's shock intensity"
             )
 
-        trange = (
-            trange[0] if trange[0] is not None else t0,
-            trange[1] if trange[1] is not None else t0 + self.duration.max(),
-        )
+        default_start = 0.0
+        if tstop is not None:
+            default_start = tstop - self.duration.max()
 
-        if not (trange[0] <= t0 <= trange[1] - self.duration.max()):
+        if tpulse is None and tstart is None:
+            tpulse = tstart = default_start
+        elif tpulse is None:
+            tpulse = tstart
+        elif tstart is None:
+            tstart = tpulse
+
+        if tstop is None:
+            tstop = tpulse + self.duration.max()
+
+        if not (tstart <= tpulse <= tstop - self.duration.max()):
             warnings.warn(
                 "half-sine pulse extends beyond the bounds of the time series"
             )
 
-        t = np.arange(trange[0], trange[1], dt)
+        t = np.arange(tstart, tstop, dt)
 
         data = np.zeros((len(t), len(self.amplitude)), dtype=float)
         t_data, ampl_data, T_data = np.broadcast_arrays(
             t[..., None], self.amplitude.to_numpy(), self.duration.to_numpy()
         )
-        t_mask = np.nonzero((t_data >= t0) & (t_data < t0 + T_data))
+        t_mask = np.nonzero((t_data >= tpulse) & (t_data < tpulse + T_data))
         data[t_mask] = ampl_data[t_mask] * np.sin(
             np.pi * t_data[t_mask] / T_data[t_mask]
         )
