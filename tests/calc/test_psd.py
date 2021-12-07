@@ -180,23 +180,23 @@ def test_loglog_linear_approx():
         window=20,
         freqs_out=utils.logfreqs(df, init_freq=20, bins_per_octave=4),
     )
-    calc_dB = calc_result.apply(utils.to_dB, raw=True, reference=0.04, squared=True)
+    db = calc_result.apply(utils.to_dB, raw=True, reference=0.04, squared=True)
 
-    calc_dB_rampup = calc_dB.loc[: knots[0]]
-    dlog2f = np.diff(np.log2(calc_dB_rampup.index.to_numpy()))
-    ddB = np.diff(calc_dB_rampup["accel"].to_numpy())
-    dB_per_octave = ddB / dlog2f
-    assert np.all(dB_per_octave == pytest.approx(3, rel=0.2))
+    db_rampup = db.loc[: knots[0]]
+    dlog2f = np.diff(np.log2(db_rampup.index.to_numpy()))
+    ddb = np.diff(db_rampup["accel"].to_numpy())
+    db_per_octave = ddb / dlog2f
+    assert np.all(db_per_octave == pytest.approx(3, rel=0.2))
 
-    calc_dB_plateau = calc_dB.loc[knots[0] : knots[1]]
-    assert np.all(calc_dB_plateau["accel"].to_numpy() == pytest.approx(0, abs=0.6))
-    dlog2f = np.diff(np.log2(calc_dB_plateau.index.to_numpy()))
-    ddB = np.diff(calc_dB_plateau["accel"].to_numpy())
-    dB_per_octave = ddB / dlog2f
-    assert np.all(dB_per_octave == pytest.approx(0, abs=0.6))
+    db_plateau = db.loc[knots[0] : knots[1]]
+    assert np.all(db_plateau["accel"].to_numpy() == pytest.approx(0, abs=0.6))
+    dlog2f = np.diff(np.log2(db_plateau.index.to_numpy()))
+    ddb = np.diff(db_plateau["accel"].to_numpy())
+    db_per_octave = ddb / dlog2f
+    assert np.all(db_per_octave == pytest.approx(0, abs=0.6))
 
-    calc_dB_rampdown = calc_dB.loc[knots[1] :]
-    dlog2f = np.diff(np.log2(calc_dB_rampdown.index.to_numpy()))
-    ddB = np.diff(calc_dB_rampdown["accel"].to_numpy())
-    dB_per_octave = ddB / dlog2f
-    assert np.all(dB_per_octave == pytest.approx(-3, rel=0.2))
+    db_rampdown = db.loc[knots[1] :]
+    dlog2f = np.diff(np.log2(db_rampdown.index.to_numpy()))
+    ddb = np.diff(db_rampdown["accel"].to_numpy())
+    db_per_octave = ddb / dlog2f
+    assert np.all(db_per_octave == pytest.approx(-3, rel=0.2))
