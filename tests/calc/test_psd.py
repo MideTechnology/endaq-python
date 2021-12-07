@@ -164,7 +164,12 @@ def test_to_octave(psd_df, agg, expt_f, expt_array):
 def test_loglog_linear_approx():
     filepath = pathlib.Path("./tests/calc/navmat-p-9492.csv")
     df = pd.read_csv(
-        filepath, delimiter="\t", header=None, index_col=0, names=["accel"]
+        filepath,
+        delimiter="\t",
+        header=None,
+        index_col=0,
+        names=["accel"],
+        dtype=dict(accel=np.float32),
     )
     df_psd = psd.welch(df, bin_width=0.5).loc[20:2000]
 
@@ -183,13 +188,13 @@ def test_loglog_linear_approx():
     dB_per_octave = ddB / dlog2f
     assert np.all(dB_per_octave == pytest.approx(3, rel=0.2))
 
-    calc_dB_plateau = calc_dB.loc[knots[0]: knots[1]]
+    calc_dB_plateau = calc_dB.loc[knots[0] : knots[1]]
     dlog2f = np.diff(np.log2(calc_dB_plateau.index.to_numpy()))
     ddB = np.diff(calc_dB_plateau["accel"].to_numpy())
     dB_per_octave = ddB / dlog2f
     assert np.all(dB_per_octave == pytest.approx(0, abs=0.6))
 
-    calc_dB_rampdown = calc_dB.loc[knots[1]:]
+    calc_dB_rampdown = calc_dB.loc[knots[1] :]
     dlog2f = np.diff(np.log2(calc_dB_rampdown.index.to_numpy()))
     ddB = np.diff(calc_dB_rampdown["accel"].to_numpy())
     dB_per_octave = ddB / dlog2f
