@@ -241,7 +241,14 @@ class HalfSineWavePulse:
     The significant data members are `amplitude` and `duration`, which can
     simply be unpacked as if from a plain tuple:
 
-    .. code-block:: python
+    .. testsetup::
+
+        import pandas as pd
+        df_pvss = pd.DataFrame([1, 1], index=[200, 400])
+
+        from endaq.calc.shock import enveloping_half_sine
+
+    .. testcode::
 
         ampl, T = enveloping_half_sine(df_pvss)
 
