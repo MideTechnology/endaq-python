@@ -96,6 +96,8 @@ def integrals(
         ``-np.median(output)``
     :param highpass_cutoff: the cutoff frequency for the initial highpass filter;
         this is used to remove artifacts caused by DC trends
+    :param filter_half_order: the half-order of the preconditioning highpass
+        filter, if used; if `None`, defaults to ``n // 2 + 1``
     :param tukey_percent: the alpha parameter of a preconditioning tukey filter;
         if 0 (default), no filter is applied
     :return: a length `n+1` list of the kth-order integrals from 0 to n (inclusive)

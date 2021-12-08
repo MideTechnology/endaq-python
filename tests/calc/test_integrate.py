@@ -1,3 +1,5 @@
+import itertools
+
 import pytest
 import hypothesis as hyp
 import hypothesis.strategies as hyp_st
@@ -50,3 +52,23 @@ def test_integrals():
     assert np.all(calc_result[0] == df)
     for dx_dt, x in zip(calc_result[:-1], calc_result[1:]):
         assert np.all(x == integrate._integrate(dx_dt))
+
+
+@hyp.given(
+    df=hyp_np.arrays(
+        elements=hyp_st.floats(-1e7, 1e7),
+        shape=(20, 2),
+        dtype=np.float64,
+    ).map(lambda array: pd.DataFrame(array, index=0.2 * np.arange(20))),
+    zero=hyp_st.sampled_from(["start", "mean", "median"]),
+    highpass_cutoff=hyp_st.floats(0, 1).map(lambda x: x or None),
+    filter_half_order=hyp_st.integers(1, 3),
+    tukey_percent=hyp_st.floats(0, 0.2),
+)
+def test_integrals_iter_vs_list(df, **kwargs):
+    n = 3
+    result1 = list(itertools.islice(integrate.iter_integrals(df, **kwargs), 2))
+    result2 = integrate.integrals(df, n, **kwargs)
+
+    for r1, r2 in zip(result1, result2):
+        pd.testing.assert_frame_equal(r1, r2)
