@@ -225,6 +225,52 @@ def to_octave(
     return result
 
 
+def loglog_linear_approx(
+    df: pd.DataFrame,
+    knots: typing.List[int],
+    window: int = 1,
+    freqs_out: typing.Union[typing.Literal["knots", "input"], np.ndarray] = "knots",
+):
+    """
+    Calculate a piecewise-linear approximation of data, in the log-log space.
+
+    :param df: the input data; each column is approximated independently
+    :param knots: the interior points separating the piecewise regions
+    :apram window: the length of the pre-processing smoothing window
+    :param freqs_out: the frequencies at which to interpolate the output; these
+        may be an array-like of explicit frequencies, or one of the following
+        `str` options:
+
+        - `"knots"` (default): the knot frequencies
+        - `"input"`: the frequencies on the input data (i.e., ``df.index``)
+    """
+    if window != 1:
+        df = df.rolling(window).mean().dropna()
+
+    index_log = np.log2(df.index.to_numpy())
+    data_log = np.log2(df.to_numpy())
+    knots_log = np.log2(knots)
+
+    tcks = [
+        scipy.interpolate.splrep(index_log, dlog, k=1, t=knots_log)
+        for dlog in data_log.T
+    ]
+
+    if isinstance(freqs_out, str):
+        if freqs_out == "knots":
+            index_log = knots_log
+        elif freqs_out == "input":
+            index_log = np.log2(df.index.to_numpy())
+        else:
+            raise ValueError(f"invalid option {freqs_out} for parameter `freqs_out`")
+    else:
+        index_log = np.log2(freqs_out)
+
+    out_log = np.array([scipy.interpolate.splev(index_log, tck) for tck in tcks]).T
+
+    return pd.DataFrame(2 ** out_log, index=2 ** index_log, columns=df.columns)
+
+
 def vc_curves(
     accel_psd: pd.DataFrame, fstart: float = 1.0, octave_bins: float = 12.0
 ) -> pd.DataFrame:

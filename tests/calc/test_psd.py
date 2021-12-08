@@ -1,5 +1,7 @@
 from collections import namedtuple
+import pathlib
 import timeit
+import textwrap
 
 import pytest
 import hypothesis as hyp
@@ -9,7 +11,7 @@ import hypothesis.extra.numpy as hyp_np
 import numpy as np
 import pandas as pd
 
-from endaq.calc import psd, stats
+from endaq.calc import psd, stats, utils
 
 
 @hyp.given(
@@ -37,26 +39,6 @@ def test_welch_parseval(df):
     """
     df_psd = psd.welch(df, bin_width=1, scaling="parseval")
     assert df_psd.to_numpy().sum() == pytest.approx(stats.rms(df.to_numpy()) ** 2)
-
-
-@pytest.mark.parametrize(
-    "agg1, agg2",
-    [
-        ("mean", lambda x, axis=-1: np.nan_to_num(np.mean(x, axis=axis))),
-        ("sum", np.sum),
-    ],
-)
-def test_to_jagged_modes(psd_df, freq_splits, agg1, agg2):
-    """Test `to_jagged(..., mode='mean')` against the equivalent `mode=np.mean`."""
-    result1 = psd.to_jagged(psd_df, freq_splits, agg=agg1)
-    result2 = psd.to_jagged(psd_df, freq_splits, agg=agg2)
-
-    assert np.all(result1.index == result2.index)
-    np.testing.assert_allclose(
-        result1.to_numpy(),
-        result2.to_numpy(),
-        atol=psd_df.min().min() * 1e-7,
-    )
 
 
 @hyp.given(
@@ -101,20 +83,22 @@ def test_to_jagged_mode_times():
     Check that a situation exists where the histogram method is more
     performant.
     """
-    setup = """
-from endaq.calc import psd
-import numpy as np
-import pandas as pd
+    setup = textwrap.dedent(
+        """
+        from endaq.calc import psd
+        import numpy as np
+        import pandas as pd
 
-n = 10 ** 4
+        n = 10 ** 4
 
-axis = -1
-psd_array = np.random.random((3, n))
-f = np.arange(n) / 3
-psd_df = pd.DataFrame(psd_array.T, index=f)
-#freq_splits = np.logspace(0, np.log2(n), num=100, base=2)
-freq_splits = f[1:-1]
-    """
+        axis = -1
+        psd_array = np.random.random((3, n))
+        f = np.arange(n) / 3
+        psd_df = pd.DataFrame(psd_array.T, index=f)
+        #freq_splits = np.logspace(0, np.log2(n), num=100, base=2)
+        freq_splits = f[1:-1]
+        """
+    )
 
     t_direct = timeit.timeit(
         "psd.to_jagged(psd_df, freq_splits, agg=np.sum)",
@@ -175,3 +159,44 @@ def test_to_octave(psd_df, agg, expt_f, expt_array):
     calc_df = psd.to_octave(psd_df, fstart=1, octave_bins=1, agg=agg)
     assert calc_df.index.to_numpy().tolist() == expt_f
     assert calc_df.to_numpy().flatten().tolist() == expt_array
+
+
+def test_loglog_linear_approx():
+    filepath = pathlib.Path("./tests/calc/navmat-p-9492.csv")
+    df = pd.read_csv(
+        filepath,
+        delimiter="\t",
+        header=None,
+        index_col=0,
+        names=["accel"],
+        dtype=dict(accel=np.float32),
+    )
+    df_psd = psd.welch(df, bin_width=0.5).loc[20:2000]
+
+    knots = [80, 350]
+    calc_result = psd.loglog_linear_approx(
+        df_psd,
+        knots=knots,
+        window=20,
+        freqs_out=utils.logfreqs(df, init_freq=20, bins_per_octave=4),
+    )
+    db = calc_result.apply(utils.to_dB, raw=True, reference=0.04, squared=True)
+
+    db_rampup = db.loc[: knots[0]]
+    dlog2f = np.diff(np.log2(db_rampup.index.to_numpy()))
+    ddb = np.diff(db_rampup["accel"].to_numpy())
+    db_per_octave = ddb / dlog2f
+    assert np.all(db_per_octave == pytest.approx(3, rel=0.2))
+
+    db_plateau = db.loc[knots[0] : knots[1]]
+    assert np.all(db_plateau["accel"].to_numpy() == pytest.approx(0, abs=0.6))
+    dlog2f = np.diff(np.log2(db_plateau.index.to_numpy()))
+    ddb = np.diff(db_plateau["accel"].to_numpy())
+    db_per_octave = ddb / dlog2f
+    assert np.all(db_per_octave == pytest.approx(0, abs=0.6))
+
+    db_rampdown = db.loc[knots[1] :]
+    dlog2f = np.diff(np.log2(db_rampdown.index.to_numpy()))
+    ddb = np.diff(db_rampdown["accel"].to_numpy())
+    db_per_octave = ddb / dlog2f
+    assert np.all(db_per_octave == pytest.approx(-3, rel=0.2))
