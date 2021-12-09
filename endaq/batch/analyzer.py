@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+import typing
+from typing import List, Optional
 import sys
 import warnings
 
@@ -5,7 +10,6 @@ if sys.version_info[:2] >= (3, 8):
     from functools import cached_property
 else:
     from backports.cached_property import cached_property
-
 
 import numpy as np
 import pandas as pd
@@ -24,6 +28,34 @@ MPS_TO_KMPH = 3600 / 1e3
 M_TO_MM = 1000
 
 
+@dataclass
+class CalcParams:
+    """
+    The parameters for configuring the calculation routines in
+    `DatasetChannelCache`.
+
+    Each of these parameters is *intentionally* left w/o a default value.
+    Instead, defaults are provided at the function signatures for the
+    `endaq.batch.core` functions. This ensures that data is passed correctly
+    to them from the `CalcParam` object.
+    """
+
+    preferred_chs: List[int]
+    accel_highpass_cutoff: Optional[float]
+    accel_integral_tukey_percent: float
+    accel_integral_zero: typing.Literal["start", "mean", "median"]
+    accel_start_time: Optional[np.timedelta64]
+    accel_end_time: Optional[np.timedelta64]
+    accel_start_margin: Optional[np.timedelta64]
+    accel_end_margin: Optional[np.timedelta64]
+    psd_freq_bin_width: float
+    psd_window: str
+    pvss_init_freq: float
+    pvss_bins_per_octave: float
+    vc_init_freq: float
+    vc_bins_per_octave: float
+
+
 class DatasetChannelCache:
     """
     A wrapper for `idelib.dataset.Dataset` that caches channel data streams as
@@ -32,34 +64,19 @@ class DatasetChannelCache:
 
     PV_NATURAL_FREQS = np.logspace(0, 12, base=2, num=12 * 12 + 1, endpoint=True)
 
-    def __init__(
-        self,
-        dataset,
-        *,
-        preferred_chs=[],
-        accel_highpass_cutoff,
-        accel_integral_tukey_percent,
-        accel_integral_zero,
-        accel_start_time,
-        accel_end_time,
-        accel_start_margin,
-        accel_end_margin,
-        psd_freq_bin_width,
-        psd_window="hanning",
-        pvss_init_freq,
-        pvss_bins_per_octave,
-        vc_init_freq,
-        vc_bins_per_octave,
-    ):
+    def __init__(self, dataset, params: CalcParams):
         """
         Copies out the numpy arrays for the highest priority channel for each
         sensor type, and any relevant metadata.  Cuts them into chunks.
         """
-        if accel_start_time is not None and accel_start_margin is not None:
+        if (
+            params.accel_start_time is not None
+            and params.accel_start_margin is not None
+        ):
             raise ValueError(
                 "only one of `accel_start_time` and `accel_start_margin` may be set at once"
             )
-        if accel_end_time is not None and accel_end_margin is not None:
+        if params.accel_end_time is not None and params.accel_end_margin is not None:
             raise ValueError(
                 "only one of `accel_end_time` and `accel_end_margin` may be set at once"
             )
@@ -70,24 +87,24 @@ class DatasetChannelCache:
                 for (utype, ch_struct) in ide_utils.chs_by_utype(dataset)
                 if len(ch_struct.eventarray) > 0
             ),
-            max_key=lambda x: (x.channel.id in preferred_chs, len(x.eventarray)),
+            max_key=lambda x: (x.channel.id in params.preferred_chs, len(x.eventarray)),
         )
 
         self._filename = dataset.filename
         self._accelerationFs = None  # gets set in `_accelerationData`
-        self._accel_highpass_cutoff = accel_highpass_cutoff
-        self._accel_start_time = accel_start_time
-        self._accel_end_time = accel_end_time
-        self._accel_start_margin = accel_start_margin
-        self._accel_end_margin = accel_end_margin
-        self._accel_integral_tukey_percent = accel_integral_tukey_percent
-        self._accel_integral_zero = accel_integral_zero
-        self._psd_window = psd_window
-        self._psd_freq_bin_width = psd_freq_bin_width
-        self._pvss_init_freq = pvss_init_freq
-        self._pvss_bins_per_octave = pvss_bins_per_octave
-        self._vc_init_freq = vc_init_freq
-        self._vc_bins_per_octave = vc_bins_per_octave
+        self._accel_highpass_cutoff = params.accel_highpass_cutoff
+        self._accel_start_time = params.accel_start_time
+        self._accel_end_time = params.accel_end_time
+        self._accel_start_margin = params.accel_start_margin
+        self._accel_end_margin = params.accel_end_margin
+        self._accel_integral_tukey_percent = params.accel_integral_tukey_percent
+        self._accel_integral_zero = params.accel_integral_zero
+        self._psd_window = params.psd_window
+        self._psd_freq_bin_width = params.psd_freq_bin_width
+        self._pvss_init_freq = params.pvss_init_freq
+        self._pvss_bins_per_octave = params.pvss_bins_per_octave
+        self._vc_init_freq = params.vc_init_freq
+        self._vc_bins_per_octave = params.vc_bins_per_octave
 
     # ==========================================================================
     # Data Processing, just to make init cleaner

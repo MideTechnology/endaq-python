@@ -178,18 +178,22 @@ class TestAnalyzer:
     def testLiveFile(self, ide_SSX70065):
         analyzer = endaq.batch.analyzer.DatasetChannelCache(
             ide_SSX70065,
-            accel_start_time=None,
-            accel_end_time=None,
-            accel_start_margin=None,
-            accel_end_margin=None,
-            accel_highpass_cutoff=1,
-            accel_integral_tukey_percent=0,
-            accel_integral_zero="mean",
-            psd_freq_bin_width=1,
-            pvss_init_freq=1,
-            pvss_bins_per_octave=12,
-            vc_init_freq=1,
-            vc_bins_per_octave=3,
+            endaq.batch.analyzer.CalcParams(
+                preferred_chs=[],
+                accel_start_time=None,
+                accel_end_time=None,
+                accel_start_margin=None,
+                accel_end_margin=None,
+                accel_highpass_cutoff=1,
+                accel_integral_tukey_percent=0,
+                accel_integral_zero="mean",
+                psd_freq_bin_width=1,
+                psd_window="hann",
+                pvss_init_freq=1,
+                pvss_bins_per_octave=12,
+                vc_init_freq=1,
+                vc_bins_per_octave=3,
+            ),
         )
 
         raw_accel = ide_SSX70065.channels[32].getSession().arrayValues()
@@ -225,18 +229,22 @@ class TestAnalyzer:
         ds = idelib.importFile(filename)
         analyzer = endaq.batch.analyzer.DatasetChannelCache(
             ds,
-            accel_start_time=None,
-            accel_end_time=None,
-            accel_start_margin=None,
-            accel_end_margin=None,
-            accel_highpass_cutoff=1,
-            accel_integral_tukey_percent=0,
-            accel_integral_zero="mean",
-            psd_freq_bin_width=1,
-            pvss_init_freq=1,
-            pvss_bins_per_octave=12,
-            vc_init_freq=1,
-            vc_bins_per_octave=3,
+            endaq.batch.analyzer.CalcParams(
+                preferred_chs=[],
+                accel_start_time=None,
+                accel_end_time=None,
+                accel_start_margin=None,
+                accel_end_margin=None,
+                accel_highpass_cutoff=1,
+                accel_integral_tukey_percent=0,
+                accel_integral_zero="mean",
+                psd_freq_bin_width=1,
+                psd_window="hann",
+                pvss_init_freq=1,
+                pvss_bins_per_octave=12,
+                vc_init_freq=1,
+                vc_bins_per_octave=3,
+            ),
         )
 
         raw_accel = ds.channels[8].getSession().arrayValues(subchannels=[0, 1, 2])
@@ -276,18 +284,22 @@ class TestAnalyzer:
         ds = idelib.importFile(filename)
         analyzer = endaq.batch.analyzer.DatasetChannelCache(
             ds,
-            accel_start_time=None,
-            accel_end_time=None,
-            accel_start_margin=None,
-            accel_end_margin=None,
-            accel_highpass_cutoff=1,
-            accel_integral_tukey_percent=0,
-            accel_integral_zero="mean",
-            psd_freq_bin_width=1,
-            pvss_init_freq=1,
-            pvss_bins_per_octave=12,
-            vc_init_freq=1,
-            vc_bins_per_octave=3,
+            endaq.batch.analyzer.CalcParams(
+                preferred_chs=[],
+                accel_start_time=None,
+                accel_end_time=None,
+                accel_start_margin=None,
+                accel_end_margin=None,
+                accel_highpass_cutoff=1,
+                accel_integral_tukey_percent=0,
+                accel_integral_zero="mean",
+                psd_freq_bin_width=1,
+                psd_window="hann",
+                pvss_init_freq=1,
+                pvss_bins_per_octave=12,
+                vc_init_freq=1,
+                vc_bins_per_octave=3,
+            ),
         )
 
         ch_rot = ds.channels[84]
@@ -308,18 +320,22 @@ class TestAnalyzer:
         ds = idelib.importFile(filename)
         analyzer = endaq.batch.analyzer.DatasetChannelCache(
             ds,
-            accel_start_time=None,
-            accel_end_time=None,
-            accel_start_margin=None,
-            accel_end_margin=None,
-            accel_highpass_cutoff=1,
-            accel_integral_tukey_percent=0,
-            accel_integral_zero="mean",
-            psd_freq_bin_width=1,
-            pvss_init_freq=1,
-            pvss_bins_per_octave=12,
-            vc_init_freq=1,
-            vc_bins_per_octave=3,
+            endaq.batch.analyzer.CalcParams(
+                preferred_chs=[],
+                accel_start_time=None,
+                accel_end_time=None,
+                accel_start_margin=None,
+                accel_end_margin=None,
+                accel_highpass_cutoff=1,
+                accel_integral_tukey_percent=0,
+                accel_integral_zero="mean",
+                psd_freq_bin_width=1,
+                psd_window="hann",
+                pvss_init_freq=1,
+                pvss_bins_per_octave=12,
+                vc_init_freq=1,
+                vc_bins_per_octave=3,
+            ),
         )
 
         ch_gps = ds.channels[88]

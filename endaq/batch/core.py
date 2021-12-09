@@ -390,13 +390,15 @@ class GetDataBuilder:
         with endaq.ide.get_doc(filename) as ds:
             ch_data_cache = endaq.batch.analyzer.DatasetChannelCache(
                 ds,
-                **self._ch_data_cache_kwargs,
-                psd_window=self._psd_window,
-                psd_freq_bin_width=self._psd_freq_bin_width,
-                pvss_init_freq=self._pvss_init_freq,
-                pvss_bins_per_octave=self._pvss_bins_per_octave,
-                vc_init_freq=self._vc_init_freq,
-                vc_bins_per_octave=self._vc_bins_per_octave,
+                endaq.batch.analyzer.CalcParams(
+                    **self._ch_data_cache_kwargs,
+                    psd_window=self._psd_window,
+                    psd_freq_bin_width=self._psd_freq_bin_width,
+                    pvss_init_freq=self._pvss_init_freq,
+                    pvss_bins_per_octave=self._pvss_bins_per_octave,
+                    vc_init_freq=self._vc_init_freq,
+                    vc_bins_per_octave=self._vc_bins_per_octave,
+                ),
             )
 
             data["meta"] = _make_meta(ds)
