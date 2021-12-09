@@ -124,7 +124,7 @@ def _make_peak_windows(ch_data_cache, margin_len):
     if df_accel.size == 0:
         return None
 
-    dt = 1 / ch_data_cache._accelerationFs
+    dt = endaq.calc.sample_spacing(df_accel)
 
     data_noidx = df_accel.reset_index(drop=True)
     peak_indices = data_noidx.abs().idxmax(axis="rows")

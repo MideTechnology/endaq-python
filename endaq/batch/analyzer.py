@@ -91,7 +91,6 @@ class DatasetChannelCache:
         )
 
         self._filename = dataset.filename
-        self._accelerationFs = None  # gets set in `_accelerationData`
         self._accel_highpass_cutoff = params.accel_highpass_cutoff
         self._accel_start_time = params.accel_start_time
         self._accel_end_time = params.accel_end_time
@@ -130,9 +129,6 @@ class DatasetChannelCache:
             }[aUnits.lower()]
         except KeyError:
             raise ValueError(f'unknown acceleration channel units "{aUnits}"')
-
-        self._accelerationName = ch_struct.channel.name
-        self._accelerationFs = ch_struct.fs
 
         aData = conversionFactor * ch_struct.to_pandas(time_mode="timedelta")
 
@@ -246,9 +242,11 @@ class DatasetChannelCache:
         freqs = endaq.calc.logfreqs(
             aData, self._pvss_init_freq, self._pvss_bins_per_octave
         )
-        freqs = freqs[(freqs >= self._accelerationFs / self._accelerationData.shape[0])]
+        freqs = freqs[
+            (freqs >= 1 / (endaq.calc.sample_spacing(aData) * aData.shape[0]))
+        ]
         pv = shock.shock_spectrum(
-            self._accelerationData,
+            aData,
             freqs,
             damp=0.05,
             mode="pvss",
@@ -267,9 +265,11 @@ class DatasetChannelCache:
         freqs = endaq.calc.logfreqs(
             aData, self._pvss_init_freq, self._pvss_bins_per_octave
         )
-        freqs = freqs[(freqs >= self._accelerationFs / self._accelerationData.shape[0])]
+        freqs = freqs[
+            (freqs >= 1 / (endaq.calc.sample_spacing(aData) * aData.shape[0]))
+        ]
         pv = shock.shock_spectrum(
-            self._accelerationData,
+            aData,
             freqs,
             damp=0.05,
             mode="pvss",
