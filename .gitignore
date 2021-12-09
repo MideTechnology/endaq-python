@@ -81,6 +81,9 @@ coverage.xml
 .pytest_cache/
 cover/
 
+# pytest-profiling
+prof/
+
 # Translations
 *.mo
 *.pot

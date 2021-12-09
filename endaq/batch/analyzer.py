@@ -143,7 +143,10 @@ class DatasetChannelCache:
 
     @cached_property
     def _accelerationResultantData(self):
-        return self._accelerationData.apply(stats.L2_norm, axis="columns").to_frame()
+        return pd.Series(
+            stats.L2_norm(self._accelerationData.to_numpy(), axis=1),
+            index=self._accelerationData.index,
+        ).to_frame()
 
     @cached_property
     def _microphoneData(self):
@@ -189,7 +192,10 @@ class DatasetChannelCache:
 
     @cached_property
     def _velocityResultantData(self):
-        return self._velocityData.apply(stats.L2_norm, axis="columns").to_frame()
+        return pd.Series(
+            stats.L2_norm(self._velocityData.to_numpy(), axis=1),
+            index=self._velocityData.index,
+        ).to_frame()
 
     @cached_property
     def _displacementData(self):
@@ -207,7 +213,10 @@ class DatasetChannelCache:
 
     @cached_property
     def _displacementResultantData(self):
-        return self._displacementData.apply(stats.L2_norm, axis="columns").to_frame()
+        return pd.Series(
+            stats.L2_norm(self._displacementData.to_numpy(), axis=1),
+            index=self._displacementData.index,
+        ).to_frame()
 
     @cached_property
     def _PVSSData(self):
@@ -269,7 +278,7 @@ class DatasetChannelCache:
 
     @cached_property
     def _PSDResultantData(self):
-        return self._PSDData.apply(np.sum, axis="columns").to_frame()
+        return self._PSDData.sum(axis="columns").to_frame()
 
     @cached_property
     def _VCCurveData(self):
