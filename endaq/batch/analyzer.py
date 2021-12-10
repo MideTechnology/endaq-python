@@ -184,11 +184,7 @@ class DatasetChannelCache:
         if units.lower() != "a":
             raise ValueError(f'unknown microphone channel units "{units}"')
 
-        self._micName = ch_struct.channel.name
-        self._micFs = ch_struct.fs
-        data = ch_struct.to_pandas(time_mode="timedelta")
-
-        return data
+        return ch_struct.to_pandas(time_mode="timedelta")
 
     @cached_property
     def _velocityData(self):
@@ -341,11 +337,7 @@ class DatasetChannelCache:
         except KeyError:
             raise ValueError(f'unknown pressure channel units "{units}"')
 
-        self._preName = ch_struct.channel.name
-        self._preFs = ch_struct.fs
-        data = conversionFactor * ch_struct.to_pandas(time_mode="timedelta")
-
-        return data
+        return conversionFactor * ch_struct.to_pandas(time_mode="timedelta")
 
     @cached_property
     def _temperatureData(self):
@@ -368,13 +360,9 @@ class DatasetChannelCache:
         except KeyError:
             raise ValueError(f'unknown temperature channel units "{units}"')
 
-        self._tmpName = ch_struct.channel.name
-        self._tmpFs = ch_struct.fs
-        data = conversionOffset + conversionFactor * ch_struct.to_pandas(
+        return conversionOffset + conversionFactor * ch_struct.to_pandas(
             time_mode="timedelta"
         )
-
-        return data
 
     @cached_property
     def _gyroscopeData(self):
@@ -387,18 +375,15 @@ class DatasetChannelCache:
                 columns=pd.Series(["X", "Y", "Z"], name="axis"),
             )
 
-        self._gyroName = ch_struct.channel.name
-        self._gyroFs = ch_struct.fs
-
+        data = ch_struct.to_pandas(time_mode="timedelta")
         units = ch_struct.units[1]
         if units.lower() == "q":
-            quat_df = ch_struct.to_pandas(time_mode="timedelta")
-            quat_raw = quat_df[["W", "X", "Y", "Z"]].to_numpy()
+            quat_raw = data[["W", "X", "Y", "Z"]].to_numpy()
 
             data = pd.DataFrame(
                 (180 / np.pi)
-                * quat.quat_to_angvel(quat_raw, 1 / self._gyroFs, qaxis=1),
-                index=quat_df.index,
+                * quat.quat_to_angvel(quat_raw, 1 / ch_struct.fs, qaxis=1),
+                index=data.index,
                 columns=pd.Series(["X", "Y", "Z"], name="axis"),
             )
 
@@ -421,11 +406,9 @@ class DatasetChannelCache:
                 return data
 
             data = strip_invalid_prefix(
-                data, prefix_len=max(4, int(np.ceil(0.25 * self._gyroFs)))
+                data, prefix_len=max(4, int(np.ceil(0.25 * ch_struct.fs)))
             )
-        elif units.lower() in ("dps", "deg/s"):
-            data = ch_struct.to_pandas(time_mode="timedelta")
-        else:
+        elif units.lower() not in ("dps", "deg/s"):
             raise ValueError(f'unknown gyroscope channel units "{units}"')
 
         return data
@@ -444,13 +427,8 @@ class DatasetChannelCache:
         if units.lower() != "degrees":
             raise ValueError(f'unknown GPS position channel units "{units}"')
 
-        data = ch_struct.to_pandas(time_mode="timedelta")
-
-        self._gpsName = ch_struct.channel.name
-        self._gpsFs = ch_struct.fs
         # resampling destroys last values -> no resampling
-
-        return data
+        return ch_struct.to_pandas(time_mode="timedelta")
 
     @cached_property
     def _gpsSpeedData(self):
@@ -466,12 +444,7 @@ class DatasetChannelCache:
         if units != "m/s":
             raise ValueError(f'unknown GPS ground speed channel units "{units}"')
 
-        data = MPS_TO_KMPH * ch_struct.to_pandas(time_mode="timedelta")
-
-        self._gpsSpeedName = ch_struct.channel.name
-        self._gpsSpeedFs = ch_struct.fs
-
-        return data
+        return MPS_TO_KMPH * ch_struct.to_pandas(time_mode="timedelta")
 
     # ==========================================================================
     # Analyses
