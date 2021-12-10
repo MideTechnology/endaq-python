@@ -388,7 +388,7 @@ class GetDataBuilder:
 
         data = {}
         with endaq.ide.get_doc(filename) as ds:
-            ch_data_cache = endaq.batch.analyzer.DatasetChannelCache(
+            ch_data_cache = endaq.batch.analyzer.DatasetChannelCache.from_ide(
                 ds,
                 endaq.batch.analyzer.CalcParams(
                     **self._ch_data_cache_kwargs,

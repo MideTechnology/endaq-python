@@ -64,7 +64,7 @@ class DatasetChannelCache:
 
     PV_NATURAL_FREQS = np.logspace(0, 12, base=2, num=12 * 12 + 1, endpoint=True)
 
-    def __init__(self, dataset, params: CalcParams):
+    def __init__(self, data, params: CalcParams):
         """
         Copies out the numpy arrays for the highest priority channel for each
         sensor type, and any relevant metadata.  Cuts them into chunks.
@@ -81,16 +81,8 @@ class DatasetChannelCache:
                 "only one of `accel_end_time` and `accel_end_margin` may be set at once"
             )
 
-        self._channels = ide_utils.dict_chs_best(
-            (
-                (utype, ch_struct)
-                for (utype, ch_struct) in ide_utils.chs_by_utype(dataset)
-                if len(ch_struct.eventarray) > 0
-            ),
-            max_key=lambda x: (x.channel.id in params.preferred_chs, len(x.eventarray)),
-        )
+        self._channels = data
 
-        self._filename = dataset.filename
         self._accel_highpass_cutoff = params.accel_highpass_cutoff
         self._accel_start_time = params.accel_start_time
         self._accel_end_time = params.accel_end_time
@@ -105,6 +97,22 @@ class DatasetChannelCache:
         self._vc_init_freq = params.vc_init_freq
         self._vc_bins_per_octave = params.vc_bins_per_octave
 
+    @classmethod
+    def from_ide(cls, dataset, params: CalcParams):
+        """
+        Instantiate a new `DatasetChannelCache` object from an IDE file.
+        """
+        data = ide_utils.dict_chs_best(
+            (
+                (utype, ch_struct)
+                for (utype, ch_struct) in ide_utils.chs_by_utype(dataset)
+                if len(ch_struct.eventarray) > 0
+            ),
+            max_key=lambda x: (x.channel.id in params.preferred_chs, len(x.eventarray)),
+        )
+
+        return cls(data, params=params)
+
     # ==========================================================================
     # Data Processing, just to make init cleaner
     # ==========================================================================
@@ -114,7 +122,7 @@ class DatasetChannelCache:
         """Populate the _acceleration* fields, including splitting and extending data."""
         ch_struct = self._channels.get("acc", None)
         if ch_struct is None:
-            warnings.warn(f"no acceleration channel in {self._filename}")
+            warnings.warn(f"no acceleration channel in data")
             return pd.DataFrame(
                 np.empty((0, 3), dtype=float),
                 index=pd.Series([], dtype="timedelta64[ns]", name="time"),

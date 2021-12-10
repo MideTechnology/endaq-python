@@ -176,7 +176,7 @@ class TestAnalyzer:
     # Live File Tests
 
     def testLiveFile(self, ide_SSX70065):
-        analyzer = endaq.batch.analyzer.DatasetChannelCache(
+        analyzer = endaq.batch.analyzer.DatasetChannelCache.from_ide(
             ide_SSX70065,
             endaq.batch.analyzer.CalcParams(
                 preferred_chs=[],
@@ -227,7 +227,7 @@ class TestAnalyzer:
     )
     def testLiveFiles12(self, filename):
         ds = idelib.importFile(filename)
-        analyzer = endaq.batch.analyzer.DatasetChannelCache(
+        analyzer = endaq.batch.analyzer.DatasetChannelCache.from_ide(
             ds,
             endaq.batch.analyzer.CalcParams(
                 preferred_chs=[],
@@ -282,7 +282,7 @@ class TestAnalyzer:
     )
     def testLiveFile3(self, filename):
         ds = idelib.importFile(filename)
-        analyzer = endaq.batch.analyzer.DatasetChannelCache(
+        analyzer = endaq.batch.analyzer.DatasetChannelCache.from_ide(
             ds,
             endaq.batch.analyzer.CalcParams(
                 preferred_chs=[],
@@ -318,7 +318,7 @@ class TestAnalyzer:
     )
     def testLiveFileGPS(self, filename, sample_index):
         ds = idelib.importFile(filename)
-        analyzer = endaq.batch.analyzer.DatasetChannelCache(
+        analyzer = endaq.batch.analyzer.DatasetChannelCache.from_ide(
             ds,
             endaq.batch.analyzer.CalcParams(
                 preferred_chs=[],
