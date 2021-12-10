@@ -12,18 +12,23 @@ import scipy.signal
 
 
 def sample_spacing(
-    df: pd.DataFrame, convert: typing.Literal[None, "to_seconds"] = "to_seconds"
+    data: Union[np.ndarray, pd.DataFrame],
+    convert: typing.Literal[None, "to_seconds"] = "to_seconds",
 ) -> Union[float, np.timedelta64]:
     """
     Calculate the average spacing between individual samples.
 
     For time indices, this calculates the sampling period `dt`.
 
-    :param df: the input data
+    :param data: the input data; either a pandas DataFrame with the samples
+        spaced along its index, or a 1D-array-like of sample times
     :param convert: if `"to_seconds"` (default), convert any time objects into
         floating-point seconds
     """
-    dt = (df.index[-1] - df.index[0]) / (len(df.index) - 1)
+    if isinstance(data, (pd.DataFrame, pd.Series)):
+        data = data.index
+
+    dt = (data[-1] - data[0]) / (len(data) - 1)
     if convert == "to_seconds" and isinstance(dt, (np.timedelta64, pd.Timedelta)):
         dt = dt / np.timedelta64(1, "s")
 
