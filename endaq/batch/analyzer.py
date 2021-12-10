@@ -139,20 +139,15 @@ class DatasetChannelCache:
             raise ValueError(f'unknown acceleration channel units "{aUnits}"')
 
         aData = conversionFactor * ch_struct.to_pandas(time_mode="timedelta")
+        dt = endaq.calc.sample_spacing(aData, convert=None)
 
         if self._accel_start_margin is not None:
-            margin = int(
-                np.ceil(
-                    ch_struct.fs * self._accel_start_margin / np.timedelta64(1, "s")
-                )
-            )
+            margin = int(np.ceil(self._accel_start_margin / dt))
             aData = aData.iloc[margin:]
         elif self._accel_start_time is not None:
             aData = aData.loc[self._accel_start_time :]
         if self._accel_end_margin is not None:
-            margin = int(
-                np.ceil(ch_struct.fs * self._accel_end_margin / np.timedelta64(1, "s"))
-            )
+            margin = int(np.ceil(self._accel_end_margin / dt))
             aData = aData.iloc[: (-margin or None)]
         elif self._accel_end_time is not None:
             aData = aData.loc[: self._accel_end_time]
@@ -376,13 +371,13 @@ class DatasetChannelCache:
             )
 
         data = ch_struct.to_pandas(time_mode="timedelta")
+        dt = endaq.calc.sample_spacing(data, convert="to_seconds")
         units = ch_struct.units[1]
         if units.lower() == "q":
             quat_raw = data[["W", "X", "Y", "Z"]].to_numpy()
 
             data = pd.DataFrame(
-                (180 / np.pi)
-                * quat.quat_to_angvel(quat_raw, 1 / ch_struct.fs, qaxis=1),
+                (180 / np.pi) * quat.quat_to_angvel(quat_raw, dt, qaxis=1),
                 index=data.index,
                 columns=pd.Series(["X", "Y", "Z"], name="axis"),
             )
@@ -406,7 +401,7 @@ class DatasetChannelCache:
                 return data
 
             data = strip_invalid_prefix(
-                data, prefix_len=max(4, int(np.ceil(0.25 * ch_struct.fs)))
+                data, prefix_len=max(4, int(np.ceil(0.25 / dt)))
             )
         elif units.lower() not in ("dps", "deg/s"):
             raise ValueError(f'unknown gyroscope channel units "{units}"')
