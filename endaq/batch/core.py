@@ -270,7 +270,7 @@ class GetDataBuilder:
         )
         self._preferred_chs = preferred_chs
 
-        # Even unused parameters MUST be set; used to instantiate `DatasetChannelCache` in `_get_data`
+        # Even unused parameters MUST be set; used to instantiate `CalcCache` in `_get_data`
         self._psd_freq_bin_width = None
         self._psd_freq_start_octave = None
         self._psd_bins_per_octave = None
@@ -388,7 +388,7 @@ class GetDataBuilder:
 
         data = {}
         with endaq.ide.get_doc(filename) as ds:
-            ch_data_cache = endaq.batch.analyzer.DatasetChannelCache.from_ide(
+            ch_data_cache = endaq.batch.analyzer.CalcCache.from_ide(
                 ds,
                 endaq.batch.analyzer.CalcParams(
                     **self._ch_data_cache_kwargs,

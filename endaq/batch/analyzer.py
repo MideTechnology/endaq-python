@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import typing
-from typing import List, Optional
+from typing import List, Tuple, Optional
 import sys
 import warnings
 
@@ -32,7 +32,7 @@ M_TO_MM = 1000
 class CalcParams:
     """
     The parameters for configuring the calculation routines in
-    `DatasetChannelCache`.
+    `CalcCache`.
 
     Each of these parameters is *intentionally* left w/o a default value.
     Instead, defaults are provided at the function signatures for the
@@ -55,7 +55,7 @@ class CalcParams:
     vc_bins_per_octave: float
 
 
-class DatasetChannelCache:
+class CalcCache:
     """
     A wrapper for `idelib.dataset.Dataset` that caches channel data streams as
     `pandas.Dataset`s.
@@ -99,7 +99,7 @@ class DatasetChannelCache:
     @classmethod
     def from_ide(cls, dataset, params: CalcParams, preferred_chs: List[int] = []):
         """
-        Instantiate a new `DatasetChannelCache` object from an IDE file.
+        Instantiate a new `CalcCache` object from an IDE file.
         """
         data = ide_utils.dict_chs_best(
             (
@@ -110,6 +110,29 @@ class DatasetChannelCache:
             max_key=lambda x: (x.channel.id in preferred_chs, len(x.eventarray)),
         )
 
+        return cls(data, params=params)
+
+    @classmethod
+    def from_raw_data(
+        cls, data: List[Tuple[pd.DataFrame, Tuple[str, str]]], params: CalcParams
+    ):
+        """
+        Instantiate a new `CalcCache` object from raw DataFrame / metadata pairs.
+        """
+
+        @dataclass
+        class DataWrapper:
+            data: pd.DataFrame
+            units: Tuple[str, str]
+
+            def to_pandas(self):
+                self.data.columns.name = "axis"
+                return self.data
+
+        data = {
+            ide_utils.UTYPE_GROUPS[units[0]]: DataWrapper(data, units)
+            for (data, units) in data
+        }
         return cls(data, params=params)
 
     # ==========================================================================

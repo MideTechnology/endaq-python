@@ -53,7 +53,7 @@ def test_make_peak_windows(filename):
         utc_start_time = ds.lastUtcTime
         axis_names = accel_ch.axis_names
 
-        analyzer = endaq.batch.analyzer.DatasetChannelCache.from_ide(
+        analyzer = endaq.batch.analyzer.CalcCache.from_ide(
             ds,
             endaq.batch.analyzer.CalcParams(
                 accel_highpass_cutoff=None,
