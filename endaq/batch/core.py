@@ -3,8 +3,9 @@ from __future__ import annotations
 from typing import List
 
 from functools import partial
-import warnings
+import pathlib
 import os
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -385,31 +386,25 @@ class GetDataBuilder:
 
         return self
 
-    def _get_data(self, filename):
+    def _get_data(self, input_data):
         """
         Calculate data from a single recording into a pandas object.
 
         Used internally by `aggregate_data`.
         """
-        print(f"processing {filename}...")
+        calc_params = endaq.batch.analyzer.CalcParams(
+            **self._ch_data_cache_kwargs,
+            psd_window=self._psd_window,
+            psd_freq_bin_width=self._psd_freq_bin_width,
+            pvss_init_freq=self._pvss_init_freq,
+            pvss_bins_per_octave=self._pvss_bins_per_octave,
+            vc_init_freq=self._vc_init_freq,
+            vc_bins_per_octave=self._vc_bins_per_octave,
+        )
 
-        data = {}
-        with endaq.ide.get_doc(filename) as ds:
-            ch_data_cache = endaq.batch.analyzer.CalcCache.from_ide(
-                ds,
-                endaq.batch.analyzer.CalcParams(
-                    **self._ch_data_cache_kwargs,
-                    psd_window=self._psd_window,
-                    psd_freq_bin_width=self._psd_freq_bin_width,
-                    pvss_init_freq=self._pvss_init_freq,
-                    pvss_bins_per_octave=self._pvss_bins_per_octave,
-                    vc_init_freq=self._vc_init_freq,
-                    vc_bins_per_octave=self._vc_bins_per_octave,
-                ),
-                preferred_chs=self._preferred_chs,
-            )
-
-            data["meta"] = _make_meta(ds)
+        def inner_func(data_cache, output=None):
+            if output is None:
+                output = {}
 
             funcs = dict(
                 psd=partial(
@@ -426,9 +421,24 @@ class GetDataBuilder:
                 vc_curves=_make_vc_curves,
             )
             for output_type in self._metrics_queue.keys():
-                data[output_type] = funcs[output_type](ch_data_cache)
+                output[output_type] = funcs[output_type](data_cache)
 
-        return data
+            return output
+
+        if isinstance(input_data, (str, pathlib.Path)):
+            with endaq.ide.get_doc(input_data) as ds:
+                output = dict(meta=_make_meta(ds))
+                inner_func(
+                    endaq.batch.analyzer.CalcCache.from_ide(
+                        ds, calc_params, preferred_chs=self._preferred_chs
+                    ),
+                    output=output,
+                )
+                return output
+        else:
+            return inner_func(
+                endaq.batch.analyzer.CalcCache.from_raw_data(input_data, calc_params)
+            )
 
     def aggregate_data(self, filenames) -> OutputStruct:
         """

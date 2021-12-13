@@ -105,7 +105,7 @@ def data_builder():
 
 
 @pytest.mark.parametrize(
-    "filename",
+    "input",
     [
         os.path.join("tests", "batch", "SSX70065.IDE"),
         os.path.join("tests", "batch", "test1.IDE"),
@@ -119,7 +119,7 @@ def data_builder():
 )
 @pytest.mark.filterwarnings("ignore:empty frequency bins:RuntimeWarning")
 @pytest.mark.filterwarnings("ignore:no acceleration channel in:UserWarning")
-def test_get_data(filename):
+def test_get_data(input):
     """Test `_get_data` over several varieties of recording files."""
     (
         endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1)
@@ -128,7 +128,7 @@ def test_get_data(filename):
         .add_metrics()
         .add_peaks(margin_len=1000)
         .add_vc_curves(init_freq=1, bins_per_octave=3)
-        ._get_data(filename)
+        ._get_data(input)
     )
 
 
