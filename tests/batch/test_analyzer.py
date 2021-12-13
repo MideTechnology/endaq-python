@@ -179,7 +179,6 @@ class TestAnalyzer:
         analyzer = endaq.batch.analyzer.DatasetChannelCache.from_ide(
             ide_SSX70065,
             endaq.batch.analyzer.CalcParams(
-                preferred_chs=[],
                 accel_start_time=None,
                 accel_end_time=None,
                 accel_start_margin=None,
@@ -230,7 +229,6 @@ class TestAnalyzer:
         analyzer = endaq.batch.analyzer.DatasetChannelCache.from_ide(
             ds,
             endaq.batch.analyzer.CalcParams(
-                preferred_chs=[],
                 accel_start_time=None,
                 accel_end_time=None,
                 accel_start_margin=None,
@@ -285,7 +283,6 @@ class TestAnalyzer:
         analyzer = endaq.batch.analyzer.DatasetChannelCache.from_ide(
             ds,
             endaq.batch.analyzer.CalcParams(
-                preferred_chs=[],
                 accel_start_time=None,
                 accel_end_time=None,
                 accel_start_margin=None,
@@ -321,7 +318,6 @@ class TestAnalyzer:
         analyzer = endaq.batch.analyzer.DatasetChannelCache.from_ide(
             ds,
             endaq.batch.analyzer.CalcParams(
-                preferred_chs=[],
                 accel_start_time=None,
                 accel_end_time=None,
                 accel_start_margin=None,

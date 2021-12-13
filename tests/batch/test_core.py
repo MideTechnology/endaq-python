@@ -56,7 +56,6 @@ def test_make_peak_windows(filename):
         analyzer = endaq.batch.analyzer.DatasetChannelCache.from_ide(
             ds,
             endaq.batch.analyzer.CalcParams(
-                preferred_chs=[],
                 accel_highpass_cutoff=None,
                 accel_start_time=None,
                 accel_end_time=None,

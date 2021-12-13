@@ -40,7 +40,6 @@ class CalcParams:
     to them from the `CalcParam` object.
     """
 
-    preferred_chs: List[int]
     accel_highpass_cutoff: Optional[float]
     accel_integral_tukey_percent: float
     accel_integral_zero: typing.Literal["start", "mean", "median"]
@@ -98,7 +97,7 @@ class DatasetChannelCache:
         self._vc_bins_per_octave = params.vc_bins_per_octave
 
     @classmethod
-    def from_ide(cls, dataset, params: CalcParams):
+    def from_ide(cls, dataset, params: CalcParams, preferred_chs: List[int] = []):
         """
         Instantiate a new `DatasetChannelCache` object from an IDE file.
         """
@@ -108,7 +107,7 @@ class DatasetChannelCache:
                 for (utype, ch_struct) in ide_utils.chs_by_utype(dataset)
                 if len(ch_struct.eventarray) > 0
             ),
-            max_key=lambda x: (x.channel.id in params.preferred_chs, len(x.eventarray)),
+            max_key=lambda x: (x.channel.id in preferred_chs, len(x.eventarray)),
         )
 
         return cls(data, params=params)
