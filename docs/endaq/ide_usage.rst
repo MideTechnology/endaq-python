@@ -1,5 +1,6 @@
+############################
 ``endaq.ide`` Usage Examples
-==============
+############################
 
 Note: For brevity, the following examples assume everything has been imported
 from :module:`endaq.ide`:
