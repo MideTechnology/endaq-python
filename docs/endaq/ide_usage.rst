@@ -3,7 +3,7 @@
 ############################
 
 Note: For brevity, the following examples assume everything has been imported
-from :module:`endaq.ide`:
+from ``endaq.ide``:
 
 .. code:: ipython3
 
@@ -12,7 +12,7 @@ from :module:`endaq.ide`:
 Opening IDE files: ``endaq.ide.get_doc()``
 ------------------------------------------
 
-:module:`endaq.ide` includes a convenient shortcut for importing IDE data:
+``endaq.ide`` includes a convenient shortcut for importing IDE data:
 :function:`~endaq.ide.get_doc()`. It can load data from local files, or read data directly
 from a URL.
 
@@ -655,7 +655,7 @@ Additional sample IDE recording files
 -------------------------------------
 
 Here are a number of example IDE files, which may be used with
-:module:`endaq.ide`:
+``endaq.ide``:
 
 .. code:: ipython3
 
