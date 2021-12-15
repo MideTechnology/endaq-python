@@ -158,7 +158,7 @@ def get_tsne_plot(df: pd.DataFrame,
     fig = px.scatter(
         x=Y[:, 0],
         y=Y[:, 1],
-        color=color_col,
+        color=df[color_col],
         color_discrete_map=color_discrete_map,
         hover_name=df.index,
     )
