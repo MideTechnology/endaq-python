@@ -318,7 +318,7 @@ def vc_curves(
         df_vel,
         fstart=fstart,  # Hz
         octave_bins=octave_bins,
-        agg=np.sum,
+        agg="sum",
     )
 
     # The PSD must already scale by ∆f -> need only scale by √∆f?
