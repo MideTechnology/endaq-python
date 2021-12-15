@@ -131,7 +131,7 @@ def resample(df: pd.DataFrame, sample_rate: Optional[float] = None) -> pd.DataFr
     resampled_data, resampled_time = scipy.signal.resample(
         df,
         num_samples_after_resampling,
-        t=df.index,
+        t=df.index.values.astype('datetime64[s]'),
     )
     resampled_df = pd.DataFrame(
         resampled_data,
