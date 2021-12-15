@@ -38,7 +38,6 @@ def iter_integrals(
     df: pd.DataFrame,
     zero: Union[typing.Literal["start", "mean", "median"], Callable] = "start",
     highpass_cutoff: Optional[float] = None,
-    filter_half_order: int = 3,
     tukey_percent: float = 0.0,
 ) -> Iterable[pd.DataFrame]:
     """
@@ -51,8 +50,6 @@ def iter_integrals(
         ``-np.median(output)``
     :param highpass_cutoff: the cutoff frequency of a preconditioning highpass
         filter; if None, no filter is applied
-    :param filter_half_order: the half-order of the preconditioning highpass
-        filter, if used
     :param tukey_percent: the alpha parameter of a preconditioning tukey filter;
         if 0 (default), no filter is applied
     :return: an iterable over the data's successive integrals; the first item
@@ -74,7 +71,7 @@ def iter_integrals(
         yield df.copy()  # otherwise, edits to the yielded item would alter the results
         df = filters.butterworth(
             df,
-            half_order=filter_half_order,
+            half_order=1,  # ensures zero DC content in nth integral
             low_cutoff=highpass_cutoff,
             high_cutoff=None,
             tukey_percent=tukey_percent,
@@ -124,7 +121,6 @@ def integrals(
                 df,
                 zero=zero,
                 highpass_cutoff=highpass_cutoff,
-                filter_half_order=n // 2 + 1,  # ensures zero DC content in nth integral
                 tukey_percent=tukey_percent,
             ),
         )
