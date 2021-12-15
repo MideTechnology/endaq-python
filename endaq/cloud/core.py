@@ -3,7 +3,7 @@ Core enDAQ Cloud communication API
 """
 from __future__ import annotations
 
-from typing import Optional, Union
+from typing import Optional, Union, Callable
 
 from idelib.dataset import Dataset
 import numpy as np
@@ -13,6 +13,7 @@ import json
 import re
 import urllib.request
 import shutil
+import os
 
 
 __all__ = [
@@ -125,11 +126,14 @@ class EndaqCloud:
         return Dataset(f)
 
     def download_all_ide_files(
-            self, output_directory: str = "", force_recompute_file_table: bool = False, file_limit: int = 100):
+            self, output_directory: str = "", should_download_file_fn: Callable = lambda x: True, force_recompute_file_table: bool = False, file_limit: int = 100):
         """
         Downloads all IDE files from the enDAQ Cloud (up to a specified file limit).
 
         :param output_directory: The directory to download the ide files to
+        :param should_download_file_fn: A function which accepts a row of the IDE file table and returns
+         a boolean value which indicates if the IDE file should be downloaded or not.  If this function is
+         not given, the default function will always return True.
         :param force_recompute_file_table: If the file table to use as reference for what files exist in the cloud
          should be recomputed even if it is already stored (as `self.file_table`)
         :param file_limit: The maximum number of files to download.  If the `force_recompute_file_table` parameter
@@ -155,11 +159,22 @@ class EndaqCloud:
         if self.file_table is None or force_recompute_file_table:
             self.get_file_table(attributes=[], limit=file_limit)
 
+        failures = []
+
         # The range in this iterator is just a way to force stop the loop
-        for file_id, _ in zip(self.file_table['id'].values, range(file_limit)):
-            self.get_file(file_id, output_directory)
+        for (file_name, file_data), _ in zip(list(self.file_table.iterrows()), range(file_limit)):
+            if should_download_file_fn(file_data):
+                try:
+                    self.get_file(file_data['id'], os.path.join(output_directory, file_name))
+                except:
+                    failures.append(file_name)
 
         downloaded_filename_ary = self.file_table.index.values
+
+        if len(failures):
+            print(f"{len(failures)} FILES FAILED TO BE DOWNLOADED!  Those files are:")
+            print(failures)
+
         return downloaded_filename_ary
 
     def _get_files_json_response(self, limit: int = 100, attributes: Union[list, str] = "all") -> list:
