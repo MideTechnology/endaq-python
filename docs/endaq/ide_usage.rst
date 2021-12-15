@@ -5,7 +5,7 @@
 Note: For brevity, the following examples assume everything has been imported
 from :py:mod:`endaq.ide`:
 
-.. code:: ipython3
+.. code:: python3
 
     from endaq.ide import *
 
@@ -16,7 +16,7 @@ Opening IDE files: :py:func:`endaq.ide.get_doc()`
 :py:func:`~endaq.ide.get_doc()`. It can load data from local files, or read data directly
 from a URL.
 
-.. code:: ipython3
+.. code:: python3
 
     doc = get_doc("tests/test.ide")
     doc1 = get_doc("https://info.endaq.com/hubfs/data/surgical-instrument.ide")
@@ -25,7 +25,7 @@ IDE files can be retrieved directly from Google Drive using a Drive
 'sharable link' URL. The file must be set to allow access to "Anyone
 with the link."
 
-.. code:: ipython3
+.. code:: python3
 
     doc2 = get_doc("https://drive.google.com/file/d/1t3JqbZGhuZbIK9agH24YZIdVE26-NOF5/view?usp=sharing")
 
@@ -33,7 +33,7 @@ Whether opening a local file or a URL, :py:func:`~endaq.ide.get_doc()` can be us
 import only a specific interval by way of its ``start`` and ``end``
 parameters:
 
-.. code:: ipython3
+.. code:: python3
 
     doc3 = get_doc("tests/test.ide", start="5s", end="10s")
 
@@ -43,7 +43,7 @@ Summarizing IDE files: :py:func:`endaq.ide.get_channel_table()`
 Once an IDE file has been loaded, :py:func:`~endaq.ide.get_channel_table()` will
 retrieve basic summary information about its contents.
 
-.. code:: ipython3
+.. code:: python3
 
     get_channel_table(doc)
 
@@ -270,7 +270,7 @@ retrieve basic summary information about its contents.
 
 The results can be filtered by :doc:`measurement type <ide_measurement>`:
 
-.. code:: ipython3
+.. code:: python3
 
     get_channel_table(doc, ACCELERATION)
 
@@ -377,7 +377,7 @@ The results can be filtered by :doc:`measurement type <ide_measurement>`:
 
 Measurement types can be combined to retrieve more than one:
 
-.. code:: ipython3
+.. code:: python3
 
     get_channel_table(doc, ACCELERATION+TEMPERATURE)
 
@@ -511,7 +511,7 @@ Information about a specific interval can be retrieved by using the
 rates, the start and end times for slower channels may not precisely
 match the specified ``start`` or ``end``.
 
-.. code:: ipython3
+.. code:: python3
 
     get_channel_table(doc, ACCELERATION+TEMPERATURE, start="0:05", end="0:10")
 
@@ -646,7 +646,7 @@ Extracting intervals: :py:func:`endaq.ide.extract_time()`
 A portion of an IDE file can be saved to another, new IDE. The source
 can be a local filename or an opened IDE (from a file or URL).
 
-.. code:: ipython3
+.. code:: python3
 
     extract_time("tests/test.ide", "doc_extracted.ide", start="0:05", end="0:10")
     extract_time(doc1, "doc1_extracted.ide", start="0:05", end="0:10")
@@ -657,7 +657,7 @@ Additional sample IDE recording files
 Here are a number of example IDE files, which may be used with
 :py:mod:`endaq.ide`:
 
-.. code:: ipython3
+.. code:: python3
 
     file_urls = ['https://info.endaq.com/hubfs/data/surgical-instrument.ide',
                  'https://info.endaq.com/hubfs/data/97c3990f-Drive-Home_70-1616632444.ide',
