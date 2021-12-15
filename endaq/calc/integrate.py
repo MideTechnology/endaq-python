@@ -71,7 +71,6 @@ def iter_integrals(
         yield df.copy()  # otherwise, edits to the yielded item would alter the results
         df = filters.butterworth(
             df,
-            half_order=1,  # ensures zero DC content in nth integral
             low_cutoff=highpass_cutoff,
             high_cutoff=None,
             tukey_percent=tukey_percent,
