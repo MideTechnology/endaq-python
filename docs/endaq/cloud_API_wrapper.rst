@@ -1,6 +1,6 @@
-#########################
-`endaq.cloud` API Wrapper
-#########################
+#######################
+enDAQ Cloud API Wrapper
+#######################
 
 The API Wrapper provides a simple command-line interface for accessing basic file and device information from the enDAQ Cloud API. Output of all commands except ``account`` and `attributes` are in ``csv`` files in the ``output`` folder.
 

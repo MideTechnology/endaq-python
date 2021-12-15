@@ -23,6 +23,11 @@ This package consists of several submodules, you can read more about how these a
 
 The docs for this package can be found [here](https://docs.endaq.com/en/latest/).
 
+To locally build the [Sphinx](https://www.sphinx-doc.org) documentation from a clone of the repo:
+1. `cd <repo root dir>`
+2. `pip install -e .[docs]`
+3. `sphinx-build -W -b html docs docs/_build`
+
 ## License 
 
 The endaq-python repository is licensed under the MIT license. The full text can be found in the [LICENSE file](https://github.com/MideTechnology/endaq-python/blob/main/LICENSE).

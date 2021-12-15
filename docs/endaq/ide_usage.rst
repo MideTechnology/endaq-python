@@ -10,7 +10,7 @@ from :py:mod:`endaq.ide`:
     from endaq.ide import *
 
 Opening IDE files: :py:func:`endaq.ide.get_doc()`
-------------------------------------------
+-------------------------------------------------
 
 :py:mod:`endaq.ide` includes a convenient shortcut for importing IDE data:
 :py:func:`~endaq.ide.get_doc()`. It can load data from local files, or read data directly
@@ -38,7 +38,7 @@ parameters:
     doc3 = get_doc("tests/test.ide", start="5s", end="10s")
 
 Summarizing IDE files: :py:func:`endaq.ide.get_channel_table()`
---------------------------------------------------------
+---------------------------------------------------------------
 
 Once an IDE file has been loaded, :py:func:`~endaq.ide.get_channel_table()` will
 retrieve basic summary information about its contents.
@@ -268,7 +268,7 @@ retrieve basic summary information about its contents.
 
 
 
-The results can be filtered by :doc:`measurement type ide_measurement`:
+The results can be filtered by :doc:`measurement type <ide_measurement>`:
 
 .. code:: ipython3
 
@@ -641,7 +641,7 @@ match the specified ``start`` or ``end``.
 
 
 Extracting intervals: :py:func:`endaq.ide.extract_time()`
---------------------------------------------------
+---------------------------------------------------------
 
 A portion of an IDE file can be saved to another, new IDE. The source
 can be a local filename or an opened IDE (from a file or URL).

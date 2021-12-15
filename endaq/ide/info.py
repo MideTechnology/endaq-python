@@ -301,12 +301,14 @@ def to_pandas(
 
         :param channel: a `Channel` object, as produced from `Dataset.channels`
             or `endaq.ide.get_channels`
-        :kwarg time_mode: how to temporally index samples; each mode uses either
+        :param time_mode: how to temporally index samples; each mode uses either
             relative times (with respect to the start of the recording) or
             absolute times (i.e., date-times):
-            - "seconds" - a `pandas.Float64Index` of relative timestamps, in seconds
-            - "timedelta" - a `pandas.TimeDeltaIndex` of relative timestamps
-            - "datetime" - a `pandas.DateTimeIndex` of absolute timestamps
+
+            * "seconds" - a `pandas.Float64Index` of relative timestamps, in seconds
+            * "timedelta" - a `pandas.TimeDeltaIndex` of relative timestamps
+            * "datetime" - a `pandas.DateTimeIndex` of absolute timestamps
+
         :return: a `pandas.DataFrame` containing the channel's data
     """
     data = channel.getSession().arraySlice()
