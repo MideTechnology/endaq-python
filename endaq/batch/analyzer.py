@@ -223,6 +223,7 @@ class CalcCache:
         return integrate._integrate(
             filters.butterworth(
                 aData,
+                half_order=2,
                 low_cutoff=self._params.accel_highpass_cutoff,
                 tukey_percent=self._params.accel_integral_tukey_percent,
             ),
@@ -251,6 +252,7 @@ class CalcCache:
         return integrate._integrate(
             filters.butterworth(
                 vData,
+                half_order=2,
                 low_cutoff=self._accel_highpass_cutoff,
                 tukey_percent=self._accel_integral_tukey_percent,
             ),
