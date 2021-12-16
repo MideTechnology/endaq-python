@@ -268,11 +268,6 @@ def loglog_linear_approx(
 
         return y
 
-    for col in df.columns:
-        approx = scipy.optimize.curve_fit(
-            piecewise_exp, df.index.to_numpy(), df[col].to_numpy()
-        )
-
     if isinstance(freqs_out, str):
         if freqs_out == "knots":
             result_index = knots
@@ -283,7 +278,21 @@ def loglog_linear_approx(
     else:
         result_index = freqs_out
 
-    return pd.DataFrame(result_data, index=result_index, columns=df.columns)
+    result_data = [
+        piecewise_exp(
+            result_index,
+            scipy.optimize.curve_fit(
+                piecewise_exp, df.index.to_numpy(), df[col].to_numpy()
+            ),
+        )[..., np.newaxis]
+        for col in df.columns
+    ]
+
+    return pd.DataFrame(
+        np.stack(result_data, axis=1),
+        index=pd.Index(result_index, name="frequency (Hz)"),
+        columns=df.columns,
+    )
 
 
 def vc_curves(
