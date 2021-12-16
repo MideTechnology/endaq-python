@@ -99,6 +99,32 @@ class CalcCache:
 
         return cls(data, params=params)
 
+    @dataclass
+    class InputDataWrapper:
+        data: pd.DataFrame
+        units: Tuple[str, str]
+
+        def to_pandas(self, time_mode="datetime"):
+            expected_index_types = dict(
+                timedelta=(pd.TimedeltaIndex, "TimedeltaIndex"),
+                datetime=(pd.DatetimeIndex, "DatetimeIndex"),
+                seconds=(
+                    (pd.Float64Index, pd.Int64Index, pd.UInt64Index, pd.RangeIndex),
+                    "{Float64/Int64/UInt64/Range}Index",
+                ),
+            )
+            if not isinstance(self.data.index, expected_index_types[time_mode][0]):
+                raise ValueError(
+                    f"expected '{time_mode}' data index to be of type"
+                    f"`{expected_index_types[time_mode][1]}`, "
+                    f"instead found {type(self.data.index)}"
+                )
+
+            self.data.index.name = "timestamp"
+            self.data.columns.name = "axis"
+
+            return self.data
+
     @classmethod
     def from_raw_data(
         cls, data: List[Tuple[pd.DataFrame, Tuple[str, str]]], params: CalcParams
@@ -106,35 +132,8 @@ class CalcCache:
         """
         Instantiate a new `CalcCache` object from raw DataFrame / metadata pairs.
         """
-
-        @dataclass
-        class DataWrapper:
-            data: pd.DataFrame
-            units: Tuple[str, str]
-
-            def to_pandas(self, time_mode="datetime"):
-                expected_index_types = dict(
-                    timedelta=(pd.TimedeltaIndex, "TimedeltaIndex"),
-                    datetime=(pd.DatetimeIndex, "DatetimeIndex"),
-                    seconds=(
-                        (pd.Float64Index, pd.Int64Index, pd.UInt64Index, pd.RangeIndex),
-                        "{Float64/Int64/UInt64/Range}Index",
-                    ),
-                )
-                if not isinstance(self.data.index, expected_index_types[time_mode][0]):
-                    raise ValueError(
-                        f"expected '{time_mode}' data index to be of type"
-                        f"`{expected_index_types[time_mode][1]}`, "
-                        f"instead found {type(self.data.index)}"
-                    )
-
-                self.data.index.name = "timestamp"
-                self.data.columns.name = "axis"
-
-                return self.data
-
         data = {
-            ide_utils.UTYPE_GROUPS[units[0]]: DataWrapper(data, units)
+            ide_utils.UTYPE_GROUPS[units[0]]: cls.InputDataWrapper(data, units)
             for (data, units) in data
         }
         return cls(data, params=params)
