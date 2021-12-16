@@ -256,28 +256,34 @@ def loglog_linear_approx(
     if window != 1:
         df = df.rolling(window).mean().dropna()
 
-    index_log = np.log2(df.index.to_numpy())
-    data_log = np.log2(df.to_numpy())
-    knots_log = np.log2(knots)
+    def piecewise_exp(x, *y_knots):
+        y_knots = np.asarray(y_knots)
 
-    tcks = [
-        scipy.interpolate.splrep(index_log, dlog, k=1, t=knots_log)
-        for dlog in data_log.T
-    ]
+        exps = np.diff(np.log2(y_knots)) / np.diff(np.log2(knots))
+        factors = y_knots[:-1] / (knots[:-1] ** exps)
+
+        i_seg = np.searchsorted(knots, x) - 1
+        assert np.all(0 < i_seg & i_seg < len(knots) - 1)
+        y = factors[i_seg] * (x - knots[i_seg]) ** exps[i_seg]
+
+        return y
+
+    for col in df.columns:
+        approx = scipy.optimize.curve_fit(
+            piecewise_exp, df.index.to_numpy(), df[col].to_numpy()
+        )
 
     if isinstance(freqs_out, str):
         if freqs_out == "knots":
-            index_log = knots_log
+            result_index = knots
         elif freqs_out == "input":
-            index_log = np.log2(df.index.to_numpy())
+            result_index = df.index.to_numpy()
         else:
             raise ValueError(f"invalid option {freqs_out} for parameter `freqs_out`")
     else:
-        index_log = np.log2(freqs_out)
+        result_index = freqs_out
 
-    out_log = np.array([scipy.interpolate.splev(index_log, tck) for tck in tcks]).T
-
-    return pd.DataFrame(2 ** out_log, index=2 ** index_log, columns=df.columns)
+    return pd.DataFrame(result_data, index=result_index, columns=df.columns)
 
 
 def vc_curves(
