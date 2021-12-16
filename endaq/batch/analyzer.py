@@ -81,20 +81,7 @@ class CalcCache:
             )
 
         self._channels = data
-
-        self._accel_highpass_cutoff = params.accel_highpass_cutoff
-        self._accel_start_time = params.accel_start_time
-        self._accel_end_time = params.accel_end_time
-        self._accel_start_margin = params.accel_start_margin
-        self._accel_end_margin = params.accel_end_margin
-        self._accel_integral_tukey_percent = params.accel_integral_tukey_percent
-        self._accel_integral_zero = params.accel_integral_zero
-        self._psd_window = params.psd_window
-        self._psd_freq_bin_width = params.psd_freq_bin_width
-        self._pvss_init_freq = params.pvss_init_freq
-        self._pvss_bins_per_octave = params.pvss_bins_per_octave
-        self._vc_init_freq = params.vc_init_freq
-        self._vc_bins_per_octave = params.vc_bins_per_octave
+        self._params = params
 
     @classmethod
     def from_ide(cls, dataset, params: CalcParams, preferred_chs: List[int] = []):
@@ -163,18 +150,20 @@ class CalcCache:
         aData = conversionFactor * ch_struct.to_pandas(time_mode="timedelta")
         dt = endaq.calc.sample_spacing(aData, convert=None)
 
-        if self._accel_start_margin is not None:
-            margin = int(np.ceil(self._accel_start_margin / dt))
+        if self._params.accel_start_margin is not None:
+            margin = int(np.ceil(self._params.accel_start_margin / dt))
             aData = aData.iloc[margin:]
-        elif self._accel_start_time is not None:
-            aData = aData.loc[self._accel_start_time :]
-        if self._accel_end_margin is not None:
-            margin = int(np.ceil(self._accel_end_margin / dt))
+        elif self._params.accel_start_time is not None:
+            aData = aData.loc[self._params.accel_start_time :]
+        if self._params.accel_end_margin is not None:
+            margin = int(np.ceil(self._params.accel_end_margin / dt))
             aData = aData.iloc[: (-margin or None)]
-        elif self._accel_end_time is not None:
-            aData = aData.loc[: self._accel_end_time]
+        elif self._params.accel_end_time is not None:
+            aData = aData.loc[: self._params.accel_end_time]
 
-        aData = filters.butterworth(aData, low_cutoff=self._accel_highpass_cutoff)
+        aData = filters.butterworth(
+            aData, low_cutoff=self._params.accel_highpass_cutoff
+        )
 
         assert isinstance(aData, pd.DataFrame)
         return aData
@@ -209,7 +198,7 @@ class CalcCache:
         if aData.size == 0:
             return aData
 
-        if not self._accel_highpass_cutoff:
+        if not self._params.accel_highpass_cutoff:
             warnings.warn(
                 "no highpass filter used before integration; "
                 "velocity calculation may be unstable"
@@ -218,10 +207,10 @@ class CalcCache:
         return integrate._integrate(
             filters.butterworth(
                 aData,
-                low_cutoff=self._accel_highpass_cutoff,
-                tukey_percent=self._accel_integral_tukey_percent,
+                low_cutoff=self._params.accel_highpass_cutoff,
+                tukey_percent=self._params.accel_integral_tukey_percent,
             ),
-            zero=self._accel_integral_zero,
+            zero=self._params.accel_integral_zero,
         )
 
     @cached_property
@@ -237,7 +226,7 @@ class CalcCache:
         if vData.size == 0:
             return vData
 
-        if not self._accel_highpass_cutoff:
+        if not self._params.accel_highpass_cutoff:
             warnings.warn(
                 "no highpass filter used before integration; "
                 "displacement calculation may be unstable"
@@ -261,7 +250,7 @@ class CalcCache:
             return pvss
 
         freqs = endaq.calc.logfreqs(
-            aData, self._pvss_init_freq, self._pvss_bins_per_octave
+            aData, self._params.pvss_init_freq, self._params.pvss_bins_per_octave
         )
         freqs = freqs[
             (freqs >= 1 / (endaq.calc.sample_spacing(aData) * aData.shape[0]))
@@ -284,7 +273,7 @@ class CalcCache:
             return pvss
 
         freqs = endaq.calc.logfreqs(
-            aData, self._pvss_init_freq, self._pvss_bins_per_octave
+            aData, self._params.pvss_init_freq, self._params.pvss_bins_per_octave
         )
         freqs = freqs[
             (freqs >= 1 / (endaq.calc.sample_spacing(aData) * aData.shape[0]))
@@ -309,8 +298,8 @@ class CalcCache:
 
         return endaq.calc.psd.welch(
             aData,
-            bin_width=self._psd_freq_bin_width,
-            window=self._psd_window,
+            bin_width=self._params.psd_freq_bin_width,
+            window=self._params.psd_window,
             average="median",
         )
 
@@ -329,8 +318,8 @@ class CalcCache:
 
         return psd.vc_curves(
             self._PSDData,
-            fstart=self._vc_init_freq,
-            octave_bins=self._vc_bins_per_octave,
+            fstart=self._params.vc_init_freq,
+            octave_bins=self._params.vc_bins_per_octave,
         )
 
     @cached_property
