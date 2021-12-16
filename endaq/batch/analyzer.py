@@ -112,8 +112,25 @@ class CalcCache:
             data: pd.DataFrame
             units: Tuple[str, str]
 
-            def to_pandas(self):
+            def to_pandas(self, time_mode="datetime"):
+                expected_index_types = dict(
+                    timedelta=(pd.TimedeltaIndex, "TimedeltaIndex"),
+                    datetime=(pd.DatetimeIndex, "DatetimeIndex"),
+                    seconds=(
+                        (pd.Float64Index, pd.Int64Index, pd.UInt64Index, pd.RangeIndex),
+                        "{Float64/Int64/UInt64/Range}Index",
+                    ),
+                )
+                if not isinstance(self.data.index, expected_index_types[time_mode][0]):
+                    raise ValueError(
+                        f"expected '{time_mode}' data index to be of type"
+                        f"`{expected_index_types[time_mode][1]}`, "
+                        f"instead found {type(self.data.index)}"
+                    )
+
+                self.data.index.name = "timestamp"
                 self.data.columns.name = "axis"
+
                 return self.data
 
         data = {
