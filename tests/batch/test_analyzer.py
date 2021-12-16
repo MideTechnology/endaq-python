@@ -146,7 +146,8 @@ class TestAnalyzer:
         ):
             assert ds_struct.units == raw_struct.units
             pd.testing.assert_frame_equal(
-                ds_struct.to_pandas(time_mode="timedelta"), raw_struct.to_pandas()
+                ds_struct.to_pandas(time_mode="timedelta"),
+                raw_struct.to_pandas(time_mode="timedelta"),
             )
 
     def test_accRMSFull(self, analyzer_bulk):
