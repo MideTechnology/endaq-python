@@ -251,10 +251,10 @@ class CalcCache:
         return integrate._integrate(
             filters.butterworth(
                 vData,
-                low_cutoff=self._accel_highpass_cutoff,
-                tukey_percent=self._accel_integral_tukey_percent,
+                low_cutoff=self._params.accel_highpass_cutoff,
+                tukey_percent=self._params.accel_integral_tukey_percent,
             ),
-            zero=self._accel_integral_zero,
+            zero=self._params.accel_integral_zero,
         )
 
     @cached_property
