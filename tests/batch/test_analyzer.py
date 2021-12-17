@@ -5,6 +5,9 @@ import idelib
 import numpy as np
 import pandas as pd
 import pytest
+import hypothesis as hyp
+import hypothesis.strategies as hyp_st
+import hypothesis.extra.numpy as hyp_np
 
 import endaq.batch.analyzer
 from endaq.calc.stats import rms, L2_norm
@@ -149,6 +152,52 @@ class TestAnalyzer:
                 ds_struct.to_pandas(time_mode="timedelta"),
                 raw_struct.to_pandas(time_mode="timedelta"),
             )
+
+    @hyp.given(
+        df=hyp_np.arrays(
+            elements=hyp_st.floats(-1e7, 1e7),
+            shape=(20, 2),
+            dtype=np.float64,
+        ).map(
+            lambda array: pd.DataFrame(
+                array, index=np.timedelta64(200, "ms") * np.arange(20)
+            )
+        ),
+    )
+    def test_accelerationData(self, df):
+        calc_params = endaq.batch.analyzer.CalcParams(
+            accel_start_time=None,
+            accel_end_time=None,
+            accel_start_margin=None,
+            accel_end_margin=None,
+            accel_highpass_cutoff=1,
+            accel_integral_tukey_percent=0,
+            accel_integral_zero="mean",
+            psd_freq_bin_width=1,
+            psd_window="hann",
+            pvss_init_freq=1,
+            pvss_bins_per_octave=12,
+            vc_init_freq=1,
+            vc_bins_per_octave=3,
+        )
+        data_cache = endaq.batch.analyzer.CalcCache.from_raw_data(
+            [(df, ("Acceleration", "m/s\u00b2"))], calc_params
+        )
+
+        df_accel = endaq.calc.filters.butterworth(
+            df, low_cutoff=calc_params.accel_highpass_cutoff
+        )
+        pd.testing.assert_frame_equal(data_cache._accelerationData, df_accel)
+
+        (_df_accel, df_vel, df_displ) = endaq.calc.integrate.integrals(
+            df_accel,
+            n=2,
+            zero=calc_params.accel_integral_zero,
+            highpass_cutoff=calc_params.accel_highpass_cutoff,
+            tukey_percent=calc_params.accel_integral_tukey_percent,
+        )
+        pd.testing.assert_frame_equal(data_cache._velocityData, df_vel)
+        pd.testing.assert_frame_equal(data_cache._displacementData, df_displ)
 
     def test_accRMSFull(self, analyzer_bulk):
         calc_result = endaq.batch.analyzer.CalcCache.accRMSFull.func(analyzer_bulk)[

@@ -50,7 +50,7 @@ def iter_integrals(
         ``-np.median(output)``
     :param highpass_cutoff: the cutoff frequency of a preconditioning highpass
         filter; if None, no filter is applied
-    :param tukey_percent: the alpha parameter of a preconditioning tukey filter;
+    :param tukey_percent: the alpha parameter of a preconditioning Tukey filter;
         if 0 (default), no filter is applied
     :return: an iterable over the data's successive integrals; the first item
         is the preconditioned input data
@@ -96,7 +96,7 @@ def integrals(
         ``-np.median(output)``
     :param highpass_cutoff: the cutoff frequency for the initial highpass filter;
         this is used to remove artifacts caused by DC trends
-    :param tukey_percent: the alpha parameter of a preconditioning tukey filter;
+    :param tukey_percent: the alpha parameter of a preconditioning Tukey filter;
         if 0 (default), no filter is applied
     :return: a length `n+1` list of the kth-order integrals from 0 to n (inclusive)
 

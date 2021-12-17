@@ -247,6 +247,13 @@ class GetDataBuilder:
         :param accel_end_margin: the numper of samples after which to reject
             recording data; cannot be used in conjunction with
             `accel_end_time`
+        :param accel_integral_tukey_percent: the alpha parameter of a tukey
+            window applied to the acceleration before integrating into
+            velocity & displacement; see the `tukey_percent` parameter in
+            ``endaq.calc.integrate.integrals`` for details
+        :param accel_integral_zero: the output quantity driven to zero when
+            integrating the acceleration into velocity & displacement; see the
+            `zero` parameter in ``endaq.calc.integrate.integrals`` for details
         """
         if accel_start_time is not None and accel_start_margin is not None:
             raise ValueError(
