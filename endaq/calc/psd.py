@@ -227,7 +227,7 @@ def to_octave(
 
 def loglog_linear_approx(
     df: pd.DataFrame,
-    knots: typing.List[int],
+    knots: typing.List[float],
     window: int = 1,
     freqs_out: typing.Union[typing.Literal["knots", "input"], np.ndarray] = "knots",
 ):
@@ -244,6 +244,15 @@ def loglog_linear_approx(
         - `"knots"` (default): the knot frequencies
         - `"input"`: the frequencies on the input data (i.e., ``df.index``)
     """
+    knots = np.asarray(knots)
+    if not np.all(np.diff(knots) > 0):
+        raise ValueError("knots must be strictly increasing")
+    if np.any(df.index.to_numpy() <= 0):
+        warnings.warn("removed samples at non-positive frequencies from input")
+        df = df.iloc[df.index > 0]
+    if knots[0] <= df.index[0] or df.index[-1] <= knots[-1]:
+        raise ValueError("found knots outside of input data range")
+
     if window != 1:
         df = df.rolling(window).mean().dropna()
 
@@ -318,7 +327,7 @@ def vc_curves(
         df_vel,
         fstart=fstart,  # Hz
         octave_bins=octave_bins,
-        agg=np.sum,
+        agg="sum",
     )
 
     # The PSD must already scale by ∆f -> need only scale by √∆f?

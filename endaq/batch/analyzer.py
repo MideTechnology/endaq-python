@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+import typing
+from typing import List, Tuple, Optional
 import sys
 import warnings
 
@@ -5,7 +10,6 @@ if sys.version_info[:2] >= (3, 8):
     from functools import cached_property
 else:
     from backports.cached_property import cached_property
-
 
 import numpy as np
 import pandas as pd
@@ -24,7 +28,34 @@ MPS_TO_KMPH = 3600 / 1e3
 M_TO_MM = 1000
 
 
-class DatasetChannelCache:
+@dataclass
+class CalcParams:
+    """
+    The parameters for configuring the calculation routines in
+    `CalcCache`.
+
+    Each of these parameters is *intentionally* left w/o a default value.
+    Instead, defaults are provided at the function signatures for the
+    `endaq.batch.core` functions. This ensures that data is passed correctly
+    to them from the `CalcParam` object.
+    """
+
+    accel_highpass_cutoff: Optional[float]
+    accel_integral_tukey_percent: float
+    accel_integral_zero: typing.Literal["start", "mean", "median"]
+    accel_start_time: Optional[np.timedelta64]
+    accel_end_time: Optional[np.timedelta64]
+    accel_start_margin: Optional[np.timedelta64]
+    accel_end_margin: Optional[np.timedelta64]
+    psd_freq_bin_width: float
+    psd_window: str
+    pvss_init_freq: float
+    pvss_bins_per_octave: float
+    vc_init_freq: float
+    vc_bins_per_octave: float
+
+
+class CalcCache:
     """
     A wrapper for `idelib.dataset.Dataset` that caches channel data streams as
     `pandas.Dataset`s.
@@ -32,39 +63,32 @@ class DatasetChannelCache:
 
     PV_NATURAL_FREQS = np.logspace(0, 12, base=2, num=12 * 12 + 1, endpoint=True)
 
-    def __init__(
-        self,
-        dataset,
-        *,
-        preferred_chs=[],
-        accel_highpass_cutoff,
-        accel_integral_tukey_percent,
-        accel_integral_zero,
-        accel_start_time,
-        accel_end_time,
-        accel_start_margin,
-        accel_end_margin,
-        psd_freq_bin_width,
-        psd_window="hanning",
-        pvss_init_freq,
-        pvss_bins_per_octave,
-        vc_init_freq,
-        vc_bins_per_octave,
-    ):
+    def __init__(self, data, params: CalcParams):
         """
         Copies out the numpy arrays for the highest priority channel for each
         sensor type, and any relevant metadata.  Cuts them into chunks.
         """
-        if accel_start_time is not None and accel_start_margin is not None:
+        if (
+            params.accel_start_time is not None
+            and params.accel_start_margin is not None
+        ):
             raise ValueError(
                 "only one of `accel_start_time` and `accel_start_margin` may be set at once"
             )
-        if accel_end_time is not None and accel_end_margin is not None:
+        if params.accel_end_time is not None and params.accel_end_margin is not None:
             raise ValueError(
                 "only one of `accel_end_time` and `accel_end_margin` may be set at once"
             )
 
-        self._channels = ide_utils.dict_chs_best(
+        self._channels = data
+        self._params = params
+
+    @classmethod
+    def from_ide(cls, dataset, params: CalcParams, preferred_chs: List[int] = []):
+        """
+        Instantiate a new `CalcCache` object from an IDE file.
+        """
+        data = ide_utils.dict_chs_best(
             (
                 (utype, ch_struct)
                 for (utype, ch_struct) in ide_utils.chs_by_utype(dataset)
@@ -73,21 +97,46 @@ class DatasetChannelCache:
             max_key=lambda x: (x.channel.id in preferred_chs, len(x.eventarray)),
         )
 
-        self._filename = dataset.filename
-        self._accelerationFs = None  # gets set in `_accelerationData`
-        self._accel_highpass_cutoff = accel_highpass_cutoff
-        self._accel_start_time = accel_start_time
-        self._accel_end_time = accel_end_time
-        self._accel_start_margin = accel_start_margin
-        self._accel_end_margin = accel_end_margin
-        self._accel_integral_tukey_percent = accel_integral_tukey_percent
-        self._accel_integral_zero = accel_integral_zero
-        self._psd_window = psd_window
-        self._psd_freq_bin_width = psd_freq_bin_width
-        self._pvss_init_freq = pvss_init_freq
-        self._pvss_bins_per_octave = pvss_bins_per_octave
-        self._vc_init_freq = vc_init_freq
-        self._vc_bins_per_octave = vc_bins_per_octave
+        return cls(data, params=params)
+
+    @dataclass
+    class InputDataWrapper:
+        data: pd.DataFrame
+        units: Tuple[str, str]
+
+        def to_pandas(self, time_mode="datetime"):
+            expected_index_types = dict(
+                timedelta=(pd.TimedeltaIndex, "TimedeltaIndex"),
+                datetime=(pd.DatetimeIndex, "DatetimeIndex"),
+                seconds=(
+                    (pd.Float64Index, pd.Int64Index, pd.UInt64Index, pd.RangeIndex),
+                    "{Float64/Int64/UInt64/Range}Index",
+                ),
+            )
+            if not isinstance(self.data.index, expected_index_types[time_mode][0]):
+                raise ValueError(
+                    f"expected '{time_mode}' data index to be of type"
+                    f"`{expected_index_types[time_mode][1]}`, "
+                    f"instead found {type(self.data.index)}"
+                )
+
+            self.data.index.name = "timestamp"
+            self.data.columns.name = "axis"
+
+            return self.data
+
+    @classmethod
+    def from_raw_data(
+        cls, data: List[Tuple[pd.DataFrame, Tuple[str, str]]], params: CalcParams
+    ):
+        """
+        Instantiate a new `CalcCache` object from raw DataFrame / metadata pairs.
+        """
+        data = {
+            ide_utils.UTYPE_GROUPS[units[0]]: cls.InputDataWrapper(data, units)
+            for (data, units) in data
+        }
+        return cls(data, params=params)
 
     # ==========================================================================
     # Data Processing, just to make init cleaner
@@ -98,7 +147,7 @@ class DatasetChannelCache:
         """Populate the _acceleration* fields, including splitting and extending data."""
         ch_struct = self._channels.get("acc", None)
         if ch_struct is None:
-            warnings.warn(f"no acceleration channel in {self._filename}")
+            warnings.warn(f"no acceleration channel in data")
             return pd.DataFrame(
                 np.empty((0, 3), dtype=float),
                 index=pd.Series([], dtype="timedelta64[ns]", name="time"),
@@ -114,29 +163,23 @@ class DatasetChannelCache:
         except KeyError:
             raise ValueError(f'unknown acceleration channel units "{aUnits}"')
 
-        self._accelerationName = ch_struct.channel.name
-        self._accelerationFs = ch_struct.fs
-
         aData = conversionFactor * ch_struct.to_pandas(time_mode="timedelta")
+        dt = endaq.calc.sample_spacing(aData, convert=None)
 
-        if self._accel_start_margin is not None:
-            margin = int(
-                np.ceil(
-                    ch_struct.fs * self._accel_start_margin / np.timedelta64(1, "s")
-                )
-            )
+        if self._params.accel_start_margin is not None:
+            margin = int(np.ceil(self._params.accel_start_margin / dt))
             aData = aData.iloc[margin:]
-        elif self._accel_start_time is not None:
-            aData = aData.loc[self._accel_start_time :]
-        if self._accel_end_margin is not None:
-            margin = int(
-                np.ceil(ch_struct.fs * self._accel_end_margin / np.timedelta64(1, "s"))
-            )
+        elif self._params.accel_start_time is not None:
+            aData = aData.loc[self._params.accel_start_time :]
+        if self._params.accel_end_margin is not None:
+            margin = int(np.ceil(self._params.accel_end_margin / dt))
             aData = aData.iloc[: (-margin or None)]
-        elif self._accel_end_time is not None:
-            aData = aData.loc[: self._accel_end_time]
+        elif self._params.accel_end_time is not None:
+            aData = aData.loc[: self._params.accel_end_time]
 
-        aData = filters.butterworth(aData, low_cutoff=self._accel_highpass_cutoff)
+        aData = filters.butterworth(
+            aData, low_cutoff=self._params.accel_highpass_cutoff
+        )
 
         assert isinstance(aData, pd.DataFrame)
         return aData
@@ -163,11 +206,7 @@ class DatasetChannelCache:
         if units.lower() != "a":
             raise ValueError(f'unknown microphone channel units "{units}"')
 
-        self._micName = ch_struct.channel.name
-        self._micFs = ch_struct.fs
-        data = ch_struct.to_pandas(time_mode="timedelta")
-
-        return data
+        return ch_struct.to_pandas(time_mode="timedelta")
 
     @cached_property
     def _velocityData(self):
@@ -175,7 +214,7 @@ class DatasetChannelCache:
         if aData.size == 0:
             return aData
 
-        if not self._accel_highpass_cutoff:
+        if not self._params.accel_highpass_cutoff:
             warnings.warn(
                 "no highpass filter used before integration; "
                 "velocity calculation may be unstable"
@@ -184,10 +223,10 @@ class DatasetChannelCache:
         return integrate._integrate(
             filters.butterworth(
                 aData,
-                low_cutoff=self._accel_highpass_cutoff,
-                tukey_percent=self._accel_integral_tukey_percent,
+                low_cutoff=self._params.accel_highpass_cutoff,
+                tukey_percent=self._params.accel_integral_tukey_percent,
             ),
-            zero=self._accel_integral_zero,
+            zero=self._params.accel_integral_zero,
         )
 
     @cached_property
@@ -203,7 +242,7 @@ class DatasetChannelCache:
         if vData.size == 0:
             return vData
 
-        if not self._accel_highpass_cutoff:
+        if not self._params.accel_highpass_cutoff:
             warnings.warn(
                 "no highpass filter used before integration; "
                 "displacement calculation may be unstable"
@@ -227,11 +266,13 @@ class DatasetChannelCache:
             return pvss
 
         freqs = endaq.calc.logfreqs(
-            aData, self._pvss_init_freq, self._pvss_bins_per_octave
+            aData, self._params.pvss_init_freq, self._params.pvss_bins_per_octave
         )
-        freqs = freqs[(freqs >= self._accelerationFs / self._accelerationData.shape[0])]
+        freqs = freqs[
+            (freqs >= 1 / (endaq.calc.sample_spacing(aData) * aData.shape[0]))
+        ]
         pv = shock.shock_spectrum(
-            self._accelerationData,
+            aData,
             freqs,
             damp=0.05,
             mode="pvss",
@@ -248,11 +289,13 @@ class DatasetChannelCache:
             return pvss
 
         freqs = endaq.calc.logfreqs(
-            aData, self._pvss_init_freq, self._pvss_bins_per_octave
+            aData, self._params.pvss_init_freq, self._params.pvss_bins_per_octave
         )
-        freqs = freqs[(freqs >= self._accelerationFs / self._accelerationData.shape[0])]
+        freqs = freqs[
+            (freqs >= 1 / (endaq.calc.sample_spacing(aData) * aData.shape[0]))
+        ]
         pv = shock.shock_spectrum(
-            self._accelerationData,
+            aData,
             freqs,
             damp=0.05,
             mode="pvss",
@@ -271,8 +314,8 @@ class DatasetChannelCache:
 
         return endaq.calc.psd.welch(
             aData,
-            bin_width=self._psd_freq_bin_width,
-            window=self._psd_window,
+            bin_width=self._params.psd_freq_bin_width,
+            window=self._params.psd_window,
             average="median",
         )
 
@@ -291,8 +334,8 @@ class DatasetChannelCache:
 
         return psd.vc_curves(
             self._PSDData,
-            fstart=self._vc_init_freq,
-            octave_bins=self._vc_bins_per_octave,
+            fstart=self._params.vc_init_freq,
+            octave_bins=self._params.vc_bins_per_octave,
         )
 
     @cached_property
@@ -316,11 +359,7 @@ class DatasetChannelCache:
         except KeyError:
             raise ValueError(f'unknown pressure channel units "{units}"')
 
-        self._preName = ch_struct.channel.name
-        self._preFs = ch_struct.fs
-        data = conversionFactor * ch_struct.to_pandas(time_mode="timedelta")
-
-        return data
+        return conversionFactor * ch_struct.to_pandas(time_mode="timedelta")
 
     @cached_property
     def _temperatureData(self):
@@ -343,13 +382,9 @@ class DatasetChannelCache:
         except KeyError:
             raise ValueError(f'unknown temperature channel units "{units}"')
 
-        self._tmpName = ch_struct.channel.name
-        self._tmpFs = ch_struct.fs
-        data = conversionOffset + conversionFactor * ch_struct.to_pandas(
+        return conversionOffset + conversionFactor * ch_struct.to_pandas(
             time_mode="timedelta"
         )
-
-        return data
 
     @cached_property
     def _gyroscopeData(self):
@@ -362,18 +397,15 @@ class DatasetChannelCache:
                 columns=pd.Series(["X", "Y", "Z"], name="axis"),
             )
 
-        self._gyroName = ch_struct.channel.name
-        self._gyroFs = ch_struct.fs
-
+        data = ch_struct.to_pandas(time_mode="timedelta")
+        dt = endaq.calc.sample_spacing(data, convert="to_seconds")
         units = ch_struct.units[1]
         if units.lower() == "q":
-            quat_df = ch_struct.to_pandas(time_mode="timedelta")
-            quat_raw = quat_df[["W", "X", "Y", "Z"]].to_numpy()
+            quat_raw = data[["W", "X", "Y", "Z"]].to_numpy()
 
             data = pd.DataFrame(
-                (180 / np.pi)
-                * quat.quat_to_angvel(quat_raw, 1 / self._gyroFs, qaxis=1),
-                index=quat_df.index,
+                (180 / np.pi) * quat.quat_to_angvel(quat_raw, dt, qaxis=1),
+                index=data.index,
                 columns=pd.Series(["X", "Y", "Z"], name="axis"),
             )
 
@@ -396,11 +428,9 @@ class DatasetChannelCache:
                 return data
 
             data = strip_invalid_prefix(
-                data, prefix_len=max(4, int(np.ceil(0.25 * self._gyroFs)))
+                data, prefix_len=max(4, int(np.ceil(0.25 / dt)))
             )
-        elif units.lower() in ("dps", "deg/s"):
-            data = ch_struct.to_pandas(time_mode="timedelta")
-        else:
+        elif units.lower() not in ("dps", "deg/s"):
             raise ValueError(f'unknown gyroscope channel units "{units}"')
 
         return data
@@ -419,13 +449,8 @@ class DatasetChannelCache:
         if units.lower() != "degrees":
             raise ValueError(f'unknown GPS position channel units "{units}"')
 
-        data = ch_struct.to_pandas(time_mode="timedelta")
-
-        self._gpsName = ch_struct.channel.name
-        self._gpsFs = ch_struct.fs
         # resampling destroys last values -> no resampling
-
-        return data
+        return ch_struct.to_pandas(time_mode="timedelta")
 
     @cached_property
     def _gpsSpeedData(self):
@@ -441,12 +466,7 @@ class DatasetChannelCache:
         if units != "m/s":
             raise ValueError(f'unknown GPS ground speed channel units "{units}"')
 
-        data = MPS_TO_KMPH * ch_struct.to_pandas(time_mode="timedelta")
-
-        self._gpsSpeedName = ch_struct.channel.name
-        self._gpsSpeedFs = ch_struct.fs
-
-        return data
+        return MPS_TO_KMPH * ch_struct.to_pandas(time_mode="timedelta")
 
     # ==========================================================================
     # Analyses

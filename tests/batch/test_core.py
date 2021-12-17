@@ -53,20 +53,23 @@ def test_make_peak_windows(filename):
         utc_start_time = ds.lastUtcTime
         axis_names = accel_ch.axis_names
 
-        analyzer = endaq.batch.analyzer.DatasetChannelCache(
+        analyzer = endaq.batch.analyzer.CalcCache.from_ide(
             ds,
-            accel_highpass_cutoff=None,
-            accel_start_time=None,
-            accel_end_time=None,
-            accel_start_margin=None,
-            accel_end_margin=None,
-            accel_integral_tukey_percent=0,
-            accel_integral_zero="mean",
-            psd_freq_bin_width=None,
-            pvss_init_freq=None,
-            pvss_bins_per_octave=None,
-            vc_init_freq=None,
-            vc_bins_per_octave=None,
+            endaq.batch.analyzer.CalcParams(
+                accel_highpass_cutoff=None,
+                accel_start_time=None,
+                accel_end_time=None,
+                accel_start_margin=None,
+                accel_end_margin=None,
+                accel_integral_tukey_percent=0,
+                accel_integral_zero="mean",
+                psd_freq_bin_width=None,
+                psd_window="hann",
+                pvss_init_freq=None,
+                pvss_bins_per_octave=None,
+                vc_init_freq=None,
+                vc_bins_per_octave=None,
+            ),
         )
         calc_meta = endaq.batch.core._make_meta(ds)
         calc_peaks = endaq.batch.core._make_peak_windows(analyzer, margin_len=10)
