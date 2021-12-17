@@ -3,7 +3,7 @@ from types import FunctionType
 import plotly.io as pio
 import json
 
-from .core import ENV_PRODUCTION, ENV_STAGING, ENV_DEVELOP
+from .core import EndaqCloud, ENV_PRODUCTION, ENV_STAGING, ENV_DEVELOP
 
 
 __all__ = [
@@ -34,8 +34,8 @@ def create_cloud_dashboard_output(name_to_fig: dict) -> str:
     return "[" + ", ".join([v.to_json()[:-1] + ', "title": "' + k + '"}' for k, v in name_to_fig.items()]) + "]"
 
 
-def produce_dashboard_plots(dashboard_script_fn: FunctionType, api_key: str, environment: str = 'production',
-                            display_plots: bool = True) -> list:
+def produce_dashboard_plots(dashboard_script_fn: FunctionType, api_key: str, max_num_files: int = 100,
+                            environment: str = 'production', display_plots: bool = True) -> list:
     """
     A function used to simulate a run of a desired enDAQ Cloud custom report script without needing to use
     cloud.endaq.com
@@ -44,29 +44,34 @@ def produce_dashboard_plots(dashboard_script_fn: FunctionType, api_key: str, env
      the exact code that would be put into a enDAQ Cloud custom report script, followed by one final line:
      `return output`
     :param api_key: The enDAQ Cloud API key
+    :param max_num_files: The maximum number of files to get data about.  Specifically, this is used to
+     specify how many of the most recently uploaded IDE files in the cloud will have their info passed to
+     your custom report script (through a list of json blobs, as parameter 'files')
     :param environment: The version of the enDAQ Cloud to communicate with, the options are 'production', 'staging',
      or 'develop'.  This should only be used internally at Mide
     :param display_plots: If the plots being produced should be displayed
     :return: A list of the 4 plotly figures produced
     """
     if environment == 'production':
-        api_access_url = ENV_PRODUCTION + '/api/v1/'
+        api_access_url = ENV_PRODUCTION
     elif environment == 'staging':
-        api_access_url = ENV_STAGING + '/api/v1/'
+        api_access_url = ENV_STAGING
     elif environment == 'develop':
-        api_access_url = ENV_DEVELOP + '/api/v1/'
+        api_access_url = ENV_DEVELOP
     else:
         raise ValueError("Only 'production', 'staging', and 'develop' may be given for the 'environment' parameter, "
                          f" but {environment} was given instead.")
 
     parameters = {"x-api-key": api_key}
 
-    files = requests.get(api_access_url + "files?limit=100&attributes=all", headers=parameters).json()['data']
+    cloud_obj = EndaqCloud(api_key, env=api_access_url)
+
+    files = cloud_obj._get_files_json_response(limit=max_num_files)
 
     most_recent_file_id = files[-1]['id']
 
     file_download_url = requests.get(
-        api_access_url + "files/download/" + most_recent_file_id,
+        api_access_url + '/api/v1/files/download/' + most_recent_file_id,
         headers=parameters
     ).json()['url']
 
