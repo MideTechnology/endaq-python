@@ -60,7 +60,7 @@ setuptools.setup(
         project_urls={
             "Bug Tracker": "https://github.com/MideTechnology/endaq-python/issues",
             "Documentation": "https://docs.endaq.com/en/latest/",
-            "Source Code": "https://github.com/MideTechnology/endaq-python",
+            "Source Code": "https://github.com/MideTechnology/endaq-python/tree/main",
             },
         install_requires=INSTALL_REQUIRES,
         extras_require={
