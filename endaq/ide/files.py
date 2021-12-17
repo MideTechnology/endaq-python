@@ -222,10 +222,11 @@ def get_doc(name=None, filename=None, url=None, parsed=True, start=0, end=None,
 
 def extract_time(doc, out, start=0, end=None, channels=None, **kwargs):
     """
-    Efficiently extract data within a certain interval from an IDE file. Note
-    that due to the way data is stored in an IDE, the exported interval will
-    be slightly wider than the specified start and end times; this ensures
-    the data is copied verbatim and without loss.
+    Efficiently extract data within a certain interval from an IDE file,
+    writing it to another file. Note that due to the way data is stored in an
+    IDE, the exported interval will be slightly wider than the specified
+    start and end times; this ensures the data is copied verbatim and without
+    loss.
 
     The `start` and `end` times, if used, may be specified in several
     ways:

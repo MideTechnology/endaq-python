@@ -1,6 +1,6 @@
-#############
-`endaq.batch`
-#############
+###############
+``endaq.batch``
+###############
 
 
 .. automodule:: endaq.batch
