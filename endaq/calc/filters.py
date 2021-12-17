@@ -30,7 +30,7 @@ def butterworth(
         this value are rejected, and frequencies below this value are preserved
     :param half_order: half of the order of the filter; higher orders provide
         more aggressive stopband reduction
-    :param tukey_percent: the alpha parameter of a preconditioning tukey filter;
+    :param tukey_percent: the alpha parameter of a preconditioning Tukey filter;
         if 0 (default), no filter is applied
     :return: the filtered data
 

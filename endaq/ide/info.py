@@ -305,9 +305,9 @@ def to_pandas(
             relative times (with respect to the start of the recording) or
             absolute times (i.e., date-times):
 
-            * "seconds" - a `pandas.Float64Index` of relative timestamps, in seconds
-            * "timedelta" - a `pandas.TimeDeltaIndex` of relative timestamps
-            * "datetime" - a `pandas.DateTimeIndex` of absolute timestamps
+            * `"seconds"` - a `pandas.Float64Index` of relative timestamps, in seconds
+            * `"timedelta"` - a `pandas.TimeDeltaIndex` of relative timestamps
+            * `"datetime"` - a `pandas.DateTimeIndex` of absolute timestamps
 
         :return: a `pandas.DataFrame` containing the channel's data
     """
@@ -321,7 +321,7 @@ def to_pandas(
         t = t + np.datetime64(channel.dataset.lastUtcTime, "s")
     elif time_mode != "timedelta":
         raise ValueError(f'invalid time mode "{time_mode}"')
-    
+
     if hasattr(channel, "subchannels"):
         columns = [sch.name for sch in channel.subchannels]
     else:
