@@ -62,7 +62,6 @@ def test_integrals():
     ).map(lambda array: pd.DataFrame(array, index=0.2 * np.arange(20))),
     zero=hyp_st.sampled_from(["start", "mean", "median"]),
     highpass_cutoff=hyp_st.one_of(hyp_st.floats(0.25, 1), hyp_st.just(None)),
-    filter_half_order=hyp_st.integers(1, 3),
     tukey_percent=hyp_st.floats(0, 0.2),
 )
 def test_integrals_iter_vs_list(df, **kwargs):
