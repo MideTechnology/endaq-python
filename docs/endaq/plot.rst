@@ -2,6 +2,11 @@
 ``endaq.plot``
 ##############
 
+.. toctree::
+   :maxdepth: 2
+
+   plot_usage
+
 
 `endaq.plot`
 ==============
