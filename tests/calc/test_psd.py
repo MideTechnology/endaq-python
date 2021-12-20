@@ -161,7 +161,7 @@ def test_to_octave(psd_df, agg, expt_f, expt_array):
     assert calc_df.to_numpy().flatten().tolist() == expt_array
 
 
-def test_loglog_linear_approx():
+def test_loglog_approx():
     filepath = pathlib.Path("./tests/calc/navmat-p-9492.csv")
     df = pd.read_csv(
         filepath,
@@ -174,7 +174,7 @@ def test_loglog_linear_approx():
     df_psd = psd.welch(df, bin_width=0.5).loc[20:2000]
 
     knots = [80, 350]
-    calc_result = psd.loglog_linear_approx(
+    calc_result = psd.loglog_approx(
         df_psd,
         knots=knots,
         window=20,

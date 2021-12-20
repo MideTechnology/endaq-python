@@ -225,7 +225,7 @@ def to_octave(
     return result
 
 
-def loglog_linear_approx(
+def loglog_approx(
     df: pd.DataFrame,
     knots: typing.List[float],
     window: int = 1,
