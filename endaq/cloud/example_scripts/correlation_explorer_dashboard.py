@@ -51,7 +51,7 @@ def cloud_correlation_script(files: list, file_download_url: str):
     )
 
     # Create the t-SNE visualization
-    name_to_fig["t-SNE"] = get_tsne_plot(df, serials_to_indices=serials_to_colors)
+    name_to_fig["t-SNE"] = get_tsne_plot(df, color_discrete_map=serials_to_colors)
 
     # Generate Row of Subplots
     name_to_fig["Measurements Pane"] = multi_file_plot_attributes(
