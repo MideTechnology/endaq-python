@@ -176,6 +176,21 @@ def _make_vc_curves(ch_data_cache):
     return df_vc.stack(level="axis").reorder_levels(["axis", "frequency (Hz)"])
 
 
+def _make_halfsine_pvss_envelope(ch_data_cache):
+    df_pvss = ch_data_cache._PVSSData.copy()
+    df_pvss["Resultant"] = ch_data_cache._PVSSResultantData
+    df_pvss = df_pvss * endaq.batch.analyzer.MPS_TO_MMPS
+    if df_pvss.size == 0:
+        return None
+
+    return (
+        endaq.calc.shock.enveloping_half_sine(df_pvss)
+        .to_time_series()
+        .stack(level="axis")
+        .reorder_levels(["axis", "timestamp"])
+    )
+
+
 class GetDataBuilder:
     """
     The main interface for the calculations.
@@ -345,6 +360,15 @@ class GetDataBuilder:
 
         return self
 
+    def add_pvss_halfsine_envelope(self):
+        """
+        Add the half-sine envelope for the acceleration's PVSS (Pseudo Velocity
+        Shock Spectrum) to the calculation queue.
+        """
+        self._metrics_queue["halfsine"] = None
+
+        return self
+
     def add_metrics(self):
         """Add broad channel metrics to the calculation queue."""
         self._metrics_queue["metrics"] = None
@@ -418,6 +442,7 @@ class GetDataBuilder:
                     bins_per_octave=self._psd_bins_per_octave,
                 ),
                 pvss=_make_pvss,
+                halfsine=_make_halfsine_pvss_envelope,
                 metrics=_make_metrics,
                 peaks=partial(
                     _make_peak_windows,
