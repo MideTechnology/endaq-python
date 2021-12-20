@@ -244,7 +244,7 @@ def assert_output_is_valid(output: endaq.batch.core.OutputStruct):
         ),
         endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1)
         .add_pvss(init_freq=1, bins_per_octave=12)
-        .add_pvss_halfsine_envelope(),
+        .add_pvss_halfsine_envelope(tstart=0, tstop=0.2),
         endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1).add_metrics(),
         endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1).add_peaks(
             margin_len=1000
@@ -257,7 +257,7 @@ def assert_output_is_valid(output: endaq.batch.core.OutputStruct):
             endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1)
             .add_psd(freq_bin_width=1)
             .add_pvss(init_freq=1, bins_per_octave=12)
-            .add_pvss_halfsine_envelope()
+            .add_pvss_halfsine_envelope(tstart=0, tstop=0.2)
             .add_metrics()
             .add_peaks(margin_len=1000)
             .add_vc_curves(init_freq=1, bins_per_octave=3)
