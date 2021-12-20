@@ -124,7 +124,7 @@ def _make_peak_windows(ch_data_cache, margin_len):
     if df_accel.size == 0:
         return None
 
-    dt = 1 / ch_data_cache._accelerationFs
+    dt = endaq.calc.sample_spacing(df_accel)
 
     data_noidx = df_accel.reset_index(drop=True)
     peak_indices = data_noidx.abs().idxmax(axis="rows")
@@ -247,6 +247,13 @@ class GetDataBuilder:
         :param accel_end_margin: the numper of samples after which to reject
             recording data; cannot be used in conjunction with
             `accel_end_time`
+        :param accel_integral_tukey_percent: the alpha parameter of a tukey
+            window applied to the acceleration before integrating into
+            velocity & displacement; see the `tukey_percent` parameter in
+            ``endaq.calc.integrate.integrals`` for details
+        :param accel_integral_zero: the output quantity driven to zero when
+            integrating the acceleration into velocity & displacement; see the
+            `zero` parameter in ``endaq.calc.integrate.integrals`` for details
         """
         if accel_start_time is not None and accel_start_margin is not None:
             raise ValueError(
@@ -260,7 +267,6 @@ class GetDataBuilder:
         self._metrics_queue = {}  # dict maintains insertion order, unlike set
 
         self._ch_data_cache_kwargs = dict(
-            preferred_chs=preferred_chs,
             accel_highpass_cutoff=accel_highpass_cutoff,
             accel_start_time=accel_start_time,
             accel_end_time=accel_end_time,
@@ -269,8 +275,9 @@ class GetDataBuilder:
             accel_integral_tukey_percent=accel_integral_tukey_percent,
             accel_integral_zero=accel_integral_zero,
         )
+        self._preferred_chs = preferred_chs
 
-        # Even unused parameters MUST be set; used to instantiate `DatasetChannelCache` in `_get_data`
+        # Even unused parameters MUST be set; used to instantiate `CalcCache` in `_get_data`
         self._psd_freq_bin_width = None
         self._psd_freq_start_octave = None
         self._psd_bins_per_octave = None
@@ -388,15 +395,18 @@ class GetDataBuilder:
 
         data = {}
         with endaq.ide.get_doc(filename) as ds:
-            ch_data_cache = endaq.batch.analyzer.DatasetChannelCache(
+            ch_data_cache = endaq.batch.analyzer.CalcCache.from_ide(
                 ds,
-                **self._ch_data_cache_kwargs,
-                psd_window=self._psd_window,
-                psd_freq_bin_width=self._psd_freq_bin_width,
-                pvss_init_freq=self._pvss_init_freq,
-                pvss_bins_per_octave=self._pvss_bins_per_octave,
-                vc_init_freq=self._vc_init_freq,
-                vc_bins_per_octave=self._vc_bins_per_octave,
+                endaq.batch.analyzer.CalcParams(
+                    **self._ch_data_cache_kwargs,
+                    psd_window=self._psd_window,
+                    psd_freq_bin_width=self._psd_freq_bin_width,
+                    pvss_init_freq=self._pvss_init_freq,
+                    pvss_bins_per_octave=self._pvss_bins_per_octave,
+                    vc_init_freq=self._vc_init_freq,
+                    vc_bins_per_octave=self._vc_bins_per_octave,
+                ),
+                preferred_chs=self._preferred_chs,
             )
 
             data["meta"] = _make_meta(ds)
