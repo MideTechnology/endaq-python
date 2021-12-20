@@ -14,6 +14,8 @@ import re
 import urllib.request
 import shutil
 import os
+import pathlib
+import warnings
 
 
 __all__ = [
@@ -126,7 +128,7 @@ class EndaqCloud:
         return Dataset(f)
 
     def download_all_ide_files(self,
-                               output_directory: str = "",
+                               output_directory: Union[str, pathlib.Path] = "",
                                should_download_file_fn: Optional[Callable] = None,
                                force_reload_file_table: bool = False,
                                file_limit: int = 100) -> np.ndarray:
@@ -147,7 +149,7 @@ class EndaqCloud:
          - Would be nice to have a parameter to get only ones with a certain tag
          - Maybe Have a blacklist and/or whitelist parameter
         """
-        if not isinstance(output_directory, str):
+        if not isinstance(output_directory, (str, pathlib.Path)):
             raise TypeError('the "output_directory" parameter must be given a string,'
                             f'but was given a value of type{type(output_directory)}')
 
@@ -178,8 +180,8 @@ class EndaqCloud:
         downloaded_filename_ary = self.file_table.index.values
 
         if len(failures):
-            print(f"{len(failures)} FILES FAILED TO BE DOWNLOADED!  Those files are:")
-            print(failures)
+            warnings.warn(f"{len(failures)} FILES FAILED TO BE DOWNLOADED!  Those files are:")
+            warnings.warn(', '.join(failures))
 
         return downloaded_filename_ary
 
