@@ -82,9 +82,13 @@ def find_optimal_sigmas(distances: np.ndarray, target_perplexity: int, max_itera
     return np.array(sigmas)
 
 
-def get_tsne_plot(df: pd.DataFrame, perplexity: int = 20, random_seed: int = 0, num_iterations: int = 1000,
+def get_tsne_plot(df: pd.DataFrame,
+                  perplexity: int = 20,
+                  random_seed: int = 0,
+                  num_iterations: int = 1000,
                   learning_rate: int = 500,
-                  serials_to_indices: dict = None,
+                  color_col: str = 'serial_number_id',
+                  color_discrete_map: Optional[dict] = None,
                   momentum: int = 0) -> go.Figure:
     """
     Estimates a SNE model, and plots the visualization of the given data.
@@ -100,6 +104,10 @@ def get_tsne_plot(df: pd.DataFrame, perplexity: int = 20, random_seed: int = 0, 
     :param random_seed: Integer value to set the seed value for the random
     :param num_iterations: The number of iterations to train for
     :param learning_rate: The rate at which to update teh values in the model
+    :param color_col: The column name in the given dataframe (as merged_df) that is used to color
+     data points with.   This is used in combination with the color_discrete_map parameter
+    :param color_discrete_map: A dictionary which maps the values given to color data points based on (see the
+     color_col parameter description) to the colors that these data points should be
     :param momentum:  The momentum to be used when applying updates to the model
     :return: Plotly figure of the, low-dimensional representation of the given data
     """
@@ -150,9 +158,8 @@ def get_tsne_plot(df: pd.DataFrame, perplexity: int = 20, random_seed: int = 0, 
     fig = px.scatter(
         x=Y[:, 0],
         y=Y[:, 1],
-        # color=colors,
-        color=df['serial_number_id'],
-        color_discrete_map=serials_to_indices,
+        color=df[color_col],
+        color_discrete_map=color_discrete_map,
         hover_name=df.index,
     )
 

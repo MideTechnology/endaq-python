@@ -23,6 +23,7 @@ def logfreq_input(draw):
 
 
 @hyp.given(input_vars=logfreq_input())
+@pytest.mark.filterwarnings("ignore:the data's duration is too short:RuntimeWarning")
 def test_logfreqs(input_vars):
     (dframe, init_freq, bins_per_octave) = input_vars
 
@@ -57,3 +58,12 @@ def test_to_dB_scale(value, reference, squared):
     assert utils.to_dB(10 * value, reference, squared) == pytest.approx(
         scale + utils.to_dB(value, reference, squared)
     )
+
+
+def test_uniform_resample_is_uniform_for_datetime64ns():
+    """
+    Tests if the resample function for np.datetime64[ns] dtype arrays will produce non-uniform timestamps
+    """
+    times = np.arange('2021-02', '2021-03', np.timedelta64(1, 's'), dtype='datetime64[ns]')
+    df = pd.DataFrame(np.arange(len(times)), index=times)
+    assert len(np.unique(np.diff(utils.resample(df).index))) == 1

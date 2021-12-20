@@ -1,1 +1,1 @@
-from .calc import GetDataBuilder
+from .core import GetDataBuilder

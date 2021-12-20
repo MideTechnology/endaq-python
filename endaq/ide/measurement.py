@@ -1,6 +1,28 @@
 """
-Functions for filtering data by measurement types, and singleton objects
-representing different measurement types.
+The module :py:mod:`endaq.ide.measurement` provides an abstract representation of measurement types for
+easily retrieving specific data from ``.ide`` files. Several functions in :py:mod:`endaq.ide` accept
+combinations of ``MeasurementType`` constants for filtering datasets by sensor type.
+
+Measurement types are represented by a set of singleton instances of :py:class:`MeasurementType`.
+
+.. code:: python3
+
+    import endaq.ide
+    from endaq.ide.measurement import *
+
+    doc = endaq.ide.get_doc("https://info.endaq.com/hubfs/data/surgical-instrument.ide")
+    endaq.ide.get_channels(doc, ACCELERATION)
+    endaq.ide.get_channels(doc, TEMPERATURE+PRESSURE)
+
+Strings may also be used, either in combination with or instead of, the :py:class:`MeasurementType` instances.
+The strings can be abbreviated, but no shorter than three characters.
+
+.. code:: python3
+
+    endaq.ide.get_channels(doc, "acceleration")
+    endaq.ide.get_channels(doc, "accel")
+    endaq.ide.get_channels(doc, ACCELERATION+"temp")
+
 """
 
 __all__ = ['ANY', 'ACCELERATION', 'ALTITUDE', 'ANG_RATE', 'AUDIO', 'DIRECTION',
@@ -173,40 +195,62 @@ class MeasurementType:
 ANY = MeasurementType("Any/all", "*", "any", "all",
     doc="Marker object for matching any/all measurement types",
     labels=("*",))
+""" Marker object for matching any/all measurement types """
 
 ACCELERATION = MeasurementType("Acceleration", "acc", "g",
     doc="Marker object for filtering channels with acceleration data",
     labels=())
+""" Marker object for filtering channels with acceleration data """
+
 ORIENTATION = MeasurementType("Orientation", "imu", "qua", "gyr",
     doc="Marker object for filtering channels with rotation/orientation data",
     labels=("quaternion", "euler", "orientation"))
+"Marker object for filtering channels with rotation/orientation data"
+
 ROTATION = MeasurementType("Rotation", "rot", "ang",
     doc="Marker object for filtering channels with angular change rate data",
     labels=("rotation", "gyro"))
+"Marker object for filtering channels with angular change rate data"
+
 AUDIO = MeasurementType("Audio", "mic",
     doc="Marker object for filtering channels with sound level data",
     labels=("mic",))
+"Marker object for filtering channels with sound level data"
+
 LIGHT = MeasurementType("Light", "lux",
     doc="Marker object for filtering channels with light intensity data",
     labels=("lux", "uv"))
+"Marker object for filtering channels with light intensity data"
+
 PRESSURE = MeasurementType("Pressure",
     doc="Marker object for filtering channels with air pressure data",
     labels=())  # pressures
+"Marker object for filtering channels with air pressure data"
+
 TEMPERATURE = MeasurementType("Temperature",
     doc="Marker object for filtering channels with temperature data",
     labels=())  # temperature
+"Marker object for filtering channels with temperature data"
+
 HUMIDITY = MeasurementType("Relative Humidity", "hum",
     doc="Marker object for filtering channels with (relative) humidity data",
     labels=())  # Humidity
+"Marker object for filtering channels with (relative) humidity data"
+
 LOCATION = MeasurementType("Location", "pos", "gps",
     doc="Marker object for filtering channels with location data",
     labels=("pos",))  # GPS
+"Marker object for filtering channels with location data"
+
 SPEED = MeasurementType("Speed",
     doc="Marker object for filtering channels with rate-of-speed data",
     labels=("velocity",))  # GPS Ground Speed
+"Marker object for filtering channels with rate-of-speed data"
+
 TIME = MeasurementType("Time", "epo",
     doc="Marker object for filtering channels with time data",
     labels=("epoch",))  # GPS Epoch Time
+"Marker object for filtering channels with time data"
 
 # For potential future use
 GENERIC = MeasurementType("Generic/Unspecified", "adc", "raw",

@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 
@@ -44,7 +46,9 @@ def test_highpass():
     Fx_filt_dB = 10 * np.log10(np.abs(Fx_filt))
     assert np.allclose(Fx_filt_dB[f >= f_cut_upper], 0, atol=0.1)
 
-    f_decade = np.log10(f)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        f_decade = np.log10(f)
     # diverges from trend at f=0
     Fx_filt_dB_diff = np.diff(Fx_filt_dB[f != 0]) / np.diff(f_decade[f != 0])
     # pre-cutoff ramps up at constant rate

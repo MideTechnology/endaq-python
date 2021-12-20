@@ -1,4 +1,8 @@
-import logging
+from __future__ import annotations
+
+from dataclasses import dataclass
+import typing
+from typing import List, Tuple, Optional
 import sys
 import warnings
 
@@ -6,7 +10,6 @@ if sys.version_info[:2] >= (3, 8):
     from functools import cached_property
 else:
     from backports.cached_property import cached_property
-
 
 import numpy as np
 import pandas as pd
@@ -18,113 +21,122 @@ from endaq.batch import quat
 from endaq.batch.utils import ide_utils
 
 
-class Analyzer:
+MPS2_TO_G = 1 / 9.80665
+MPS_TO_MMPS = 1000
+MPS_TO_UMPS = 10 ** 6
+MPS_TO_KMPH = 3600 / 1e3
+M_TO_MM = 1000
+
+
+@dataclass
+class CalcParams:
     """
-    A class which will run the analyses for the endaq cloud work.  Take the
-    important info from the IDE document so that it can be released from memory.
+    The parameters for configuring the calculation routines in
+    `CalcCache`.
+
+    Each of these parameters is *intentionally* left w/o a default value.
+    Instead, defaults are provided at the function signatures for the
+    `endaq.batch.core` functions. This ensures that data is passed correctly
+    to them from the `CalcParam` object.
     """
 
-    # TODO: This needs to be reworked, it's currently not very efficient.
-    #       -
-    #       The current strategy is to:
-    #         1. Create a list of time indices for each segment, where the
-    #            beginning of the first segment is the earliest data present
-    #            among all channels (not al channels start and end at the same time)
-    #         2. Create a numpy array from each channel, and grab metadata such
-    #            as sampling frequency.
-    #         3. For channels with a low sampling frequency, resample them to
-    #            five times the segment frequency.
-    #         4. Pad each channel with nans so that data exists for each channel
-    #            in each time segment.
-    #         5. Split each of these by the times created in step 1
-    #         6. Lazily run analyses as they're called and cache results.
-    #       -
-    #       The issue is that this is somewhat memory intensive and just doesn't
-    #       need to be. I think we can more efficiently do piecewise evaluation
-    #       and re-use intermediate calculations without saving all of the file
-    #       as an array.
-    #       _
-    #       Proposed strategy:
-    #         1. Same as above, create a list of time indices for each segment,
-    #            where the beginning of the first segment is the earliest data
-    #            present among all channels (not al channels start and end at
-    #            the same time)
-    #         2. For each sensor type:
-    #              a. If the sensor is not present, create a list of NaNs in the
-    #                 correct shape.
-    #              b. For sensors with low sampling rates, use some sort of
-    #                 wrapper or generator that will still lazily load data from
-    #                 the file but will return interpolated data as if it had a
-    #                 higher sample rate (five times the segment frequency)
-    #              c. Iterate through the segments.  If the segment is out of
-    #                 range, skip it and place Nans in each analysis for that
-    #                 channel type.
-    #              d. Do the analyses for that segment.  This will allow us to
-    #                 reuse intermediate calculations, such as the FFT of the
-    #                 acceleration.  This is used to calculate the RMS for the
-    #                 acceleration and its integrals.
-    #
+    accel_highpass_cutoff: Optional[float]
+    accel_integral_tukey_percent: float
+    accel_integral_zero: typing.Literal["start", "mean", "median"]
+    accel_start_time: Optional[np.timedelta64]
+    accel_end_time: Optional[np.timedelta64]
+    accel_start_margin: Optional[np.timedelta64]
+    accel_end_margin: Optional[np.timedelta64]
+    psd_freq_bin_width: float
+    psd_window: str
+    pvss_init_freq: float
+    pvss_bins_per_octave: float
+    vc_init_freq: float
+    vc_bins_per_octave: float
 
-    MPS2_TO_G = 1 / 9.80665
-    MPS_TO_MMPS = 1000
-    MPS_TO_UMPS = 10 ** 6
-    MPS_TO_KMPH = 3600 / 1e3
-    M_TO_MM = 1000
+
+class CalcCache:
+    """
+    A wrapper for `idelib.dataset.Dataset` that caches channel data streams as
+    `pandas.Dataset`s.
+    """
 
     PV_NATURAL_FREQS = np.logspace(0, 12, base=2, num=12 * 12 + 1, endpoint=True)
 
-    def __init__(
-        self,
-        doc,
-        *,
-        preferred_chs=[],
-        accel_highpass_cutoff,
-        accel_start_time,
-        accel_end_time,
-        accel_start_margin,
-        accel_end_margin,
-        psd_freq_bin_width,
-        psd_window="hanning",
-        pvss_init_freq,
-        pvss_bins_per_octave,
-        vc_init_freq,
-        vc_bins_per_octave,
-    ):
+    def __init__(self, data, params: CalcParams):
         """
         Copies out the numpy arrays for the highest priority channel for each
         sensor type, and any relevant metadata.  Cuts them into chunks.
         """
-        if accel_start_time is not None and accel_start_margin is not None:
+        if (
+            params.accel_start_time is not None
+            and params.accel_start_margin is not None
+        ):
             raise ValueError(
                 "only one of `accel_start_time` and `accel_start_margin` may be set at once"
             )
-        if accel_end_time is not None and accel_end_margin is not None:
+        if params.accel_end_time is not None and params.accel_end_margin is not None:
             raise ValueError(
                 "only one of `accel_end_time` and `accel_end_margin` may be set at once"
             )
 
-        self._channels = ide_utils.dict_chs_best(
+        self._channels = data
+        self._params = params
+
+    @classmethod
+    def from_ide(cls, dataset, params: CalcParams, preferred_chs: List[int] = []):
+        """
+        Instantiate a new `CalcCache` object from an IDE file.
+        """
+        data = ide_utils.dict_chs_best(
             (
                 (utype, ch_struct)
-                for (utype, ch_struct) in ide_utils.chs_by_utype(doc)
+                for (utype, ch_struct) in ide_utils.chs_by_utype(dataset)
                 if len(ch_struct.eventarray) > 0
             ),
             max_key=lambda x: (x.channel.id in preferred_chs, len(x.eventarray)),
         )
 
-        self._filename = doc.filename
-        self._accelerationFs = None  # gets set in `_accelerationData`
-        self._accel_highpass_cutoff = accel_highpass_cutoff
-        self._accel_start_time = accel_start_time
-        self._accel_end_time = accel_end_time
-        self._accel_start_margin = accel_start_margin
-        self._accel_end_margin = accel_end_margin
-        self._psd_window = psd_window
-        self._psd_freq_bin_width = psd_freq_bin_width
-        self._pvss_init_freq = pvss_init_freq
-        self._pvss_bins_per_octave = pvss_bins_per_octave
-        self._vc_init_freq = vc_init_freq
-        self._vc_bins_per_octave = vc_bins_per_octave
+        return cls(data, params=params)
+
+    @dataclass
+    class InputDataWrapper:
+        data: pd.DataFrame
+        units: Tuple[str, str]
+
+        def to_pandas(self, time_mode="datetime"):
+            expected_index_types = dict(
+                timedelta=(pd.TimedeltaIndex, "TimedeltaIndex"),
+                datetime=(pd.DatetimeIndex, "DatetimeIndex"),
+                seconds=(
+                    (pd.Float64Index, pd.Int64Index, pd.UInt64Index, pd.RangeIndex),
+                    "{Float64/Int64/UInt64/Range}Index",
+                ),
+            )
+            if not isinstance(self.data.index, expected_index_types[time_mode][0]):
+                raise ValueError(
+                    f"expected '{time_mode}' data index to be of type"
+                    f"`{expected_index_types[time_mode][1]}`, "
+                    f"instead found {type(self.data.index)}"
+                )
+
+            self.data.index.name = "timestamp"
+            self.data.columns.name = "axis"
+
+            return self.data
+
+    @classmethod
+    def from_raw_data(
+        cls, data: List[Tuple[pd.DataFrame, Tuple[str, str]]], params: CalcParams
+    ):
+        """
+        Instantiate a new `CalcCache` object from raw DataFrame / metadata pairs.
+        """
+        data = {
+            ide_utils.UTYPE_GROUPS[units[0]]: cls.InputDataWrapper(data, units)
+            for (data, units) in data
+        }
+        return cls(data, params=params)
 
     # ==========================================================================
     # Data Processing, just to make init cleaner
@@ -135,52 +147,49 @@ class Analyzer:
         """Populate the _acceleration* fields, including splitting and extending data."""
         ch_struct = self._channels.get("acc", None)
         if ch_struct is None:
-            logging.warning(f"no acceleration channel in {self._filename}")
+            warnings.warn(f"no acceleration channel in data")
             return pd.DataFrame(
-                np.empty((0, 3), dtype=np.float),
-                index=pd.Series([], name="time"),
+                np.empty((0, 3), dtype=float),
+                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
                 columns=pd.Series(["X", "Y", "Z"], name="axis"),
             )
 
         aUnits = ch_struct.units[1]
         try:
             conversionFactor = {  # core units = m/s^2
-                "g": 1 / self.MPS2_TO_G,
+                "g": 1 / MPS2_TO_G,
                 "m/s\u00b2": 1,
             }[aUnits.lower()]
         except KeyError:
             raise ValueError(f'unknown acceleration channel units "{aUnits}"')
 
-        self._accelerationName = ch_struct.channel.name
-        self._accelerationFs = ch_struct.fs
-
         aData = conversionFactor * ch_struct.to_pandas(time_mode="timedelta")
+        dt = endaq.calc.sample_spacing(aData, convert=None)
 
-        if self._accel_start_margin is not None:
-            margin = int(
-                np.ceil(
-                    ch_struct.fs * self._accel_start_margin / np.timedelta64(1, "s")
-                )
-            )
+        if self._params.accel_start_margin is not None:
+            margin = int(np.ceil(self._params.accel_start_margin / dt))
             aData = aData.iloc[margin:]
-        elif self._accel_start_time is not None:
-            aData = aData.loc[self._accel_start_time :]
-        if self._accel_end_margin is not None:
-            margin = int(
-                np.ceil(ch_struct.fs * self._accel_end_margin / np.timedelta64(1, "s"))
-            )
+        elif self._params.accel_start_time is not None:
+            aData = aData.loc[self._params.accel_start_time :]
+        if self._params.accel_end_margin is not None:
+            margin = int(np.ceil(self._params.accel_end_margin / dt))
             aData = aData.iloc[: (-margin or None)]
-        elif self._accel_end_time is not None:
-            aData = aData.loc[: self._accel_end_time]
+        elif self._params.accel_end_time is not None:
+            aData = aData.loc[: self._params.accel_end_time]
 
-        aData = filters.butterworth(aData, low_cutoff=self._accel_highpass_cutoff)
+        aData = filters.butterworth(
+            aData, low_cutoff=self._params.accel_highpass_cutoff
+        )
 
         assert isinstance(aData, pd.DataFrame)
         return aData
 
     @cached_property
     def _accelerationResultantData(self):
-        return self._accelerationData.apply(stats.L2_norm, axis="columns").to_frame()
+        return pd.Series(
+            stats.L2_norm(self._accelerationData.to_numpy(), axis=1),
+            index=self._accelerationData.index,
+        ).to_frame()
 
     @cached_property
     def _microphoneData(self):
@@ -188,8 +197,8 @@ class Analyzer:
         ch_struct = self._channels.get("mic", None)
         if ch_struct is None:
             return pd.DataFrame(
-                np.empty((0, 1), dtype=np.float),
-                index=pd.Series([], name="time"),
+                np.empty((0, 1), dtype=float),
+                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
                 columns=pd.Series(["mic"], name="axis"),
             )
 
@@ -197,11 +206,7 @@ class Analyzer:
         if units.lower() != "a":
             raise ValueError(f'unknown microphone channel units "{units}"')
 
-        self._micName = ch_struct.channel.name
-        self._micFs = ch_struct.fs
-        data = ch_struct.to_pandas(time_mode="timedelta")
-
-        return data
+        return ch_struct.to_pandas(time_mode="timedelta")
 
     @cached_property
     def _velocityData(self):
@@ -209,13 +214,27 @@ class Analyzer:
         if aData.size == 0:
             return aData
 
-        if not self._accel_highpass_cutoff:
-            logging.warning(
+        if not self._params.accel_highpass_cutoff:
+            warnings.warn(
                 "no highpass filter used before integration; "
                 "velocity calculation may be unstable"
             )
 
-        return integrate._integrate(aData)
+        return integrate._integrate(
+            filters.butterworth(
+                aData,
+                low_cutoff=self._params.accel_highpass_cutoff,
+                tukey_percent=self._params.accel_integral_tukey_percent,
+            ),
+            zero=self._params.accel_integral_zero,
+        )
+
+    @cached_property
+    def _velocityResultantData(self):
+        return pd.Series(
+            stats.L2_norm(self._velocityData.to_numpy(), axis=1),
+            index=self._velocityData.index,
+        ).to_frame()
 
     @cached_property
     def _displacementData(self):
@@ -223,30 +242,44 @@ class Analyzer:
         if vData.size == 0:
             return vData
 
-        if not self._accel_highpass_cutoff:
-            logging.warning(
+        if not self._params.accel_highpass_cutoff:
+            warnings.warn(
                 "no highpass filter used before integration; "
                 "displacement calculation may be unstable"
             )
 
-        return integrate._integrate(vData)
+        return integrate._integrate(
+            filters.butterworth(
+                vData,
+                low_cutoff=self._params.accel_highpass_cutoff,
+                tukey_percent=self._params.accel_integral_tukey_percent,
+            ),
+            zero=self._params.accel_integral_zero,
+        )
+
+    @cached_property
+    def _displacementResultantData(self):
+        return pd.Series(
+            stats.L2_norm(self._displacementData.to_numpy(), axis=1),
+            index=self._displacementData.index,
+        ).to_frame()
 
     @cached_property
     def _PVSSData(self):
         aData = self._accelerationData
         if aData.size == 0:
-            pvss = aData[:]
+            pvss = aData.copy()
             pvss.index.name = "frequency (Hz)"
             return pvss
 
         freqs = endaq.calc.logfreqs(
-            aData, self._pvss_init_freq, self._pvss_bins_per_octave
+            aData, self._params.pvss_init_freq, self._params.pvss_bins_per_octave
         )
         freqs = freqs[
-            (freqs >= self._accelerationFs / self._accelerationData.shape[0])
+            (freqs >= 1 / (endaq.calc.sample_spacing(aData) * aData.shape[0]))
         ]
         pv = shock.shock_spectrum(
-            self._accelerationData,
+            aData,
             freqs,
             damp=0.05,
             mode="pvss",
@@ -258,18 +291,18 @@ class Analyzer:
     def _PVSSResultantData(self):
         aData = self._accelerationData
         if aData.size == 0:
-            pvss = self._accelerationResultantData[:]
+            pvss = self._accelerationResultantData.copy()
             pvss.index.name = "frequency (Hz)"
             return pvss
 
         freqs = endaq.calc.logfreqs(
-            aData, self._pvss_init_freq, self._pvss_bins_per_octave
+            aData, self._params.pvss_init_freq, self._params.pvss_bins_per_octave
         )
         freqs = freqs[
-            (freqs >= self._accelerationFs / self._accelerationData.shape[0])
+            (freqs >= 1 / (endaq.calc.sample_spacing(aData) * aData.shape[0]))
         ]
         pv = shock.shock_spectrum(
-            self._accelerationData,
+            aData,
             freqs,
             damp=0.05,
             mode="pvss",
@@ -282,30 +315,34 @@ class Analyzer:
     def _PSDData(self):
         aData = self._accelerationData
         if aData.size == 0:
-            psdData = aData[:]
+            psdData = aData.copy()
             psdData.index.name = "frequency (Hz)"
             return psdData
 
         return endaq.calc.psd.welch(
             aData,
-            bin_width=self._psd_freq_bin_width,
-            window=self._psd_window,
+            bin_width=self._params.psd_freq_bin_width,
+            window=self._params.psd_window,
             average="median",
         )
+
+    @cached_property
+    def _PSDResultantData(self):
+        return self._PSDData.sum(axis="columns").to_frame()
 
     @cached_property
     def _VCCurveData(self):
         """Calculate Vibration Criteria (VC) Curves for the accelerometer."""
         psdData = self._PSDData
         if psdData.size == 0:
-            vcData = psdData[:]
+            vcData = psdData.copy()
             vcData.index.name = "frequency (Hz)"
             return vcData
 
         return psd.vc_curves(
             self._PSDData,
-            fstart=self._vc_init_freq,
-            octave_bins=self._vc_bins_per_octave,
+            fstart=self._params.vc_init_freq,
+            octave_bins=self._params.vc_bins_per_octave,
         )
 
     @cached_property
@@ -314,8 +351,8 @@ class Analyzer:
         ch_struct = self._channels.get("pre", None)
         if ch_struct is None:
             return pd.DataFrame(
-                np.empty((0, 1), dtype=np.float),
-                index=pd.Series([], name="time"),
+                np.empty((0, 1), dtype=float),
+                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
                 columns=pd.Series(["Pressure"], name="axis"),
             )
 
@@ -329,11 +366,7 @@ class Analyzer:
         except KeyError:
             raise ValueError(f'unknown pressure channel units "{units}"')
 
-        self._preName = ch_struct.channel.name
-        self._preFs = ch_struct.fs
-        data = conversionFactor * ch_struct.to_pandas(time_mode="timedelta")
-
-        return data
+        return conversionFactor * ch_struct.to_pandas(time_mode="timedelta")
 
     @cached_property
     def _temperatureData(self):
@@ -341,8 +374,8 @@ class Analyzer:
         ch_struct = self._channels.get("tmp", None)
         if ch_struct is None:
             return pd.DataFrame(
-                np.empty((0, 1), dtype=np.float),
-                index=pd.Series([], name="time"),
+                np.empty((0, 1), dtype=float),
+                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
                 columns=pd.Series(["Temperature"], name="axis"),
             )
 
@@ -356,13 +389,9 @@ class Analyzer:
         except KeyError:
             raise ValueError(f'unknown temperature channel units "{units}"')
 
-        self._tmpName = ch_struct.channel.name
-        self._tmpFs = ch_struct.fs
-        data = conversionOffset + conversionFactor * ch_struct.to_pandas(
+        return conversionOffset + conversionFactor * ch_struct.to_pandas(
             time_mode="timedelta"
         )
-
-        return data
 
     @cached_property
     def _gyroscopeData(self):
@@ -370,23 +399,20 @@ class Analyzer:
         ch_struct = self._channels.get("gyr", None)
         if ch_struct is None:
             return pd.DataFrame(
-                np.empty((0, 3), dtype=np.float),
-                index=pd.Series([], name="time"),
+                np.empty((0, 3), dtype=float),
+                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
                 columns=pd.Series(["X", "Y", "Z"], name="axis"),
             )
 
-        self._gyroName = ch_struct.channel.name
-        self._gyroFs = ch_struct.fs
-
+        data = ch_struct.to_pandas(time_mode="timedelta")
+        dt = endaq.calc.sample_spacing(data, convert="to_seconds")
         units = ch_struct.units[1]
         if units.lower() == "q":
-            quat_df = ch_struct.to_pandas(time_mode="timedelta")
-            quat_raw = quat_df[["W", "X", "Y", "Z"]].to_numpy()
+            quat_raw = data[["W", "X", "Y", "Z"]].to_numpy()
 
             data = pd.DataFrame(
-                (180 / np.pi)
-                * quat.quat_to_angvel(quat_raw, 1 / self._gyroFs, qaxis=1),
-                index=quat_df.index,
+                (180 / np.pi) * quat.quat_to_angvel(quat_raw, dt, qaxis=1),
+                index=data.index,
                 columns=pd.Series(["X", "Y", "Z"], name="axis"),
             )
 
@@ -409,11 +435,9 @@ class Analyzer:
                 return data
 
             data = strip_invalid_prefix(
-                data, prefix_len=max(4, int(np.ceil(0.25 * self._gyroFs)))
+                data, prefix_len=max(4, int(np.ceil(0.25 / dt)))
             )
-        elif units.lower() in ("dps", "deg/s"):
-            data = ch_struct.to_pandas(time_mode="timedelta")
-        else:
+        elif units.lower() not in ("dps", "deg/s"):
             raise ValueError(f'unknown gyroscope channel units "{units}"')
 
         return data
@@ -423,8 +447,8 @@ class Analyzer:
         ch_struct = self._channels.get("gps", None)
         if ch_struct is None:
             return pd.DataFrame(
-                np.empty((0, 2), dtype=np.float),
-                index=pd.Series([], name="time"),
+                np.empty((0, 2), dtype=float),
+                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
                 columns=pd.Series(["Latitude", "Longitude"], name="axis"),
             )
 
@@ -432,21 +456,16 @@ class Analyzer:
         if units.lower() != "degrees":
             raise ValueError(f'unknown GPS position channel units "{units}"')
 
-        data = ch_struct.to_pandas(time_mode="timedelta")
-
-        self._gpsName = ch_struct.channel.name
-        self._gpsFs = ch_struct.fs
         # resampling destroys last values -> no resampling
-
-        return data
+        return ch_struct.to_pandas(time_mode="timedelta")
 
     @cached_property
     def _gpsSpeedData(self):
         ch_struct = self._channels.get("spd", None)
         if ch_struct is None:
             return pd.DataFrame(
-                np.empty((0, 1), dtype=np.float),
-                index=pd.Series([], name="time"),
+                np.empty((0, 1), dtype=float),
+                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
                 columns=pd.Series(["GPS Speed"], name="axis"),
             )
 
@@ -454,12 +473,7 @@ class Analyzer:
         if units != "m/s":
             raise ValueError(f'unknown GPS ground speed channel units "{units}"')
 
-        data = self.MPS_TO_KMPH * ch_struct.to_pandas(time_mode="timedelta")
-
-        self._gpsSpeedName = ch_struct.channel.name
-        self._gpsSpeedFs = ch_struct.fs
-
-        return data
+        return MPS_TO_KMPH * ch_struct.to_pandas(time_mode="timedelta")
 
     # ==========================================================================
     # Analyses
@@ -476,7 +490,7 @@ class Analyzer:
 
         rms["Resultant"] = stats.L2_norm(rms.to_numpy())
         rms.name = "RMS Acceleration"
-        return self.MPS2_TO_G * rms
+        return MPS2_TO_G * rms
 
     @cached_property
     def velRMSFull(self):
@@ -489,7 +503,7 @@ class Analyzer:
 
         rms["Resultant"] = stats.L2_norm(rms.to_numpy())
         rms.name = "RMS Velocity"
-        return self.MPS_TO_MMPS * rms
+        return MPS_TO_MMPS * rms
 
     @cached_property
     def disRMSFull(self):
@@ -502,7 +516,7 @@ class Analyzer:
 
         rms["Resultant"] = stats.L2_norm(rms.to_numpy())
         rms.name = "RMS Displacement"
-        return self.M_TO_MM * rms
+        return M_TO_MM * rms
 
     @cached_property
     def accPeakFull(self):
@@ -511,7 +525,7 @@ class Analyzer:
         max_abs_res = self._accelerationResultantData.max(axis="rows")
         max_abs["Resultant"] = max_abs_res.iloc[0]
         max_abs.name = "Peak Absolute Acceleration"
-        return self.MPS2_TO_G * max_abs
+        return MPS2_TO_G * max_abs
 
     @cached_property
     def pseudoVelPeakFull(self):
@@ -520,7 +534,7 @@ class Analyzer:
         max_pv_res = self._PVSSResultantData.max(axis="rows")
         max_pv["Resultant"] = max_pv_res.iloc[0]
         max_pv.name = "Peak Pseudo Velocity Shock Spectrum"
-        return self.MPS2_TO_G * max_pv
+        return MPS2_TO_G * max_pv
 
     @cached_property
     def gpsLocFull(self):

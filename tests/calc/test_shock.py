@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+from unittest import mock
+import warnings
+
 import pytest
 import hypothesis as hyp
 import hypothesis.strategies as hyp_st
@@ -246,25 +249,57 @@ def test_pseudo_velocity_zero_padding(
     ).map(lambda array: pd.DataFrame(array, index=np.arange(1, 41))),
     damp=hyp_st.floats(0, 0.2),
 )
-@hyp.settings(deadline=None)  # this test tends to timeout
 def test_enveloping_half_sine(df_pvss, damp):
-    ampl, T = shock.enveloping_half_sine(df_pvss, damp=damp)
-    hyp.note(f"pulse amplitude: {ampl}")
-    hyp.note(f"pulse duration: {T}")
+    env_half_sine = shock.enveloping_half_sine(df_pvss, damp=damp)
+    hyp.note(f"pulse amplitude: {env_half_sine.amplitude}")
+    hyp.note(f"pulse duration: {env_half_sine.duration}")
 
-    ampl = ampl[0]
-    T = T[0]
-
-    dt = min(
-        1 / (2 * df_pvss.index[-1]), T / 20
-    )  # guarantee sufficient # of samples to represent pulse
-    fs = 1 / dt
-    times = np.arange(int(fs * (T + 1 / df_pvss.index[0]))) / fs
-    pulse = np.zeros_like(times)
-    pulse[: int(T * fs)] = ampl * np.sin((np.pi / T) * times[: int(T * fs)])
+    pulse = env_half_sine.to_time_series()
     pulse_pvss = shock.shock_spectrum(
-        pd.DataFrame(pulse, index=times), freqs=df_pvss.index, damp=damp, mode="pvss"
+        pulse, freqs=df_pvss.index, damp=damp, mode="pvss"
     )
 
     # This is an approximation -> give the result a fudge-factor for correctness
     assert (df_pvss / pulse_pvss).max().max() < 1.2
+
+
+class TestHalfSineWavePulse:
+    @pytest.mark.parametrize(
+        "tstart, tstop, dt, tpulse, warning_type",
+        [
+            # dt warnings
+            (None, None, 0.12, 0, None),  # dt < duration / 8 => OK
+            (None, None, 0.13, 0, UserWarning),  # dt > duration / 8 => WARNING
+            # trange warnings
+            (None, 0.5, None, 0, UserWarning),  # trange[1] < t0 + duration => WARNING
+            (0.5, None, None, 0, UserWarning),  # trange[0] > t0 => WARNING
+            (0.5, None, None, 1, None),  # OK
+        ],
+    )
+    def test_to_time_series_warnings(self, tstart, tstop, dt, tpulse, warning_type):
+        env_half_sine = shock.HalfSineWavePulse(
+            amplitude=pd.Series([1]),
+            duration=pd.Series([1]),
+        )
+
+        if warning_type is None:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error")
+                env_half_sine.to_time_series(
+                    tstart=tstart, tstop=tstop, dt=dt, tpulse=tpulse
+                )
+        else:
+            with pytest.warns(warning_type):
+                env_half_sine.to_time_series(
+                    tstart=tstart, tstop=tstop, dt=dt, tpulse=tpulse
+                )
+
+    def test_tuple_like(self):
+        env_half_sine = shock.HalfSineWavePulse(
+            amplitude=mock.sentinel.amplitude,
+            duration=mock.sentinel.duration,
+        )
+
+        ampl, T = env_half_sine
+        assert ampl == mock.sentinel.amplitude
+        assert T == mock.sentinel.duration

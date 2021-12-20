@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import typing
-from typing import Tuple
+from typing import Optional
 from collections import namedtuple
+from dataclasses import dataclass
 import functools
 import warnings
 
@@ -232,10 +233,117 @@ def shock_spectrum(
     )
 
 
+@dataclass
+class HalfSineWavePulse:
+    """
+    The output data type for ``enveloping_half_sine``.
+
+    The significant data members are `amplitude` and `duration`, which can
+    simply be unpacked as if from a plain tuple:
+
+    .. testsetup::
+
+        import pandas as pd
+        df_pvss = pd.DataFrame([1, 1], index=[200, 400])
+
+        from endaq.calc.shock import enveloping_half_sine
+
+    .. testcode::
+
+        ampl, T = enveloping_half_sine(df_pvss)
+
+    However, users can also elect to use the other methods of this class to
+    generate other kinds of outputs.
+
+    .. note:: This class is not intended to be instantiated manually.
+    """
+
+    amplitude: pd.Series
+    duration: pd.Series
+
+    def __iter__(self):
+        return iter((self.amplitude, self.duration))
+
+    def to_time_series(
+        self,
+        tstart: Optional[float] = None,
+        tstop: Optional[float] = None,
+        dt: Optional[float] = None,
+        tpulse: Optional[float] = None,
+    ) -> pd.DataFrame:
+        """
+        Generate a time-series of the half-sine pulse.
+
+        :param tstart: the starting time of the resulting waveform; if `None`
+            (default), the range starts at `tpulse`
+        :param tstop: the ending time of the resulting waveform; if `None`
+            (default), the range ends at `tpulse + duration`
+        :param dt: the sampling period of the resulting waveform; defaults to
+            1/20th of the pulse duration
+        :param tpulse: the starting time of the pulse within the resulting
+            waveform; if `None` (default), the pulse starts at either:
+
+            - ``tstart``, if provided
+            - ``tstop - self.duration.max())``, if `tstop` is provided
+            - ``0.0`` otherwise
+        :return: a time-series of the half-sine pulse
+        """
+        if dt is None:
+            dt = self.duration.min() / 20
+        if dt > self.duration.min() / 8:
+            warnings.warn(
+                f"the sampling period {dt} is large relative to the pulse duration"
+                f" {self.duration.min()}; the waveform may not accurately represent"
+                f" the half-sine pulse's shock intensity"
+            )
+
+        default_start = 0.0
+        if tstop is not None:
+            default_start = tstop - self.duration.max()
+
+        if tpulse is None and tstart is None:
+            tpulse = tstart = default_start
+        elif tpulse is None:
+            tpulse = tstart
+        elif tstart is None:
+            tstart = tpulse
+
+        if tstop is None:
+            tstop = tpulse + self.duration.max()
+
+        if not (tstart <= tpulse <= tstop - self.duration.max()):
+            warnings.warn(
+                "half-sine pulse extends beyond the bounds of the time series"
+            )
+
+        t = np.arange(tstart, tstop, dt)
+
+        data = np.zeros((len(t), len(self.amplitude)), dtype=float)
+        t_data, ampl_data, T_data = np.broadcast_arrays(
+            t[..., None], self.amplitude.to_numpy(), self.duration.to_numpy()
+        )
+        t_mask = np.nonzero((t_data >= tpulse) & (t_data < tpulse + T_data))
+        data[t_mask] = ampl_data[t_mask] * np.sin(
+            np.pi * t_data[t_mask] / T_data[t_mask]
+        )
+
+        return pd.DataFrame(
+            data,
+            index=pd.Series(t, name="timestamp"),
+            columns=self.amplitude.index,
+        )
+
+    # def widened_duration(self, new_duration: float):
+    #    pass
+
+    # def pseudo_velocity(self):
+    #    pass
+
+
 def enveloping_half_sine(
     pvss: pd.DataFrame,
     damp: float = 0.0,
-) -> Tuple[pd.Series, pd.Series]:
+) -> HalfSineWavePulse:
     """
     Characterize a half-sine pulse whose PVSS envelopes the input.
 
@@ -274,7 +382,7 @@ def enveloping_half_sine(
     max_pvss = pvss.max()
     max_f_pvss = pvss.mul(pvss.index, axis=0).max()
 
-    return namedtuple("HalfSinePulseParameters", "amplitude, period")(
+    return HalfSineWavePulse(
         amplitude=2 * np.pi * max_f_pvss,
-        period=max_pvss / (4 * amp_factor(damp) * max_f_pvss),
+        duration=max_pvss / (4 * amp_factor(damp) * max_f_pvss),
     )

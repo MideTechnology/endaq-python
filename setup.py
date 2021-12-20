@@ -34,7 +34,7 @@ EXAMPLE_REQUIRES = [
 
 setuptools.setup(
         name='endaq',
-        version='1.2.0',
+        version='1.3.0',
         author='Mide Technology',
         author_email='help@mide.com',
         description='A comprehensive, user-centric Python API for working with enDAQ data and devices',
@@ -45,8 +45,6 @@ setuptools.setup(
         classifiers=['Development Status :: 4 - Beta',
                      'License :: OSI Approved :: MIT License',
                      'Natural Language :: English',
-                     'Programming Language :: Python :: 3.5',
-                     'Programming Language :: Python :: 3.6',
                      'Programming Language :: Python :: 3.7',
                      'Programming Language :: Python :: 3.8',
                      'Programming Language :: Python :: 3.9',
@@ -59,6 +57,11 @@ setuptools.setup(
         #     'idelib': ['schemata/*'],
         # },
         # test_suite='./testing',
+        project_urls={
+            "Bug Tracker": "https://github.com/MideTechnology/endaq-python/issues",
+            "Documentation": "https://docs.endaq.com/en/latest/",
+            "Source Code": "https://github.com/MideTechnology/endaq-python/tree/main",
+            },
         install_requires=INSTALL_REQUIRES,
         extras_require={
             'test': INSTALL_REQUIRES + TEST_REQUIRES,

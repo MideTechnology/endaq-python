@@ -1,5 +1,7 @@
 from collections import namedtuple
+import pathlib
 import timeit
+import textwrap
 
 import pytest
 import hypothesis as hyp
@@ -9,7 +11,7 @@ import hypothesis.extra.numpy as hyp_np
 import numpy as np
 import pandas as pd
 
-from endaq.calc import psd, stats
+from endaq.calc import psd, stats, utils
 
 
 @hyp.given(
@@ -39,26 +41,6 @@ def test_welch_parseval(df):
     assert df_psd.to_numpy().sum() == pytest.approx(stats.rms(df.to_numpy()) ** 2)
 
 
-@pytest.mark.parametrize(
-    "agg1, agg2",
-    [
-        ("mean", lambda x, axis=-1: np.nan_to_num(np.mean(x, axis=axis))),
-        ("sum", np.sum),
-    ],
-)
-def test_to_jagged_modes(psd_df, freq_splits, agg1, agg2):
-    """Test `to_jagged(..., mode='mean')` against the equivalent `mode=np.mean`."""
-    result1 = psd.to_jagged(psd_df, freq_splits, agg=agg1)
-    result2 = psd.to_jagged(psd_df, freq_splits, agg=agg2)
-
-    assert np.all(result1.index == result2.index)
-    np.testing.assert_allclose(
-        result1.to_numpy(),
-        result2.to_numpy(),
-        atol=psd_df.min().min() * 1e-7,
-    )
-
-
 @hyp.given(
     psd_df=hyp_np.arrays(
         dtype=np.float64,
@@ -79,6 +61,7 @@ def test_to_jagged_modes(psd_df, freq_splits, agg1, agg2):
         ("sum", np.sum),
     ],
 )
+@pytest.mark.filterwarnings("ignore:empty frequency bins:RuntimeWarning")
 def test_to_jagged_modes(psd_df, freq_splits, agg1, agg2):
     """Test `to_jagged(..., mode='mean')` against the equivalent `mode=np.mean`."""
     result1 = psd.to_jagged(psd_df, freq_splits, agg=agg1)
@@ -100,20 +83,22 @@ def test_to_jagged_mode_times():
     Check that a situation exists where the histogram method is more
     performant.
     """
-    setup = """
-from endaq.calc import psd
-import numpy as np
-import pandas as pd
+    setup = textwrap.dedent(
+        """
+        from endaq.calc import psd
+        import numpy as np
+        import pandas as pd
 
-n = 10 ** 4
+        n = 10 ** 4
 
-axis = -1
-psd_array = np.random.random((3, n))
-f = np.arange(n) / 3
-psd_df = pd.DataFrame(psd_array.T, index=f)
-#freq_splits = np.logspace(0, np.log2(n), num=100, base=2)
-freq_splits = f[1:-1]
-    """
+        axis = -1
+        psd_array = np.random.random((3, n))
+        f = np.arange(n) / 3
+        psd_df = pd.DataFrame(psd_array.T, index=f)
+        #freq_splits = np.logspace(0, np.log2(n), num=100, base=2)
+        freq_splits = f[1:-1]
+        """
+    )
 
     t_direct = timeit.timeit(
         "psd.to_jagged(psd_df, freq_splits, agg=np.sum)",
@@ -169,6 +154,7 @@ _TestStruct = namedtuple("_TestStruct", "psd_df, agg, expt_f, expt_array")
         ),
     ],
 )
+@pytest.mark.filterwarnings("ignore:empty frequency bins:RuntimeWarning")
 def test_to_octave(psd_df, agg, expt_f, expt_array):
     calc_df = psd.to_octave(psd_df, fstart=1, octave_bins=1, agg=agg)
     assert calc_df.index.to_numpy().tolist() == expt_f

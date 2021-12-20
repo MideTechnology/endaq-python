@@ -65,7 +65,7 @@ def _np_histogram_nd(array, bins=10, weights=None, axis=-1, **kwargs):
 
 def welch(
     df: pd.DataFrame,
-    bin_width: float = 1,
+    bin_width: float = 1.0,
     scaling: typing.Literal[None, "density", "spectrum", "parseval"] = None,
     **kwargs,
 ) -> pd.DataFrame:
@@ -110,7 +110,7 @@ def welch(
     )
 
 
-def differentiate(df: pd.DataFrame, n: float = 1) -> pd.DataFrame:
+def differentiate(df: pd.DataFrame, n: float = 1.0) -> pd.DataFrame:
     """
     Perform time-domain differentiation on periodogram data.
 
@@ -193,7 +193,7 @@ def to_jagged(
 
 
 def to_octave(
-    df: pd.DataFrame, fstart: float = 1, octave_bins: float = 12, **kwargs
+    df: pd.DataFrame, fstart: float = 1.0, octave_bins: float = 12.0, **kwargs
 ) -> pd.DataFrame:
     """
     Calculate a periodogram over log-spaced frequency bins.
@@ -226,7 +226,7 @@ def to_octave(
 
 
 def vc_curves(
-    accel_psd: pd.DataFrame, fstart: float = 1, octave_bins: float = 12
+    accel_psd: pd.DataFrame, fstart: float = 1.0, octave_bins: float = 12.0
 ) -> pd.DataFrame:
     """
     Calculate Vibration Criterion (VC) curves from an acceration periodogram.
@@ -272,7 +272,7 @@ def vc_curves(
         df_vel,
         fstart=fstart,  # Hz
         octave_bins=octave_bins,
-        agg=np.sum,
+        agg="sum",
     )
 
     # The PSD must already scale by ∆f -> need only scale by √∆f?
