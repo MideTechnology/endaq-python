@@ -394,6 +394,23 @@ class CalcCache:
         )
 
     @cached_property
+    def _humidityData(self):
+        """Populates the _humidity* fields, including splitting and extending data"""
+        ch_struct = self._channels.get("hum", None)
+        if ch_struct is None:
+            return pd.DataFrame(
+                np.empty((0, 1), dtype=float),
+                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
+                columns=pd.Series(["Relative Humidity"], name="axis"),
+            )
+
+        units = ch_struct.units[1]
+        if units.lower() not in ("",):
+            raise ValueError(f'unknown humidity channel units "{units}"')
+
+        return ch_struct.to_pandas(time_mode="timedelta")
+
+    @cached_property
     def _gyroscopeData(self):
         """Populate the _gyro* fields, including splitting and extending data."""
         ch_struct = self._channels.get("gyr", None)
@@ -608,5 +625,15 @@ class CalcCache:
             warnings.simplefilter("ignore")
             press = self._pressureData.mean()  # RuntimeWarning: Mean of empty slice.
 
-        press.name = "Average Temperature"
+        press.name = "Average Pressure"
         return press
+
+    @cached_property
+    def humidFull(self):
+        """Average Pressure"""
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            humid = self._humidityData.mean()  # RuntimeWarning: Mean of empty slice.
+
+        humid.name = "Average Humidity"
+        return humid
