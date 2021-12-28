@@ -323,6 +323,7 @@ class TestAnalyzer:
         [
             os.path.join("tests", "batch", "test1.IDE"),
             os.path.join("tests", "batch", "test2.IDE"),
+            os.path.join("tests", "batch", "DAQ12006_000005.IDE"),
         ],
     )
     def testLiveFiles12(self, filename):
