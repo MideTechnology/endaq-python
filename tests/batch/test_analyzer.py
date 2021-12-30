@@ -372,6 +372,10 @@ class TestAnalyzer:
             ds.channels[36].subchannels[1].getSession().arrayValues().mean(),
             rtol=0.05,  # ...GEFGW?
         )
+        np.testing.assert_allclose(
+            analyzer.humidFull,
+            ds.channels[59].subchannels[2].getSession().arrayValues().mean(),
+        )
 
     @pytest.mark.parametrize(
         "filename",

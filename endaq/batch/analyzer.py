@@ -405,7 +405,7 @@ class CalcCache:
             )
 
         units = ch_struct.units[1]
-        if units.lower() not in ("",):
+        if units.lower() not in ("rh",):
             raise ValueError(f'unknown humidity channel units "{units}"')
 
         return ch_struct.to_pandas(time_mode="timedelta")
