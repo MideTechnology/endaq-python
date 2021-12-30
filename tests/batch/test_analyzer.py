@@ -323,10 +323,9 @@ class TestAnalyzer:
         [
             os.path.join("tests", "batch", "test1.IDE"),
             os.path.join("tests", "batch", "test2.IDE"),
-            os.path.join("tests", "batch", "DAQ12006_000005.IDE"),
         ],
     )
-    def testLiveFiles12(self, filename):
+    def testLiveFiles1(self, filename):
         ds = idelib.importFile(filename)
         analyzer = endaq.batch.analyzer.CalcCache.from_ide(
             ds,
@@ -353,9 +352,10 @@ class TestAnalyzer:
             rms(L2_norm(raw_accel - raw_accel.mean(axis=-1, keepdims=True), axis=0)),
             rtol=0.55,  # this is... probably a little too high...
         )
+        audio_scale = 5.307530522779073
         np.testing.assert_allclose(
             analyzer.micRMSFull,
-            rms(ds.channels[8].subchannels[3].getSession().arrayValues()),
+            audio_scale * rms(ds.channels[8].subchannels[3].getSession().arrayValues()),
             rtol=1e-3,
         )
         np.testing.assert_allclose(
@@ -372,6 +372,39 @@ class TestAnalyzer:
             analyzer.tempFull,
             ds.channels[36].subchannels[1].getSession().arrayValues().mean(),
             rtol=0.05,  # ...GEFGW?
+        )
+
+    @pytest.mark.parametrize(
+        "filename",
+        [
+            os.path.join("tests", "batch", "DAQ12006_000005.IDE"),
+        ],
+    )
+    def testLiveFiles2(self, filename):
+        ds = idelib.importFile(filename)
+        analyzer = endaq.batch.analyzer.CalcCache.from_ide(
+            ds,
+            endaq.batch.analyzer.CalcParams(
+                accel_start_time=None,
+                accel_end_time=None,
+                accel_start_margin=None,
+                accel_end_margin=None,
+                accel_highpass_cutoff=1,
+                accel_integral_tukey_percent=0,
+                accel_integral_zero="mean",
+                psd_freq_bin_width=1,
+                psd_window="hann",
+                pvss_init_freq=1,
+                pvss_bins_per_octave=12,
+                vc_init_freq=1,
+                vc_bins_per_octave=3,
+            ),
+        )
+
+        np.testing.assert_allclose(
+            analyzer.micRMSFull,
+            rms(ds.channels[8].subchannels[3].getSession().arrayValues()),
+            rtol=1e-3,
         )
 
     @pytest.mark.parametrize(

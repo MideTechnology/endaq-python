@@ -203,10 +203,15 @@ class CalcCache:
             )
 
         units = ch_struct.units[1]
-        if units.lower() != "a":
+        try:
+            conversionFactor = {  # core units = Pa
+                "pa": 1,
+                "a": -5.307530522779073,
+            }[units.lower()]
+        except KeyError:
             raise ValueError(f'unknown microphone channel units "{units}"')
 
-        return ch_struct.to_pandas(time_mode="timedelta")
+        return conversionFactor * ch_struct.to_pandas(time_mode="timedelta")
 
     @cached_property
     def _velocityData(self):
