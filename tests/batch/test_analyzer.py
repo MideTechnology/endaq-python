@@ -381,6 +381,9 @@ class TestAnalyzer:
         ],
     )
     def testLiveFiles2(self, filename):
+        """
+        Checks that audio in units of Pascals are properly handled.
+        """
         ds = idelib.importFile(filename)
         analyzer = endaq.batch.analyzer.CalcCache.from_ide(
             ds,
