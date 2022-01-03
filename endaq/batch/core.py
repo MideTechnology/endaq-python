@@ -436,6 +436,12 @@ class GetDataBuilder:
 
         :param filenames: a sequence of paths of recording files to process
         """
+        filenames = [os.path.abspath(name) for name in filenames]
+        root_path = os.path.commonpath(filenames)
+        file_display_names = [
+            os.path.relpath(name, start=root_path) for name in filenames
+        ]
+
         series_lists = zip(
             *(self._get_data(filename).values() for filename in filenames)
         )
@@ -444,7 +450,7 @@ class GetDataBuilder:
         meta, *dfs = (
             pd.concat(
                 series_list,
-                keys=filenames,
+                keys=file_display_names,
                 names=["filename"]
                 + next(s for s in series_list if s is not None).index.names,
             )
@@ -454,6 +460,7 @@ class GetDataBuilder:
         )
 
         meta = meta.unstack(level=1)
+        meta.attrs["rootpath"] = root_path
 
         def reformat(series):
             if series is None:
