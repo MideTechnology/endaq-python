@@ -96,6 +96,8 @@ def welch(
 
     if scaling == "parseval":
         kwargs["scaling"] = "density"
+    elif scaling == "unit":
+        kwargs["scaling"] = "spectrum"
     elif scaling is not None:
         kwargs["scaling"] = scaling
 
@@ -104,6 +106,8 @@ def welch(
     )
     if scaling == "parseval":
         psd = psd * freqs[1]
+    elif scaling == "unit":
+        psd **= 0.5
 
     return pd.DataFrame(
         psd, index=pd.Series(freqs, name="frequency (Hz)"), columns=df.columns
