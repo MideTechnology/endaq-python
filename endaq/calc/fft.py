@@ -37,6 +37,7 @@ def fft(
         output: typing.Literal[None, "magnitude", "angle", "complex"] = None,
         nfft: Optional[int] = None,
         norm: typing.Literal[None, "unit", "forward", "ortho", "backward"] = None,
+        optimize: bool = False,
     ) -> pd.DataFrame:
     """
     Perform the FFT of the data in `df`, using Scipy's FFT method from `scipy.fft.fft`.  If the in `df` is all real,
@@ -57,6 +58,8 @@ def fft(
                  normalization of 1/n on the forward transforms and no normalization is applied on the ifft. “backward”
                  applies no normalization on the forward tranform and 1/n on the backward. For norm="ortho", both
                  directions are scaled by 1/sqrt(n).
+    :param optimize: *Optional* If optimize is set to True, the length of the FFT will automatically be padded to a
+                     length which can be calculated more quickly.
     :param kwargs: Further keywords passed to `scipy.fft.fft`.  Note that the nfft parameter of this function is passed
                    to `scipy.fft.fft` as `n`.
     :return: The FFT of each channel in `df`.
@@ -88,8 +91,10 @@ def fft(
     elif nfft <= 0:
         raise ValueError(f'nfft must be positive, was {nfft}')
 
-    scale = 1.
+    if optimize:
+        nfft = scipy.fft.next_fast_len(nfft, False)
 
+    scale = 1.
     if norm is None:
         norm = "forward"
         scale = 2.
@@ -120,6 +125,7 @@ def rfft(
         output: typing.Literal[None, "magnitude", "angle", "complex"] = None,
         nfft: Optional[int] = None,
         norm: typing.Literal[None, "unit", "forward", "ortho", "backward"] = None,
+        optimize: bool = False,
     ) -> pd.DataFrame:
     """
     Perform the real valued FFT of the data in `df`, using Scipy's RFFT method from `scipy.fft.rfft`.
@@ -138,6 +144,8 @@ def rfft(
                  normalization of 1/n on the forward transforms and no normalization is applied on the ifft. “backward”
                  applies no normalization on the forward tranform and 1/n on the backward. For norm="ortho", both
                  directions are scaled by 1/sqrt(n).
+    :param optimize: *Optional* If optimize is set to True, the length of the FFT will automatically be padded to a
+                     length which can be calculated more quickly.
     :param kwargs: Further keywords passed to `scipy.fft.rfft`.  Note that the nfft parameter of this function is passed
                    to `scipy.fft.rfft` as `n`.
     :return: The RFFT of each channel in `df`.
@@ -170,8 +178,10 @@ def rfft(
     elif nfft <= 0:
         raise ValueError(f'nfft must be positive, was {nfft}')
 
-    scale = 1.
+    if optimize:
+        nfft = scipy.fft.next_fast_len(nfft, True)
 
+    scale = 1.
     if norm is None:
         norm = "forward"
         scale = 2.
@@ -217,8 +227,8 @@ def dct(
                  normalization of 1/n on the forward transforms and no normalization is applied on the idct. “backward”
                  applies no normalization on the forward tranform and 1/n on the backward. For norm="ortho", both
                  directions are scaled by 1/sqrt(n).
-    :param kwargs: Further keywords passed to `scipy.fft.dct`.  Note that the nfft parameter of this function is passed
-                   to `scipy.fft.dct` as `n`.
+    :param kwargs: *Optional* Further keywords passed to `scipy.fft.dct`.  Note that the nfft parameter of this function
+                   is passed to `scipy.fft.dct` as `n`.
     :return: The DCT of each channel in `df`.
 
     .. seealso::
