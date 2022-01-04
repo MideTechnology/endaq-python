@@ -27,6 +27,7 @@ def aggregate_fft(df, **kwargs):
           Documentation for the periodogram function wrapped internally.
     """
     kwargs['scaling'] = 'unit'
+    kwargs['window'] = 'boxcar'
     kwargs['noverlap'] = 0
     return psd.welch(df, **kwargs)
 

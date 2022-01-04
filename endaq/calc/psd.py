@@ -97,16 +97,24 @@ def welch(
     if scaling == "parseval":
         kwargs["scaling"] = "density"
     elif scaling == "unit":
-        kwargs["scaling"] = "spectrum"
+        kwargs["scaling"] = "density"
     elif scaling is not None:
         kwargs["scaling"] = scaling
 
+    nperseg = int(fs / bin_width)
+    if "nfft" not in kwargs:
+        nfft = nperseg
+    else:
+        nfft = kwargs["nfft"]
+
     freqs, psd = scipy.signal.welch(
-        df.values, fs=fs, nperseg=int(fs / bin_width), **kwargs, axis=0
+        df.values, fs=fs, nperseg=nperseg, **kwargs, axis=0
     )
     if scaling == "parseval":
         psd = psd * freqs[1]
     elif scaling == "unit":
+        psd *= 2*freqs[1]
+        psd *= nfft/nperseg
         psd **= 0.5
 
     return pd.DataFrame(
