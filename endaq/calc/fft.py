@@ -145,7 +145,7 @@ def rfft(
     .. seealso::
 
         - `SciPy RFFT method <https://docs.scipy.org/doc/scipy/reference/reference/generated/scipy.fft.rfft.html>`_
-          Documentation for the EFFT function wrapped internally.
+          Documentation for the RFFT function wrapped internally.
     """
 
     if output is None:
@@ -197,5 +197,131 @@ def rfft(
     )
 
 
-def dct():
-    pass
+def dct(
+        df: pd.DataFrame,
+        nfft: Optional[int] = None,
+        norm: typing.Literal[None, "unit", "forward", "ortho", "backward"] = None,
+        **kwargs,
+    ) -> pd.DataFrame:
+    """
+    Calculate the DCT of the data in `df`, using Scipy's DCT method from `scipy.fft.dct`.
+
+    :param df: the input data
+    :param nfft: *Optional* Length of the transformed axis of the output. If nfft is smaller than the length of the
+                 input, the input is cropped. If it is larger, the input is padded with zeros. If n is not given, the
+                 length of the input along the axis specified by axis is used.
+    :param norm: *Optional* Normalization mode. Default is "unit", meaning a normalization of 2/n is applied on the
+                 forward transform, and a normalization of 1/2 is applied on the idct. The "unit" normalization means
+                 that the units of the FFT are the same as the units of the data put into it and that a sinusoid of
+                 amplitude A will peak with amplitude A in the frequency domain.  “forward” instead applies a
+                 normalization of 1/n on the forward transforms and no normalization is applied on the idct. “backward”
+                 applies no normalization on the forward tranform and 1/n on the backward. For norm="ortho", both
+                 directions are scaled by 1/sqrt(n).
+    :param kwargs: Further keywords passed to `scipy.fft.dct`.  Note that the nfft parameter of this function is passed
+                   to `scipy.fft.dct` as `n`.
+    :return: The DCT of each channel in `df`.
+
+    .. seealso::
+
+        - `SciPy DCT method <https://docs.scipy.org/doc/scipy/reference/reference/generated/scipy.fft.dct.html>`_
+          Documentation for the DCT function wrapped internally.
+    """
+
+    if nfft is None:
+        nfft = len(df)
+    elif not isinstance(nfft, int):
+        raise TypeError(f'nfft must be a positive integer, was of type {type(nfft)}')
+    elif nfft <= 0:
+        raise ValueError(f'nfft must be positive, was {nfft}')
+
+    scale = 1.
+
+    if norm is None:
+        norm = "forward"
+        scale = 2.
+    elif norm == "unit":
+        norm = "forward"
+        scale = 2.
+    elif norm not in ["forward", "ortho", "backward"]:
+        raise ValueError(f'norm must be one of None, "forward", "ortho", or "backward".  Was {norm}.')
+
+    dt = utils.sample_spacing(df)
+    fs = 1./dt
+
+    return pd.DataFrame(
+        data={
+            c: scipy.fft.dst(
+                df[c].to_numpy(),
+                n=nfft,
+                norm=norm,
+                **kwargs,
+            )*scale
+            for c in df.columns},
+        columns=df.columns,
+        index=np.linspace(0, fs/2, nfft),
+    )
+
+
+def dst(
+        df: pd.DataFrame,
+        nfft: Optional[int] = None,
+        norm: typing.Literal[None, "unit", "forward", "ortho", "backward"] = None,
+        **kwargs,
+    ) -> pd.DataFrame:
+    """
+    Calculate the DST of the data in `df`, using Scipy's DST method from `scipy.fft.dst`.
+
+    :param df: the input data
+    :param nfft: *Optional* Length of the transformed axis of the output. If nfft is smaller than the length of the
+                 input, the input is cropped. If it is larger, the input is padded with zeros. If n is not given, the
+                 length of the input along the axis specified by axis is used.
+    :param norm: *Optional* Normalization mode. Default is "unit", meaning a normalization of 2/n is applied on the
+                 forward transform, and a normalization of 1/2 is applied on the idst. The "unit" normalization means
+                 that the units of the FFT are the same as the units of the data put into it and that a sinusoid of
+                 amplitude A will peak with amplitude A in the frequency domain.  “forward” instead applies a
+                 normalization of 1/n on the forward transforms and no normalization is applied on the idst. “backward”
+                 applies no normalization on the forward tranform and 1/n on the backward. For norm="ortho", both
+                 directions are scaled by 1/sqrt(n).
+    :param kwargs: Further keywords passed to `scipy.fft.dst`.  Note that the nfft parameter of this function is passed
+                   to `scipy.fft.dst` as `n`.
+    :return: The DST of each channel in `df`.
+
+    .. seealso::
+
+        - `SciPy DST method <https://docs.scipy.org/doc/scipy/reference/reference/generated/scipy.fft.dst.html>`_
+          Documentation for the DST function wrapped internally.
+    """
+
+    if nfft is None:
+        nfft = len(df)
+    elif not isinstance(nfft, int):
+        raise TypeError(f'nfft must be a positive integer, was of type {type(nfft)}')
+    elif nfft <= 0:
+        raise ValueError(f'nfft must be positive, was {nfft}')
+
+    scale = 1.
+
+    if norm is None:
+        norm = "forward"
+        scale = 2.
+    elif norm == "unit":
+        norm = "forward"
+        scale = 2.
+    elif norm not in ["forward", "ortho", "backward"]:
+        raise ValueError(f'norm must be one of None, "forward", "ortho", or "backward".  Was {norm}.')
+
+    dt = utils.sample_spacing(df)
+    fs = 1./dt
+
+    return pd.DataFrame(
+        data={
+            c: scipy.fft.dct(
+                df[c].to_numpy(),
+                n=nfft,
+                norm=norm,
+                **kwargs,
+            )*scale
+            for c in df.columns},
+        columns=df.columns,
+        index=np.linspace(0, fs/2, nfft),
+    )
