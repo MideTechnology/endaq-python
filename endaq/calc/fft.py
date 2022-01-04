@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import typing
-from typing import Literal, Optional
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -33,9 +33,9 @@ def aggregate_fft(df, **kwargs):
 
 def fft(
         df: pd.DataFrame,
-        output: Literal[None, "magnitude", "angle", "complex"] = None,
+        output: typing.Literal[None, "magnitude", "angle", "complex"] = None,
         nfft: Optional[int] = None,
-        norm: Literal[None, "forward", "ortho", "backward"] = None,
+        norm: typing.Literal[None, "unit", "forward", "ortho", "backward"] = None,
     ) -> pd.DataFrame:
     """
     Perform the FFT of the data in `df`, using Scipy's FFT method from `scipy.fft.fft`.
