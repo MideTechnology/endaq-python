@@ -32,14 +32,7 @@ class TestFFT:
 
         data = np.array([0.0]*10 + [-0.5, -1.0, 1.0, 0.5] + [0.0]*10)
 
-        if output == "angle":
-            fxx = np.angle(np.fft.fftshift(np.fft.fft(data)))
-        elif output == "complex":
-            fxx = np.fft.fftshift(np.fft.fft(data))
-        elif output == "magnitude":
-            fxx = np.abs(np.fft.fftshift(np.fft.fft(data)))
-        else:
-            fxx = np.abs(np.fft.fftshift(np.fft.fft(data)))
+        fxx = np.fft.fftshift(np.fft.fft(data))
 
         n = len(data)
 
@@ -47,6 +40,15 @@ class TestFFT:
 
         scale = scales.get(normalization, 1./n)
         fxx *= scale
+
+        if output == "angle":
+            fxx = np.angle(fxx)
+        elif output == "complex":
+            pass
+        elif output == "magnitude":
+            fxx = np.abs(fxx)
+        else:
+            fxx = np.abs(fxx)
 
         df = pd.DataFrame(
             index=np.linspace(0, n - 1, n),
