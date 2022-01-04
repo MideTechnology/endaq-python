@@ -593,8 +593,7 @@ class OutputStruct:
             elif k == "peaks":
                 fig = px.line(
                     df,
-                    x=df["peak offset"].dt.total_seconds(),
-                    # ^ plotly doesn't handle timedelta's well
+                    x=df["peak offset"],
                     y="value",
                     color="filename",
                     line_dash="axis",
