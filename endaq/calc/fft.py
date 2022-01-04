@@ -39,7 +39,9 @@ def fft(
         norm: typing.Literal[None, "unit", "forward", "ortho", "backward"] = None,
     ) -> pd.DataFrame:
     """
-    Perform the FFT of the data in `df`, using Scipy's FFT method from `scipy.fft.fft`.
+    Perform the FFT of the data in `df`, using Scipy's FFT method from `scipy.fft.fft`.  If the in `df` is all real,
+    then the output will be symmetrical between positive and negative frequencies, and it is instead recommended that
+    you use the `rfft` method.
 
     :param df: the input data
     :param output: *Optional*  The type of the output of the FFT. Default is "magnitude".  "magnitude" will return the
@@ -48,10 +50,13 @@ def fft(
     :param nfft: *Optional* Length of the transformed axis of the output. If nfft is smaller than the length of the
                  input, the input is cropped. If it is larger, the input is padded with zeros. If n is not given, the
                  length of the input along the axis specified by axis is used.
-    :param norm: *Optional* Normalization mode. Default is “forward”, meaning a normalization of 1/n is applied on the
-                 forward transforms and no normalization is applied on the ifft. “backward” instead applies no
-                 normalization on the forward tranform and 1/n on the backward. For norm="ortho", both directions are
-                 scaled by 1/sqrt(n).
+    :param norm: *Optional* Normalization mode. Default is "unit", meaning a normalization of 2/n is applied on the
+                 forward transform, and a normalization of 1/2 is applied on the ifft. The "unit" normalization means
+                 that the units of the FFT are the same as the units of the data put into it and that a sinusoid of
+                 amplitude A will peak with amplitude A in the frequency domain.  “forward” instead applies a
+                 normalization of 1/n on the forward transforms and no normalization is applied on the ifft. “backward”
+                 applies no normalization on the forward tranform and 1/n on the backward. For norm="ortho", both
+                 directions are scaled by 1/sqrt(n).
     :param kwargs: Further keywords passed to `scipy.fft.fft`.  Note that the nfft parameter of this function is passed
                    to `scipy.fft.fft` as `n`.
     :return: The FFT of each channel in `df`.
@@ -61,7 +66,6 @@ def fft(
         - `SciPy FFT method <https://docs.scipy.org/doc/scipy/reference/reference/generated/scipy.fft.fft.html>`_
           Documentation for the FFT function wrapped internally.
     """
-
     if output is None:
         output_fun = np.abs
     elif output not in ["magnitude", "angle", "complex"]:
@@ -71,6 +75,7 @@ def fft(
             output_fun = np.abs
         elif output == "angle":
             output_fun = np.angle
+            norm = "forward"  # this prevents scaling when the angle is calculated
         elif output == "complex":
             output_fun = np.asarray
         else:
@@ -83,8 +88,14 @@ def fft(
     elif nfft <= 0:
         raise ValueError(f'nfft must be positive, was {nfft}')
 
+    scale = 1.
+
     if norm is None:
         norm = "forward"
+        scale = 2.
+    elif norm == "unit":
+        norm = "forward"
+        scale = 2.
     elif norm not in ["forward", "ortho", "backward"]:
         raise ValueError(f'norm must be one of None, "forward", "ortho", or "backward".  Was {norm}.')
 
@@ -97,15 +108,93 @@ def fft(
                 df[c].to_numpy(),
                 n=nfft,
                 norm=norm,
-            )))
+            )))*scale
             for c in df.columns},
         columns=df.columns,
         index=scipy.fft.fftshift(scipy.fft.fftfreq(nfft))*fs,
     )
 
 
-def rfft():
-    pass
+def rfft(
+        df: pd.DataFrame,
+        output: typing.Literal[None, "magnitude", "angle", "complex"] = None,
+        nfft: Optional[int] = None,
+        norm: typing.Literal[None, "unit", "forward", "ortho", "backward"] = None,
+    ) -> pd.DataFrame:
+    """
+    Perform the real valued FFT of the data in `df`, using Scipy's RFFT method from `scipy.fft.rfft`.
+
+    :param df: the input data
+    :param output: *Optional*  The type of the output of the FFT. Default is "magnitude".  "magnitude" will return the
+                   absolute value of the FFT, "angle" will return the phase angle in radians, "complex" will return the
+                   complex values of the FFT.
+    :param nfft: *Optional* Length of the transformed axis of the output. If nfft is smaller than the length of the
+                 input, the input is cropped. If it is larger, the input is padded with zeros. If n is not given, the
+                 length of the input along the axis specified by axis is used.
+    :param norm: *Optional* Normalization mode. Default is "unit", meaning a normalization of 2/n is applied on the
+                 forward transform, and a normalization of 1/2 is applied on the ifft. The "unit" normalization means
+                 that the units of the FFT are the same as the units of the data put into it and that a sinusoid of
+                 amplitude A will peak with amplitude A in the frequency domain.  “forward” instead applies a
+                 normalization of 1/n on the forward transforms and no normalization is applied on the ifft. “backward”
+                 applies no normalization on the forward tranform and 1/n on the backward. For norm="ortho", both
+                 directions are scaled by 1/sqrt(n).
+    :param kwargs: Further keywords passed to `scipy.fft.rfft`.  Note that the nfft parameter of this function is passed
+                   to `scipy.fft.rfft` as `n`.
+    :return: The RFFT of each channel in `df`.
+
+    .. seealso::
+
+        - `SciPy RFFT method <https://docs.scipy.org/doc/scipy/reference/reference/generated/scipy.fft.rfft.html>`_
+          Documentation for the EFFT function wrapped internally.
+    """
+
+    if output is None:
+        output_fun = np.abs
+    elif output not in ["magnitude", "angle", "complex"]:
+        raise ValueError(f'output must be one of None, "magnitude", "angle", or "complex".  Was {output}.')
+    else:
+        if output == "magnitude":
+            output_fun = np.abs
+        elif output == "angle":
+            output_fun = np.angle
+            norm = "forward"  # this prevents scaling when the angle is calculated
+        elif output == "complex":
+            output_fun = np.asarray
+        else:
+            raise Exception("impossible state reached in fft output type")
+
+    if nfft is None:
+        nfft = len(df)
+    elif not isinstance(nfft, int):
+        raise TypeError(f'nfft must be a positive integer, was of type {type(nfft)}')
+    elif nfft <= 0:
+        raise ValueError(f'nfft must be positive, was {nfft}')
+
+    scale = 1.
+
+    if norm is None:
+        norm = "forward"
+        scale = 2.
+    elif norm == "unit":
+        norm = "forward"
+        scale = 2.
+    elif norm not in ["forward", "ortho", "backward"]:
+        raise ValueError(f'norm must be one of None, "forward", "ortho", or "backward".  Was {norm}.')
+
+    dt = utils.sample_spacing(df)
+    fs = 1 / dt
+
+    return pd.DataFrame(
+        data={
+            c: output_fun(scipy.fft.rfft(
+                df[c].to_numpy(),
+                n=nfft,
+                norm=norm,
+            ))*scale
+            for c in df.columns},
+        columns=df.columns,
+        index=scipy.fft.rfftfreq(nfft)*fs,
+    )
 
 
 def dct():
