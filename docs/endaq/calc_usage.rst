@@ -10,6 +10,7 @@ Filters
    import plotly.express as px
 
    import endaq
+   endaq.plot.utilities.set_theme('endaq_light')
 
 
    df_accel = endaq.ide.to_pandas(endaq.ide.get_doc(
@@ -44,7 +45,7 @@ Filters
    import plotly.express as px
 
    import endaq
-
+   endaq.plot.utilities.set_theme('endaq_light')
 
    df_accel = endaq.ide.to_pandas(endaq.ide.get_doc(
            'https://info.endaq.com/hubfs/100Hz_shake_cal.ide').channels[8].subchannels[2],
@@ -80,7 +81,7 @@ Integration
    import plotly.express as px
 
    import endaq
-
+   endaq.plot.utilities.set_theme('endaq_light')
 
    df_accel = endaq.ide.to_pandas(endaq.ide.get_doc(
            'https://info.endaq.com/hubfs/100Hz_shake_cal.ide').channels[8].subchannels[2],
@@ -115,7 +116,7 @@ Integration
    import plotly.express as px
 
    import endaq
-
+   endaq.plot.utilities.set_theme('endaq_light')
 
    df_accel = endaq.ide.to_pandas(endaq.ide.get_doc(
            'https://info.endaq.com/hubfs/100Hz_shake_cal.ide').channels[8].subchannels[2],
