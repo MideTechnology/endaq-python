@@ -52,7 +52,7 @@ jobs:
           key: ${{ runner.os }}-Python${{ matrix.python-version }}-${{ steps.date.outputs.text }}-pip-${{ hashFiles('**/setup.py', './.github/workflows/unit-tests.yml') }}
 
       - name: Install package & (test) dependencies
-        run: python -m pip install --upgrade --upgrade-strategy=eager .[test]
+        run: python -m pip install --upgrade --upgrade-strategy=only-if-needed .[test]
 
       - name: Run Tests
         run: >
