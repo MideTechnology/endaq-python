@@ -26,7 +26,16 @@ Filters
    df_accel = df_accel.join(df_accel_highpass, how='left')
    df_accel = df_accel.join(df_accel_lowpass, how='left')
 
-   fig1 = px.line(df_accel, x=df_accel.index, y=df_accel.columns)
+   fig1 = px.line(
+           df_accel,
+           x=df_accel.index,
+           y=df_accel.columns,
+           labels=
+               {
+                   "timestamp": "time [s]",
+                   "value": "Acceleration [m/s^2]",
+               },
+       )
    fig1.show()
 
 .. plotly::
@@ -51,7 +60,16 @@ Filters
    df_accel = df_accel.join(df_accel_highpass, how='left')
    df_accel = df_accel.join(df_accel_lowpass, how='left')
 
-   fig1 = px.line(df_accel, x=df_accel.index, y=df_accel.columns)
+   fig1 = px.line(
+           df_accel,
+           x=df_accel.index,
+           y=df_accel.columns,
+           labels=
+               {
+                   "timestamp": "time [s]",
+                   "value": "Acceleration [m/s^2]",
+               },
+       )
 
 
 Integration
@@ -59,7 +77,71 @@ Integration
 
 .. code:: python
 
-   dfs_integrate = endaq.calc.integrate.integrals(df_accel, n=2, highpass_cutoff=1.0, tukey_percent=0.05)
+   import plotly.express as px
+
+   import endaq
+
+
+   df_accel = endaq.ide.to_pandas(endaq.ide.get_doc(
+           'https://info.endaq.com/hubfs/100Hz_shake_cal.ide').channels[8].subchannels[2],
+           time_mode='seconds',
+       )*9.81  # g to m/s^2
+
+   dfs_integrate = endaq.calc.integrate.integrals(df_accel, n=2, highpass_cutoff=1.0, tukey_percent=0.05)[1]
+   dfs_integrate_2 = endaq.calc.integrate.integrals(df_accel, n=2, highpass_cutoff=1.0, tukey_percent=0.05)[2]
+   df_accel.columns = ['acceleration']
+   dfs_integrate.columns = ['velocity']
+   dfs_integrate_2.columns = ['position']
+
+   df_accel = df_accel.join(dfs_integrate*1e3, how='left')
+   df_accel = df_accel.join(dfs_integrate_2*1e6, how='left')
+
+   fig1 = px.line(
+           df_accel,
+           x=df_accel.index,
+           y=df_accel.columns[::-1],
+           labels=
+               {
+                   "timestamp": "time [s]",
+                   "value": "Acceleration [m/s^2], Velocity [mm/s], Displacement [μm]",
+               },
+       )
+   fig1.show()
+
+
+.. plotly::
+   :fig-vars: fig1
+
+   import plotly.express as px
+
+   import endaq
+
+
+   df_accel = endaq.ide.to_pandas(endaq.ide.get_doc(
+           'https://info.endaq.com/hubfs/100Hz_shake_cal.ide').channels[8].subchannels[2],
+           time_mode='seconds',
+       )*9.81  # g to m/s^2
+
+   dfs_integrate = endaq.calc.integrate.integrals(df_accel, n=2, highpass_cutoff=10.0, tukey_percent=0.05)[1]
+   dfs_integrate_2 = endaq.calc.integrate.integrals(df_accel, n=2, highpass_cutoff=10.0, tukey_percent=0.05)[2]
+   df_accel.columns = ['acceleration']
+   dfs_integrate.columns = ['velocity']
+   dfs_integrate_2.columns = ['position']
+
+   df_accel = df_accel.join(dfs_integrate*1e3, how='left')
+   df_accel = df_accel.join(dfs_integrate_2*1e6, how='left')
+
+   fig1 = px.line(
+           df_accel,
+           x=df_accel.index,
+           y=df_accel.columns[::-1],
+           labels=
+               {
+                   "timestamp": "time [s]",
+                   "value": "Acceleration [m/s^2], Velocity [mm/s], Displacement [μm]",
+               },
+       )
+
 
 PSD
 ~~~
