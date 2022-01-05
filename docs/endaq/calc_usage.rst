@@ -148,7 +148,7 @@ PSD
 
 Linearly & Octave Spaced
 ^^^^^^^^^^^^^^^
-This presents some data from bearing tests explained in more detail in our [blog on calculating vibration metrics](https://blog.endaq.com/top-vibration-metrics-to-monitor-how-to-calculate-them).
+This presents some data from bearing tests explained in more detail in our `blog on calculating vibration metrics <https://blog.endaq.com/top-vibration-metrics-to-monitor-how-to-calculate-them>`_.
 
 .. code:: python
 
