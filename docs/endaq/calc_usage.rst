@@ -228,7 +228,7 @@ This presents some data from bearing tests explained in more detail in our `blog
 
 RMS from PSD
 ^^^^^^^^^^^^^^^^^^^^^^^^
-Calculating RMS of arbitrary frequency ranges is made possible with specifying `scaling='parseval'` in the `psd.welch()` method and then using the 'psd.to_jagged()' method. Note that the overall RMS is the collective RMS of the individual ranges.
+Calculating RMS of arbitrary frequency ranges is made possible with specifying :py:`scaling='parseval'` in the :py:func:`~endaq.calc.psd.welch()` method and then using the :py:func:`~endaq.calc.psd.to_jagged()` method. Note that the overall RMS is the collective RMS of the individual ranges.
 
 .. code:: python   
 
