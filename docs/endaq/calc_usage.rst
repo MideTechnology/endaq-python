@@ -7,37 +7,52 @@ Filters
 ~~~~~~~
 .. code:: python
 
-   import endaq
-   import matplotlib.pyplot as plt
-
-   df_accel = endaq.ide.to_pandas(endaq.ide.get_doc('https://info.endaq.com/hubfs/100Hz_shake_cal.ide').channels[8],time_mode='seconds')
-
-   df_accel_highpass = endaq.calc.filters.butterworth(df_accel, low_cutoff=1, high_cutoff=None)
-   df_accel_lowpass = endaq.calc.filters.butterworth(df_accel, low_cutoff=None, high_cutoff=100)
-
-   ax = df_accel_highpass['Z (100g)'].plot(xlabel='time (s)')
-
-   df_accel_lowpass['Z (100g)'].plot(ax=ax)
-
-   plt.legend(['highpass, 1Hz cutoff', 'lowpass, 100Hz cutoff'])
-   plt.show()
-
-.. plot::
+   import plotly.express as px
 
    import endaq
-   import matplotlib.pyplot as plt
 
-   df_accel = endaq.ide.to_pandas(endaq.ide.get_doc('https://info.endaq.com/hubfs/100Hz_shake_cal.ide').channels[8],time_mode='seconds')
+
+   df_accel = endaq.ide.to_pandas(endaq.ide.get_doc(
+           'https://info.endaq.com/hubfs/100Hz_shake_cal.ide').channels[8].subchannels[2],
+           time_mode='seconds',
+       )
 
    df_accel_highpass = endaq.calc.filters.butterworth(df_accel, low_cutoff=1, high_cutoff=None)
+   df_accel_highpass.columns = ['1Hz high-pass filter']
+
    df_accel_lowpass = endaq.calc.filters.butterworth(df_accel, low_cutoff=None, high_cutoff=100)
+   df_accel_lowpass.columns = ['100Hz low-pass filter']
 
-   ax = df_accel_highpass['Z (100g)'].plot(xlabel='time (s)')
+   df_accel = df_accel.join(df_accel_highpass, how='left')
+   df_accel = df_accel.join(df_accel_lowpass, how='left')
 
-   df_accel_lowpass['Z (100g)'].plot(ax=ax)
+   fig1 = px.line(df_accel, x=df_accel.index, y=df_accel.columns)
+   fig1.show()
 
-   plt.legend(['highpass, 1Hz cutoff', 'lowpass, 100Hz cutoff'])
-   plt.show()
+.. plotly::
+   :fig-vars: fig1
+
+   import plotly.express as px
+
+   import endaq
+
+
+   df_accel = endaq.ide.to_pandas(endaq.ide.get_doc(
+           'https://info.endaq.com/hubfs/100Hz_shake_cal.ide').channels[8].subchannels[2],
+           time_mode='seconds',
+       )
+
+   df_accel_highpass = endaq.calc.filters.butterworth(df_accel, low_cutoff=1, high_cutoff=None)
+   df_accel_highpass.columns = ['1Hz high-pass filter']
+
+   df_accel_lowpass = endaq.calc.filters.butterworth(df_accel, low_cutoff=None, high_cutoff=100)
+   df_accel_lowpass.columns = ['100Hz low-pass filter']
+
+   df_accel = df_accel.join(df_accel_highpass, how='left')
+   df_accel = df_accel.join(df_accel_lowpass, how='left')
+
+   fig1 = px.line(df_accel, x=df_accel.index, y=df_accel.columns)
+
 
 Integration
 ~~~~~~~~~~~
