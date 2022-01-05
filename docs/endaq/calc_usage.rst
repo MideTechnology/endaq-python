@@ -34,7 +34,7 @@ Filters
            labels=
                {
                    "timestamp": "time [s]",
-                   "value": "Acceleration [m/s^2]",
+                   "value": "Acceleration [g]",
                },
        )
    fig1.show()
@@ -148,7 +148,7 @@ PSD
 ~~~
 
 Linearly & Octave Spaced
-^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^
 This presents some data from bearing tests explained in more detail in our `blog on calculating vibration metrics <https://blog.endaq.com/top-vibration-metrics-to-monitor-how-to-calculate-them>`_.
 
 .. code:: python
@@ -212,7 +212,6 @@ This presents some data from bearing tests explained in more detail in our `blog
        yaxis_type='log',
        legend_title_text='',
    )
-   fig1.show()    
 
    #Calculate 1/3 Octave Spaced PSD    
    oct_psd = endaq.calc.psd.to_octave(psd, fstart=4, octave_bins=3)
@@ -226,7 +225,6 @@ This presents some data from bearing tests explained in more detail in our `blog
        yaxis_type='log',
        legend_title_text='',
    )
-   fig2.show()        
    
 Derivatives & Integrals
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -322,7 +320,6 @@ This presents some data from a motorcylce crash test that is explained in more d
        xaxis_type="log",
        yaxis_type="log",
      )
-   fig1.show()
 
    #Calculate PVSS
    pvss = endaq.calc.shock.shock_spectrum(accel, freqs=freqs, damp=0.05, mode='pvss')
@@ -337,11 +334,10 @@ This presents some data from a motorcylce crash test that is explained in more d
 
    #Plot PVSS
    fig2 = px.line(pvss).update_layout(
-       title_text='Psuedo Velocity Shock Spectrum (PVSS) of Motorcycle Crash w/ Half Sine Equivalents',
+       title_text='Psuedo Velocity Shock Spectrum (PVSS) <br> of Motorcycle Crash w/ Half Sine Equivalents',
        xaxis_title_text="Natural Frequency (Hz)",
        yaxis_title_text="Psuedo Velocity (in/s)",
        legend_title_text='',
        xaxis_type="log",
        yaxis_type="log",
      )
-   fig2.show()   
