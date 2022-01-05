@@ -146,20 +146,86 @@ Integration
 PSD
 ~~~
 
-Linearly-spaced
+Linearly & Octave Spaced
 ^^^^^^^^^^^^^^^
 
 .. code:: python
 
-   df_accel_psd = endaq.calc.psd.welch(df_accel, bin_width=1/11)
+   import plotly.express as px
+   import pandas as pd
+   import endaq
+   endaq.plot.utilities.set_theme('endaq_light')
 
-Octave-spaced
-^^^^^^^^^^^^^
+   #Get Acceleration Data
+   bearing = pd.read_csv('https://info.endaq.com/hubfs/Plots/bearing_data.csv', index_col=0)
 
-.. code:: python
+   #Calculate PSD with 1 Hz Bin Width
+   psd = endaq.calc.psd.welch(bearing, bin_width=1)
 
-   df_accel_psd_oct = endaq.calc.psd.to_octave(df_accel_psd, fstart=1, octave_bins=3)
+   #Plot PSD
+   fig1 = px.line(psd[10:5161]).update_layout(
+       title_text='1 Hz PSD of Bearing Vibration',
+       yaxis_title_text='Acceleration (g^2/Hz)',
+       xaxis_title_text='Frequency (Hz)',
+       xaxis_type='log',
+       yaxis_type='log',
+       legend_title_text='',
+   )
+   fig1.show()    
 
+   #Calculate 1/3 Octave Spaced PSD    
+   oct_psd = endaq.calc.psd.to_octave(psd, fstart=4, octave_bins=3)
+
+   #Plot Octave PSD
+   fig2 = px.line(oct_psd[10:5161]).update_layout(
+       title_text='1/3 Octave PSD of Bearing Vibration',
+       yaxis_title_text='Acceleration (g^2/Hz)',
+       xaxis_title_text='Frequency (Hz)',
+       xaxis_type='log',
+       yaxis_type='log',
+       legend_title_text='',
+   )
+   fig2.show()        
+    
+.. plotly::
+   :fig-vars: fig1, fig2
+
+   import plotly.express as px
+   import pandas as pd
+   import endaq
+   endaq.plot.utilities.set_theme('endaq_light')
+
+   #Get Acceleration Data
+   bearing = pd.read_csv('https://info.endaq.com/hubfs/Plots/bearing_data.csv', index_col=0)
+
+   #Calculate PSD with 1 Hz Bin Width
+   psd = endaq.calc.psd.welch(bearing, bin_width=1)
+
+   #Plot PSD
+   fig1 = px.line(psd[10:5161]).update_layout(
+       title_text='1 Hz PSD of Bearing Vibration',
+       yaxis_title_text='Acceleration (g^2/Hz)',
+       xaxis_title_text='Frequency (Hz)',
+       xaxis_type='log',
+       yaxis_type='log',
+       legend_title_text='',
+   )
+   fig1.show()    
+
+   #Calculate 1/3 Octave Spaced PSD    
+   oct_psd = endaq.calc.psd.to_octave(psd, fstart=4, octave_bins=3)
+
+   #Plot Octave PSD
+   fig2 = px.line(oct_psd[10:5161]).update_layout(
+       title_text='1/3 Octave PSD of Bearing Vibration',
+       yaxis_title_text='Acceleration (g^2/Hz)',
+       xaxis_title_text='Frequency (Hz)',
+       xaxis_type='log',
+       yaxis_type='log',
+       legend_title_text='',
+   )
+   fig2.show()        
+   
 Derivatives & Integrals
 ^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -180,12 +246,99 @@ Shock Analysis
 
 .. code:: python
 
-   df_accel_pvss = endaq.calc.shock.shock_spectrum(df_accel, freqs=2 ** np.arange(-10, 13, 0.25), damp=0.05, mode="pvss")
-   df_accel_srs = endaq.calc.shock.shock_spectrum(df_accel, freqs=[1, 10, 100, 1000], damp=0.05, mode="srs")
+   import plotly.express as px
+   import pandas as pd
+   import endaq
+   endaq.plot.utilities.set_theme('endaq_light')
 
-Shock Characterization: Half-Sine-Wave Pulse
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   #Get Acceleration Data
+   doc = endaq.ide.get_doc('https://info.endaq.com/hubfs/data/Motorcycle-Car-Crash.ide')
+   accel = endaq.ide.to_pandas(doc.channels[8], time_mode='seconds')[1137.4:1137.8]
+   accel = accel - accel.median()
 
-.. code:: python
+   #Calculate SRS
+   freqs = endaq.calc.utils.logfreqs(accel, init_freq=1, bins_per_octave=12)
+   srs = endaq.calc.shock.shock_spectrum(accel, freqs=freqs, damp=0.05, mode='srs')
 
-   half_sine_params = endaq.calc.shock.enveloping_half_sine(df_accel_pvss, damp=0.05)
+   #Plot SRS
+   fig1 = px.line(srs).update_layout(
+       title_text='Shock Response Spectrum (SRS) of Motorcycle Crash',
+       xaxis_title_text="Natural Frequency (Hz)",
+       yaxis_title_text="Peak Acceleration (g)",
+       legend_title_text='',
+       xaxis_type="log",
+       yaxis_type="log",
+     )
+   fig1.show()
+
+   #Calculate PVSS
+   pvss = endaq.calc.shock.shock_spectrum(accel, freqs=freqs, damp=0.05, mode='pvss')
+
+   #Generate Half Sine Equivalents
+   half_sine = endaq.calc.shock.enveloping_half_sine(pvss, damp=0.05)
+   half_sine_pvss = endaq.calc.shock.shock_spectrum(half_sine.to_time_series(tstart=0,tstop=2), freqs=freqs, damp=0.05, mode='pvss')
+
+   #Add to PVSS DataFrame
+   half_sine_pvss.columns = half_sine.amplitude.astype(int).astype(str) + "g, " + np.round(half_sine.duration*1000,1).astype(str) + "ms"
+   pvss = pd.concat([pvss,half_sine_pvss],axis=1)*9.81*39.37 #convert to in/s
+
+   #Plot PVSS
+   fig2 = px.line(pvss).update_layout(
+       title_text='Psuedo Velocity Shock Spectrum (PVSS) of Motorcycle Crash w/ Half Sine Equivalents',
+       xaxis_title_text="Natural Frequency (Hz)",
+       yaxis_title_text="Psuedo Velocity (in/s)",
+       legend_title_text='',
+       xaxis_type="log",
+       yaxis_type="log",
+     )
+   fig2.show()
+
+.. plotly::
+   :fig-vars: fig1, fig2
+   
+   import plotly.express as px
+   import pandas as pd
+   import endaq
+   endaq.plot.utilities.set_theme('endaq_light')
+
+   #Get Acceleration Data
+   doc = endaq.ide.get_doc('https://info.endaq.com/hubfs/data/Motorcycle-Car-Crash.ide')
+   accel = endaq.ide.to_pandas(doc.channels[8], time_mode='seconds')[1137.4:1137.8]
+   accel = accel - accel.median()
+
+   #Calculate SRS
+   freqs = endaq.calc.utils.logfreqs(accel, init_freq=1, bins_per_octave=12)
+   srs = endaq.calc.shock.shock_spectrum(accel, freqs=freqs, damp=0.05, mode='srs')
+
+   #Plot SRS
+   fig1 = px.line(srs).update_layout(
+       title_text='Shock Response Spectrum (SRS) of Motorcycle Crash',
+       xaxis_title_text="Natural Frequency (Hz)",
+       yaxis_title_text="Peak Acceleration (g)",
+       legend_title_text='',
+       xaxis_type="log",
+       yaxis_type="log",
+     )
+   fig1.show()
+
+   #Calculate PVSS
+   pvss = endaq.calc.shock.shock_spectrum(accel, freqs=freqs, damp=0.05, mode='pvss')
+
+   #Generate Half Sine Equivalents
+   half_sine = endaq.calc.shock.enveloping_half_sine(pvss, damp=0.05)
+   half_sine_pvss = endaq.calc.shock.shock_spectrum(half_sine.to_time_series(tstart=0,tstop=2), freqs=freqs, damp=0.05, mode='pvss')
+
+   #Add to PVSS DataFrame
+   half_sine_pvss.columns = half_sine.amplitude.astype(int).astype(str) + "g, " + np.round(half_sine.duration*1000,1).astype(str) + "ms"
+   pvss = pd.concat([pvss,half_sine_pvss],axis=1)*9.81*39.37 #convert to in/s
+
+   #Plot PVSS
+   fig2 = px.line(pvss).update_layout(
+       title_text='Psuedo Velocity Shock Spectrum (PVSS) of Motorcycle Crash w/ Half Sine Equivalents',
+       xaxis_title_text="Natural Frequency (Hz)",
+       yaxis_title_text="Psuedo Velocity (in/s)",
+       legend_title_text='',
+       xaxis_type="log",
+       yaxis_type="log",
+     )
+   fig2.show()   
