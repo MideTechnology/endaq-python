@@ -225,6 +225,101 @@ This presents some data from bearing tests explained in more detail in our `blog
        yaxis_type='log',
        legend_title_text='',
    )
+
+RMS from PSD
+^^^^^^^^^^^^^^^^^^^^^^^^
+Calculating RMS of arbitrary frequency ranges is made possible with specifying `scaling='parseval'` in the `psd.welch()` method and then using the 'psd.to_jagged()' method. Note that the overall RMS is the collective RMS of the individual ranges.
+
+.. code:: python   
+
+   import plotly.express as px
+   import pandas as pd
+   import endaq
+   endaq.plot.utilities.set_theme('endaq_light')
+
+   #Get Acceleration Data
+   accel = pd.read_csv('https://info.endaq.com/hubfs/Plots/bearing_data.csv', index_col=0)
+
+   #Compute RMS of Time History
+   rms_time = np.mean(accel**2)**0.5
+
+   #Define Frequency Breakpoints
+   freqs = [0.1, 65, 300, 1400, 5999]
+   labels = [str(freqs[i]) + ' to ' + str(freqs[i+1]) for i in range(len(freqs)-1)]
+
+   #Compute RMS for Frequency Ranges Using PSD Functions
+   parseval = endaq.calc.psd.welch(accel, scaling='parseval', bin_width=0.5)
+   rms_psd_breaks = endaq.calc.psd.to_jagged(parseval, freqs, agg='sum')**0.5
+
+   #Plot Bar Chart of Frequency Ranges
+   rms_psd_breaks.index = pd.Series(labels, name='Range (Hz)')
+   fig1 = px.bar(rms_psd_breaks, barmode='group').update_layout(
+       yaxis_title_text='Acceleration RMS (g)',
+       legend_title_text='',
+       title_text='RMS in Frequency Ranges'
+   )
+   fig1.show()
+
+   #Compare the RMS Calculation from Time Domain to One Using PSD
+     #Note that the Overall RMS is the Collective RMS of the Individual Ranges
+   fig2 = px.bar(
+       {
+        'Time Domain':rms_time,
+        'PSD w/ Breaks':np.sum(rms_psd_breaks**2)**0.5
+       },
+       barmode='group').update_layout(
+       xaxis_title_text='',
+       yaxis_title_text='Acceleration RMS (g)',
+       legend_title_text='',
+       title_text='RMS from Time vs from PSD'
+   )
+   fig2.show()     
+   
+.. plotly::
+   :fig-vars: fig1, fig2
+   
+   import plotly.express as px
+   import pandas as pd
+   import endaq
+   endaq.plot.utilities.set_theme('endaq_light')
+
+   #Get Acceleration Data
+   accel = pd.read_csv('https://info.endaq.com/hubfs/Plots/bearing_data.csv', index_col=0)
+
+   #Compute RMS of Time History
+   rms_time = np.mean(accel**2)**0.5
+
+   #Define Frequency Breakpoints
+   freqs = [0.1, 65, 300, 1400, 5999]
+   labels = [str(freqs[i]) + ' to ' + str(freqs[i+1]) for i in range(len(freqs)-1)]
+
+   #Compute RMS for Frequency Ranges Using PSD Functions
+   parseval = endaq.calc.psd.welch(accel, scaling='parseval', bin_width=0.5)
+   rms_psd_breaks = endaq.calc.psd.to_jagged(parseval, freqs, agg='sum')**0.5
+
+   #Plot Bar Chart of Frequency Ranges
+   rms_psd_breaks.index = pd.Series(labels, name='Range (Hz)')
+   fig1 = px.bar(rms_psd_breaks, barmode='group').update_layout(
+       yaxis_title_text='Acceleration RMS (g)',
+       legend_title_text='',
+       title_text='RMS in Frequency Ranges'
+   )
+   fig1.show()
+
+   #Compare the RMS Calculation from Time Domain to One Using PSD
+     #Note that the Overall RMS is the Collective RMS of the Individual Ranges
+   fig2 = px.bar(
+       {
+        'Time Domain':rms_time,
+        'PSD w/ Breaks':np.sum(rms_psd_breaks**2)**0.5
+       },
+       barmode='group').update_layout(
+       xaxis_title_text='',
+       yaxis_title_text='Acceleration RMS (g)',
+       legend_title_text='',
+       title_text='RMS from Time vs from PSD'
+   )
+   fig2.show()        
    
 Derivatives & Integrals
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -285,7 +380,7 @@ This presents some data from a motorcylce crash test that is explained in more d
 
    #Plot PVSS
    fig2 = px.line(pvss).update_layout(
-       title_text='Psuedo Velocity Shock Spectrum (PVSS) of Motorcycle Crash w/ Half Sine Equivalents',
+       title_text='PVSS w/ Half Sine Equivalents',
        xaxis_title_text="Natural Frequency (Hz)",
        yaxis_title_text="Psuedo Velocity (in/s)",
        legend_title_text='',
@@ -334,7 +429,7 @@ This presents some data from a motorcylce crash test that is explained in more d
 
    #Plot PVSS
    fig2 = px.line(pvss).update_layout(
-       title_text='Psuedo Velocity Shock Spectrum (PVSS) <br> of Motorcycle Crash w/ Half Sine Equivalents',
+       title_text='PVSS w/ Half Sine Equivalents',
        xaxis_title_text="Natural Frequency (Hz)",
        yaxis_title_text="Psuedo Velocity (in/s)",
        legend_title_text='',
