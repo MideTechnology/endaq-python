@@ -10,6 +10,9 @@ import scipy.fft
 from endaq.calc import psd, utils
 
 
+__all__ = ["aggregate_fft", "fft", "rfft", "dct", "dst"]
+
+
 def aggregate_fft(df, **kwargs):
     """
     Calculate the FFT using `scipy.signal.welch` with a specified frequency spacing.  The data returned is in the same

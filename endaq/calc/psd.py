@@ -79,7 +79,8 @@ def welch(
         correspond to the same options in ``scipy.signal.welch``; `"parseval"`
         will maintain the "energy" between the input & output, s.t.
         ``welch(df, scaling="parseval").sum(axis="rows")`` is roughly equal to
-        ``df.abs().pow(2).sum(axis="rows")``
+        ``df.abs().pow(2).sum(axis="rows")``;
+        `"unit"` will maintain the units and scale of the input data.
     :param kwargs: other parameters to pass directly to ``scipy.signal.welch``
     :return: a periodogram
 
