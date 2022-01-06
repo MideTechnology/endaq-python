@@ -40,7 +40,7 @@ def fft(
         output: typing.Literal[None, "magnitude", "angle", "complex"] = None,
         nfft: Optional[int] = None,
         norm: typing.Literal[None, "unit", "forward", "ortho", "backward"] = None,
-        optimize: bool = False,
+        optimize: bool = True,
     ) -> pd.DataFrame:
     """
     Perform the FFT of the data in `df`, using Scipy's FFT method from `scipy.fft.fft`.  If the in `df` is all real,
@@ -62,7 +62,7 @@ def fft(
                  applies no normalization on the forward tranform and 1/n on the backward. For norm="ortho", both
                  directions are scaled by 1/sqrt(n).
     :param optimize: *Optional* If optimize is set to True, the length of the FFT will automatically be padded to a
-                     length which can be calculated more quickly.
+                     length which can be calculated more quickly.  Default is True.
     :param kwargs: Further keywords passed to `scipy.fft.fft`.  Note that the nfft parameter of this function is passed
                    to `scipy.fft.fft` as `n`.
     :return: The FFT of each channel in `df`.
@@ -108,18 +108,20 @@ def fft(
         raise ValueError(f'norm must be one of None, "forward", "ortho", or "backward".  Was {norm}.')
 
     dt = utils.sample_spacing(df)
-    fs = 1 / dt
 
-    return pd.DataFrame(
-        data={
+    data = {
             c: output_fun(scipy.fft.fftshift(scipy.fft.fft(
                 df[c].to_numpy(),
                 n=nfft,
                 norm=norm,
             )))*scale
-            for c in df.columns},
+            for c in df.columns}
+    index = pd.Index(scipy.fft.fftshift(scipy.fft.fftfreq(nfft, dt)), name='frequency (Hz)')
+
+    return pd.DataFrame(
+        data=data,
         columns=df.columns,
-        index=scipy.fft.fftshift(scipy.fft.fftfreq(nfft))*fs,
+        index=index,
     )
 
 
@@ -128,7 +130,7 @@ def rfft(
         output: typing.Literal[None, "magnitude", "angle", "complex"] = None,
         nfft: Optional[int] = None,
         norm: typing.Literal[None, "unit", "forward", "ortho", "backward"] = None,
-        optimize: bool = False,
+        optimize: bool = True,
     ) -> pd.DataFrame:
     """
     Perform the real valued FFT of the data in `df`, using Scipy's RFFT method from `scipy.fft.rfft`.
@@ -148,7 +150,7 @@ def rfft(
                  applies no normalization on the forward tranform and 1/n on the backward. For norm="ortho", both
                  directions are scaled by 1/sqrt(n).
     :param optimize: *Optional* If optimize is set to True, the length of the FFT will automatically be padded to a
-                     length which can be calculated more quickly.
+                     length which can be calculated more quickly.  Default is True.
     :param kwargs: Further keywords passed to `scipy.fft.rfft`.  Note that the nfft parameter of this function is passed
                    to `scipy.fft.rfft` as `n`.
     :return: The RFFT of each channel in `df`.
@@ -195,18 +197,20 @@ def rfft(
         raise ValueError(f'norm must be one of None, "forward", "ortho", or "backward".  Was {norm}.')
 
     dt = utils.sample_spacing(df)
-    fs = 1 / dt
 
-    return pd.DataFrame(
-        data={
+    data = {
             c: output_fun(scipy.fft.rfft(
                 df[c].to_numpy(),
                 n=nfft,
                 norm=norm,
             ))*scale
-            for c in df.columns},
+            for c in df.columns}
+    index = pd.Index(scipy.fft.rfftfreq(nfft, dt), name='frequency (Hz)')
+
+    return pd.DataFrame(
+        data=data,
         columns=df.columns,
-        index=scipy.fft.rfftfreq(nfft)*fs,
+        index=index,
     )
 
 
