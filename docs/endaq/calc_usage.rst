@@ -228,7 +228,7 @@ This presents some data from bearing tests explained in more detail in our `blog
 
 RMS from PSD
 ^^^^^^^^^^^^^^^^^^^^^^^^
-Calculating RMS of arbitrary frequency ranges is made possible with specifying :py:`scaling='parseval'` in the :py:func:`~endaq.calc.psd.welch()` method and then using the :py:func:`~endaq.calc.psd.to_jagged()` method. Note that the overall RMS is the collective RMS of the individual ranges.
+Calculating RMS of arbitrary frequency ranges is made possible with specifying ``scaling='parseval'`` in the :py:func:`~endaq.calc.psd.welch()` method and then using the :py:func:`~endaq.calc.psd.to_jagged()` method. Note that the overall RMS is the collective RMS of the individual ranges.
 
 .. code:: python   
 
@@ -304,7 +304,6 @@ Calculating RMS of arbitrary frequency ranges is made possible with specifying :
        legend_title_text='',
        title_text='RMS in Frequency Ranges'
    )
-   fig1.show()
 
    #Compare the RMS Calculation from Time Domain to One Using PSD
      #Note that the Overall RMS is the Collective RMS of the Individual Ranges
@@ -319,7 +318,6 @@ Calculating RMS of arbitrary frequency ranges is made possible with specifying :
        legend_title_text='',
        title_text='RMS from Time vs from PSD'
    )
-   fig2.show()        
    
 Derivatives & Integrals
 ^^^^^^^^^^^^^^^^^^^^^^^
