@@ -13,20 +13,25 @@ Filters
    endaq.plot.utilities.set_theme('endaq_light')
 
 
+   # get accelerometer data from https://info.endaq.com/hubfs/100Hz_shake_cal.ide
    df_accel = endaq.ide.to_pandas(endaq.ide.get_doc(
            'https://info.endaq.com/hubfs/100Hz_shake_cal.ide').channels[8].subchannels[2],
            time_mode='seconds',
        )
 
+   # create a new dataframe filtered with a high-pass butterworth with a cutoff frequency of 1 Hz
    df_accel_highpass = endaq.calc.filters.butterworth(df_accel, low_cutoff=1, high_cutoff=None)
    df_accel_highpass.columns = ['1Hz high-pass filter']
 
+   # create a new dataframe filtered with a low-pass butterworth with a cutoff frequency of 100 Hz
    df_accel_lowpass = endaq.calc.filters.butterworth(df_accel, low_cutoff=None, high_cutoff=100)
    df_accel_lowpass.columns = ['100Hz low-pass filter']
 
+   # merge the data into a single dataframe for plotting
    df_accel = df_accel.join(df_accel_highpass, how='left')
    df_accel = df_accel.join(df_accel_lowpass, how='left')
 
+   # plot everything on the same axes
    fig1 = px.line(
            df_accel,
            x=df_accel.index,
@@ -47,20 +52,25 @@ Filters
    import endaq
    endaq.plot.utilities.set_theme('endaq_light')
 
+   # get accelerometer data from https://info.endaq.com/hubfs/100Hz_shake_cal.ide
    df_accel = endaq.ide.to_pandas(endaq.ide.get_doc(
            'https://info.endaq.com/hubfs/100Hz_shake_cal.ide').channels[8].subchannels[2],
            time_mode='seconds',
        )
 
+   # create a new dataframe filtered with a high-pass butterworth with a cutoff frequency of 1 Hz
    df_accel_highpass = endaq.calc.filters.butterworth(df_accel, low_cutoff=1, high_cutoff=None)
    df_accel_highpass.columns = ['1Hz high-pass filter']
 
+   # create a new dataframe filtered with a low-pass butterworth with a cutoff frequency of 100 Hz
    df_accel_lowpass = endaq.calc.filters.butterworth(df_accel, low_cutoff=None, high_cutoff=100)
    df_accel_lowpass.columns = ['100Hz low-pass filter']
 
+   # merge the data into a single dataframe for plotting
    df_accel = df_accel.join(df_accel_highpass, how='left')
    df_accel = df_accel.join(df_accel_lowpass, how='left')
 
+   # plot everything on the same axes
    fig1 = px.line(
            df_accel,
            x=df_accel.index,
@@ -83,20 +93,25 @@ Integration
    import endaq
    endaq.plot.utilities.set_theme('endaq_light')
 
+
+   # get accelerometer data from https://info.endaq.com/hubfs/100Hz_shake_cal.ide and convert from g to m/s^2
    df_accel = endaq.ide.to_pandas(endaq.ide.get_doc(
            'https://info.endaq.com/hubfs/100Hz_shake_cal.ide').channels[8].subchannels[2],
            time_mode='seconds',
        )*9.81  # g to m/s^2
 
+   # generate the velocity and position by integrating after filtering out low-frequency content below 1 Hz
    dfs_integrate = endaq.calc.integrate.integrals(df_accel, n=2, highpass_cutoff=1.0, tukey_percent=0.05)[1]
    dfs_integrate_2 = endaq.calc.integrate.integrals(df_accel, n=2, highpass_cutoff=1.0, tukey_percent=0.05)[2]
    df_accel.columns = ['acceleration']
    dfs_integrate.columns = ['velocity']
-   dfs_integrate_2.columns = ['position']
+   dfs_integrate_2.columns = ['displacement']
 
-   df_accel = df_accel.join(dfs_integrate*1e3, how='left')
-   df_accel = df_accel.join(dfs_integrate_2*1e6, how='left')
+   # combine dataframes for plotting and adjust the scale so everything fits well
+   df_accel = df_accel.join(dfs_integrate*1e3, how='left')  # m/s -> mm/s
+   df_accel = df_accel.join(dfs_integrate_2*1e6, how='left')  # m -> μm
 
+   # plot everything on the same axes
    fig1 = px.line(
            df_accel,
            x=df_accel.index,
@@ -118,20 +133,25 @@ Integration
    import endaq
    endaq.plot.utilities.set_theme('endaq_light')
 
+
+   # get accelerometer data from https://info.endaq.com/hubfs/100Hz_shake_cal.ide and convert from g to m/s^2
    df_accel = endaq.ide.to_pandas(endaq.ide.get_doc(
            'https://info.endaq.com/hubfs/100Hz_shake_cal.ide').channels[8].subchannels[2],
            time_mode='seconds',
        )*9.81  # g to m/s^2
 
+   # generate the velocity and position by integrating after filtering out low-frequency content below 1 Hz
    dfs_integrate = endaq.calc.integrate.integrals(df_accel, n=2, highpass_cutoff=10.0, tukey_percent=0.05)[1]
    dfs_integrate_2 = endaq.calc.integrate.integrals(df_accel, n=2, highpass_cutoff=10.0, tukey_percent=0.05)[2]
    df_accel.columns = ['acceleration']
    dfs_integrate.columns = ['velocity']
    dfs_integrate_2.columns = ['position']
 
-   df_accel = df_accel.join(dfs_integrate*1e3, how='left')
-   df_accel = df_accel.join(dfs_integrate_2*1e6, how='left')
+   # combine dataframes for plotting and adjust the scale so everything fits well
+   df_accel = df_accel.join(dfs_integrate*1e3, how='left')  # m/s -> mm/s
+   df_accel = df_accel.join(dfs_integrate_2*1e6, how='left')  # m -> μm
 
+   # plot everything on the same axes
    fig1 = px.line(
            df_accel,
            x=df_accel.index,
