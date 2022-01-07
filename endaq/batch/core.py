@@ -71,6 +71,21 @@ def _make_pvss(ch_data_cache):
     return df_pvss.stack(level="axis").reorder_levels(["axis", "frequency (Hz)"])
 
 
+def _make_halfsine_pvss_envelope(ch_data_cache, **kwargs):
+    df_pvss = ch_data_cache._PVSSData.copy()
+    df_pvss["Resultant"] = ch_data_cache._PVSSResultantData
+    df_pvss = df_pvss * endaq.batch.analyzer.MPS_TO_MMPS
+    if df_pvss.size == 0:
+        return None
+
+    return (
+        endaq.calc.shock.enveloping_half_sine(df_pvss)
+        .to_time_series(**kwargs)
+        .stack(level="axis")
+        .reorder_levels(["axis", "timestamp"])
+    )
+
+
 def _make_metrics(ch_data_cache):
     """
     Format the channel metrics of a recording into a pandas object.
@@ -284,6 +299,7 @@ class GetDataBuilder:
         self._psd_window = None
         self._pvss_init_freq = None
         self._pvss_bins_per_octave = None
+        self._pvss_halfsine_envelope_kwargs = {}
         self._peak_window_margin_len = None
         self._vc_init_freq = None
         self._vc_bins_per_octave = None
@@ -342,6 +358,16 @@ class GetDataBuilder:
         self._metrics_queue["pvss"] = None
         self._pvss_init_freq = init_freq
         self._pvss_bins_per_octave = bins_per_octave
+
+        return self
+
+    def add_pvss_halfsine_envelope(self, **kwargs):
+        """
+        Add the half-sine envelope for the acceleration's PVSS (Pseudo Velocity
+        Shock Spectrum) to the calculation queue.
+        """
+        self._metrics_queue["halfsine"] = None
+        self._pvss_halfsine_envelope_kwargs = kwargs
 
         return self
 
@@ -418,6 +444,9 @@ class GetDataBuilder:
                     bins_per_octave=self._psd_bins_per_octave,
                 ),
                 pvss=_make_pvss,
+                halfsine=partial(
+                    _make_halfsine_pvss_envelope, **self._pvss_halfsine_envelope_kwargs
+                ),
                 metrics=_make_metrics,
                 peaks=partial(
                     _make_peak_windows,
@@ -545,6 +574,16 @@ class OutputStruct:
                 fig.update_xaxes(type="log", title_text="frequency (Hz)")
                 fig.update_yaxes(type="log", title_text="Velocity (mm/s)")
                 fig.update_layout(title="Pseudo Velocity Shock Spectrum (PVSS)")
+
+            elif k == "halfsine":
+                fig = px.line(
+                    df,
+                    x="timestamp",
+                    y="value",
+                    color="filename",
+                    line_dash="axis",
+                )
+                fig.update_layout(title="PVSS Enveloping Half Sine Pulses")
 
             elif k == "metrics":
                 warnings.warn("HTML plot for metrics not currently implemented")
