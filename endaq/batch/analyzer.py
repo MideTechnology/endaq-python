@@ -630,7 +630,7 @@ class CalcCache:
 
     @cached_property
     def humidFull(self):
-        """Average Pressure"""
+        """Average Relative Humidity"""
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             humid = self._humidityData.mean()  # RuntimeWarning: Mean of empty slice.
