@@ -114,6 +114,7 @@ def _make_metrics(ch_data_cache):
             ch_data_cache.micRMSFull,
             ch_data_cache.tempFull,
             ch_data_cache.pressFull,
+            ch_data_cache.humidFull,
         ],
         axis="columns",
     )
