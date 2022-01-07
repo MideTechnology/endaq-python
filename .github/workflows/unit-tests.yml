@@ -70,6 +70,6 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           env_vars: OS,PYTHON-VERSION
-          files: .coverage
+          files: ./coverage.xml
           name: ${{ matrix.os }} ${{ matrix.python-version }}
           verbose: true
