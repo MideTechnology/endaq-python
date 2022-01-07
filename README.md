@@ -1,3 +1,5 @@
+![unit tests](https://github.com/midetechnology/endaq-python/.github/workflows/unit-tests.yml/badge.svg) [![codecov](https://codecov.io/gh/MideTechnology/endaq-python/branch/develop/graph/badge.svg)](https://codecov.io/gh/MideTechnology/endaq-python)
+
 # `endaq-python`: A comprehensive, user-centric Python API for working with enDAQ data and devices
 
 

@@ -57,7 +57,8 @@ jobs:
       - name: Run Tests
         run: >
           python -m pytest tests
-          --cov=endaq
+          --cov=endaq 
+          --cov-report=xml 
           --hypothesis-profile=ci
           --numprocesses auto
           -W error::RuntimeWarning
