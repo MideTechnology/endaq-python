@@ -110,9 +110,7 @@ def data_builder():
     [
         os.path.join("tests", "batch", "SSX70065.IDE"),
         os.path.join("tests", "batch", "test1.IDE"),
-        os.path.join("tests", "batch", "test2.IDE"),
         os.path.join("tests", "batch", "test3.IDE"),
-        os.path.join("tests", "batch", "test4.IDE"),
         os.path.join("tests", "batch", "test5.IDE"),
         os.path.join("tests", "batch", "GPS-Chick-Fil-A_003.IDE"),
         os.path.join("tests", "batch", "High-Drop.IDE"),
@@ -647,3 +645,32 @@ def test_output_to_html_plots(output_struct):
             assert os.path.isfile(filepath)
 
             # can't do much else for validation...
+
+
+@pytest.mark.filterwarnings("ignore:empty frequency bins:RuntimeWarning")
+@pytest.mark.filterwarnings("ignore:no acceleration channel in:UserWarning")
+@pytest.mark.filterwarnings(
+    "ignore:HTML plot for metrics not currently implemented:UserWarning"
+)
+def test_integration():
+    filenames = [
+        os.path.join("tests", "batch", "SSX70065.IDE"),
+        os.path.join("tests", "batch", "test1.IDE"),
+        os.path.join("tests", "batch", "test3.IDE"),
+        os.path.join("tests", "batch", "test5.IDE"),
+        os.path.join("tests", "batch", "GPS-Chick-Fil-A_003.IDE"),
+    ]
+    output_struct = (
+        endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1)
+        .add_psd(freq_bin_width=1)
+        .add_pvss(init_freq=1, bins_per_octave=12)
+        .add_pvss_halfsine_envelope()
+        .add_metrics()
+        .add_peaks(margin_len=1000)
+        .add_vc_curves(init_freq=1, bins_per_octave=3)
+        .aggregate_data(filenames)
+    )
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        output_struct.to_csv_folder(tmp_dir)
+        output_struct.to_html_plots(tmp_dir, show=False)
