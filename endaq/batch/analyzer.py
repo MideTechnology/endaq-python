@@ -635,5 +635,5 @@ class CalcCache:
             warnings.simplefilter("ignore")
             humid = self._humidityData.mean()  # RuntimeWarning: Mean of empty slice.
 
-        humid.name = "Average Humidity"
+        humid.name = "Average Relative Humidity"
         return humid
