@@ -79,7 +79,8 @@ def welch(
         correspond to the same options in ``scipy.signal.welch``; `"parseval"`
         will maintain the "energy" between the input & output, s.t.
         ``welch(df, scaling="parseval").sum(axis="rows")`` is roughly equal to
-        ``df.abs().pow(2).sum(axis="rows")``
+        ``df.abs().pow(2).sum(axis="rows")``;
+        `"unit"` will maintain the units and scale of the input data.
     :param kwargs: other parameters to pass directly to ``scipy.signal.welch``
     :return: a periodogram
 
@@ -96,14 +97,26 @@ def welch(
 
     if scaling == "parseval":
         kwargs["scaling"] = "density"
+    elif scaling == "unit":
+        kwargs["scaling"] = "density"
     elif scaling is not None:
         kwargs["scaling"] = scaling
 
+    nperseg = int(fs / bin_width)
+    if "nfft" not in kwargs:
+        nfft = nperseg
+    else:
+        nfft = kwargs["nfft"]
+
     freqs, psd = scipy.signal.welch(
-        df.values, fs=fs, nperseg=int(fs / bin_width), **kwargs, axis=0
+        df.values, fs=fs, nperseg=nperseg, **kwargs, axis=0
     )
     if scaling == "parseval":
         psd = psd * freqs[1]
+    elif scaling == "unit":
+        psd *= 2*freqs[1]
+        psd *= nfft/nperseg
+        psd **= 0.5
 
     return pd.DataFrame(
         psd, index=pd.Series(freqs, name="frequency (Hz)"), columns=df.columns

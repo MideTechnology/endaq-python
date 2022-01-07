@@ -35,6 +35,13 @@ first master Python and its scientific stack in their entireties.
   :members:
 
 
+``endaq.calc.fft``
+==================
+
+.. automodule:: endaq.calc.fft
+  :members:
+
+
 ``endaq.calc.shock``
 ====================
 
