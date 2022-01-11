@@ -14,7 +14,6 @@ def _get_filter_frequencies_type(low_cutoff, high_cutoff):
     cutoff_freqs: Union[float, Tuple[float, float]]
     filter_type: str
 
-    filter_type = ""
     if low_cutoff is not None and high_cutoff is not None:
         cutoff_freqs = (low_cutoff, high_cutoff)
         filter_type = "bandpass"
@@ -24,6 +23,8 @@ def _get_filter_frequencies_type(low_cutoff, high_cutoff):
     elif high_cutoff is not None:
         cutoff_freqs = high_cutoff
         filter_type = "lowpass"        
+    else:
+        return None, None
         
     return cutoff_freqs, filter_type        
 
