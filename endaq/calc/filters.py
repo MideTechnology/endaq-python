@@ -14,6 +14,7 @@ def _get_filter_frequencies_type(low_cutoff, high_cutoff):
     cutoff_freqs: Union[float, Tuple[float, float]]
     filter_type: str
 
+    filter_type = ""
     if low_cutoff is not None and high_cutoff is not None:
         cutoff_freqs = (low_cutoff, high_cutoff)
         filter_type = "bandpass"
@@ -22,9 +23,7 @@ def _get_filter_frequencies_type(low_cutoff, high_cutoff):
         filter_type = "highpass"
     elif high_cutoff is not None:
         cutoff_freqs = high_cutoff
-        filter_type = "lowpass"
-    else:
-        filter_type = ""
+        filter_type = "lowpass"        
         
     return cutoff_freqs, filter_type        
 
@@ -44,7 +43,7 @@ def rolling_mean(
     if (duration is None):
         mean = df.mean()
     else:
-        n = int(np.ceil(duration / utils.sample_spacing(accel)) // 2 * 2 + 1)
+        n = int(np.ceil(duration / utils.sample_spacing(df)) // 2 * 2 + 1)
         mean = df.rolling(n, min_periods=1, center=True).mean()    
 
     return df - mean   
