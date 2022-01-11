@@ -28,50 +28,26 @@ def _get_filter_params(low_cutoff, high_cutoff):
         
     return cutoff_freqs, filter_type        
 
-def bias(
+def rolling_mean(
     df: pd.DataFrame,
-    mode: typing.Literal["median", "mean"] = "median"
-) -> pd.DataFrame:
-    """
-    Remove the bias of an input time series dataframe
-
-    :param df: the input data
-    :param mode: what to set to 0:
-            * `"median"` - default
-            * `"mean"`
-
-    :return: a dataframe of the filtered data
-    """
-    if (mode=="mean"):
-        df = df - df.mean()
-    else:
-        df = df - df.median()
-
-    return df    
-
-def rolling_bias(
-    df: pd.DataFrame,
-    mode: typing.Literal["median", "mean"] = "median",
     duration: float = 5.0
 ) -> pd.DataFrame:
     """
-    Remove the bias of an input time series dataframe using a rolling window
+    Remove the rolling mean of an input time series dataframe
 
     :param df: the input data
-    :param mode: what to set to 0:
-            * `"median"` - default
-            * `"mean"`
-    :param duration: the rolling window size in seconds to use     
+    :param duration: the rolling window size in seconds to use
+        - if `None` is given, the entire mean is removed 
 
     :return: a dataframe of the filtered data
     """
-    n = int(duration / utils.sample_spacing(df))
-    if (mode=="mean"):
-        df = df - df.rolling(n, min_periods=1, center=True).mean()
+    if (duration is None):
+        mean = df.mean()
     else:
-        df = df - df.rolling(n, min_periods=1, center=True).median()
+        n = int(duration / utils.sample_spacing(df))
+        mean = df.rolling(n, min_periods=1, center=True).mean()    
 
-    return df        
+    return df - mean   
 
 def butterworth(
     df: pd.DataFrame,
