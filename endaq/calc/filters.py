@@ -9,6 +9,7 @@ import scipy.signal
 
 from endaq.calc import utils
 
+
 def _get_filter_frequencies_type(low_cutoff, high_cutoff):
     """Get the filter type and cutoff frequency array."""
     cutoff_freqs: Union[float, Tuple[float, float]]
