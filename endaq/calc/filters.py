@@ -9,7 +9,7 @@ import scipy.signal
 
 from endaq.calc import utils
 
-def _get_filter_params(low_cutoff, high_cutoff):
+def _get_filter_frequencies_type(low_cutoff, high_cutoff):
     """Get the filter type and cutoff frequency array."""
     cutoff_freqs: Union[float, Tuple[float, float]]
     filter_type: str
@@ -44,7 +44,7 @@ def rolling_mean(
     if (duration is None):
         mean = df.mean()
     else:
-        n = int(duration / utils.sample_spacing(df))
+        n = int(np.ceil(duration / utils.sample_spacing(accel)) // 2 * 2 + 1)
         mean = df.rolling(n, min_periods=1, center=True).mean()    
 
     return df - mean   
@@ -82,7 +82,7 @@ def butterworth(
         - `SciPy Tukey window <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.windows.tukey.html>`_
           Documentation for the Tukey window function used in preprocessing.
     """
-    cutoff_freqs, filter_type = _get_filter_params(low_cutoff, high_cutoff)
+    cutoff_freqs, filter_type = _get_filter_frequencies_type(low_cutoff, high_cutoff)
 
     if filter_type:
         dt = utils.sample_spacing(df)
@@ -141,7 +141,7 @@ def bessel(
         - `SciPy Tukey window <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.windows.tukey.html>`_
           Documentation for the Tukey window function used in preprocessing.
     """
-    cutoff_freqs, filter_type = _get_filter_params(low_cutoff, high_cutoff)
+    cutoff_freqs, filter_type = _get_filter_frequencies_type(low_cutoff, high_cutoff)
 
     if filter_type:
         dt = utils.sample_spacing(df)
@@ -198,7 +198,7 @@ def cheby1(
         - `SciPy Tukey window <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.windows.tukey.html>`_
           Documentation for the Tukey window function used in preprocessing.
     """
-    cutoff_freqs, filter_type = _get_filter_params(low_cutoff, high_cutoff)
+    cutoff_freqs, filter_type = _get_filter_frequencies_type(low_cutoff, high_cutoff)
 
     if filter_type:
         dt = utils.sample_spacing(df)
@@ -255,7 +255,7 @@ def cheby2(
         - `SciPy Tukey window <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.windows.tukey.html>`_
           Documentation for the Tukey window function used in preprocessing.
     """
-    cutoff_freqs, filter_type = _get_filter_params(low_cutoff, high_cutoff)
+    cutoff_freqs, filter_type = _get_filter_frequencies_type(low_cutoff, high_cutoff)
 
     if filter_type:
         dt = utils.sample_spacing(df)
@@ -315,7 +315,7 @@ def ellip(
         - `SciPy Tukey window <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.windows.tukey.html>`_
           Documentation for the Tukey window function used in preprocessing.
     """
-    cutoff_freqs, filter_type = _get_filter_params(low_cutoff, high_cutoff)
+    cutoff_freqs, filter_type = _get_filter_frequencies_type(low_cutoff, high_cutoff)
 
     if filter_type:
         dt = utils.sample_spacing(df)
