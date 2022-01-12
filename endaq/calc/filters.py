@@ -29,6 +29,7 @@ def _get_filter_frequencies_type(low_cutoff, high_cutoff):
         
     return cutoff_freqs, filter_type        
 
+
 def rolling_mean(
     df: pd.DataFrame,
     duration: float = 5.0
@@ -49,6 +50,7 @@ def rolling_mean(
         mean = df.rolling(n, min_periods=1, center=True).mean()    
 
     return df - mean   
+
 
 def butterworth(
     df: pd.DataFrame,
@@ -102,6 +104,7 @@ def butterworth(
         df = df.mul(tukey_window, axis="rows")
 
     return df
+
 
 def bessel(
     df: pd.DataFrame,
@@ -163,6 +166,7 @@ def bessel(
 
     return df  
 
+
 def cheby1(
     df: pd.DataFrame,
     low_cutoff: Optional[float] = 1.0,
@@ -219,6 +223,7 @@ def cheby1(
         df = df.mul(tukey_window, axis="rows")
 
     return df
+
 
 def cheby2(
     df: pd.DataFrame,
@@ -338,7 +343,11 @@ def ellip(
 
     return df            
 
+
 def _fftnoise(f):
+    """
+    Generate time series noise for a given range of frequencies with random phase using ifft.
+    """
     f = np.array(f, dtype='complex')
     Np = (len(f) - 1) // 2
     phases = np.random.rand(Np) * 2 * np.pi
@@ -346,6 +355,7 @@ def _fftnoise(f):
     f[1:Np+1] *= phases
     f[-1:-1-Np:-1] = np.conj(f[1:Np+1])
     return np.fft.ifft(f).real
+
 
 def band_limited_noise(
     min_freq: float = 0.0,
