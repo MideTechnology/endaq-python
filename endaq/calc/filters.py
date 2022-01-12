@@ -310,7 +310,7 @@ def ellip(
 
     .. seealso::
 
-        - `SciPy Cheby1 filter design <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.ellip.html>`_
+        - `SciPy Ellip filter design <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.ellip.html>`_
           Documentation for the Elliptic filter design function.
 
         - `SciPy Tukey window <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.windows.tukey.html>`_
