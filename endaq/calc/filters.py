@@ -187,7 +187,7 @@ def cheby1(
         more aggressive stopband reduction
     :param tukey_percent: the alpha parameter of a preconditioning Tukey filter;
         if 0 (default), no filter is applied
-    :param rp: tthe maximum ripple allowed in the passband, specified in decibels
+    :param rp: the maximum ripple allowed in the passband, specified in decibels
 
     :return: the filtered data
 
