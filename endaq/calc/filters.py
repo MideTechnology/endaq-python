@@ -250,7 +250,7 @@ def cheby2(
 
     .. seealso::
 
-        - `SciPy Cheby1 filter design <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.cheby2.html>`_
+        - `SciPy Cheby2 filter design <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.cheby2.html>`_
           Documentation for the Chebyshev type II filter design function.
 
         - `SciPy Tukey window <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.windows.tukey.html>`_
