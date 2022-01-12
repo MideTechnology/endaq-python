@@ -127,7 +127,7 @@ def differentiate(df: pd.DataFrame, n: float = 1.0) -> pd.DataFrame:
 
     :param df: a periodogram
     :param n: the time derivative order; negative orders represent integration
-    :return: a periodogram of the time-derivated data
+    :return: a periodogram of the time-differentiated data
     """
     # Involves a division by zero for n < 0
     with warnings.catch_warnings():
@@ -240,7 +240,7 @@ def vc_curves(
     accel_psd: pd.DataFrame, fstart: float = 1.0, octave_bins: float = 12.0
 ) -> pd.DataFrame:
     """
-    Calculate Vibration Criterion (VC) curves from an acceration periodogram.
+    Calculate Vibration Criterion (VC) curves from an acceleration periodogram.
 
     :param accel_psd: a periodogram of the input acceleration
     :param fstart: the first frequency bin

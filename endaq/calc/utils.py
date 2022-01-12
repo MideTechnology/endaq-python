@@ -124,7 +124,7 @@ def resample(df: pd.DataFrame, sample_rate: Optional[float] = None) -> pd.DataFr
     :param df: The DataFrame to resample, indexed by time
     :param sample_rate: The desired sample rate to resample the given data to.
      If one is not supplied, then it will use the same as it currently does, but
-     make the time stamps uniformally spaced
+     make the time stamps uniformly spaced
     :return: The resampled data in a DataFrame
     """
     if sample_rate is None:

@@ -44,7 +44,7 @@ class EndaqCloud:
         Constructor for an `EndaqCloud` object, which provides access to an
         enDAQ Cloud account.
 
-        :param api_key: The Endaq Cloud API associated with your cloud.endaq.com account.
+        :param api_key: The enDAQ Cloud API associated with your ``cloud.endaq.com`` account.
          If you do not have one created yet, they can be created on the following web page:
          https://cloud.endaq.com/account/api-keys
         :param env: The cloud environment to connect to, which can be production, staging, or development.

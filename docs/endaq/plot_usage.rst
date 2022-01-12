@@ -3,7 +3,7 @@
 
 For these examples we assume there is a Pandas DataFrame named ``df``
 which has it’s index as time stamps and it’s one column being sensor
-values (e.g. x-axis accleration, or pressure). It also assumes there is
+values (e.g. x-axis acceleration, or pressure). It also assumes there is
 a Pandas DataFrame ``attribute_df`` which contains all the attribute
 data about various data files. More information can be found about how
 to get this data from enDAQ IDE files in the `endaq-cloud

@@ -133,7 +133,7 @@ def get_doc(name=None, filename=None, url=None, parsed=True, start=0, end=None,
         recording. Only applicable if `parsed` is `True`.
     :param end: The ending time. Defaults to the end of the recording.  Only
         applicable if `parsed` is `True`.
-    :param localfile: The name of the file to which to write data recieved
+    :param localfile: The name of the file to which to write data received
         from a URL. If none is supplied, a temporary file will be used. Only
         applicable when opening a URL.
     :param params: Additional URL request parameters. Only applicable when

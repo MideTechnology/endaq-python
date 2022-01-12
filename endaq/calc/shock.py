@@ -21,10 +21,13 @@ def _rel_displ_transfer_func(
     omega: float, damp: float = 0.0, dt: float = 1.0
 ) -> scipy.signal.ltisys.TransferFunctionDiscrete:
     """
-    Generate the transfer function
-        H(s) = L{z(t)}(s) / L{y"(t)}(s) = (1/s²)(Z(s)/Y(s))
-    for the PDE
-        z" + (2ζω)z' + (ω²)z = -y"
+    Generate the transfer function:
+
+        `H(s) = L{z(t)}(s) / L{y"(t)}(s) = (1/s²)(Z(s)/Y(s))`
+
+    for the PDE:
+
+        `z" + (2ζω)z' + (ω²)z = -y"`
 
     .. seealso::
 
@@ -47,14 +50,17 @@ def rel_displ(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
     Calculate the relative displacement for a SDOF system.
 
     The "relative" displacement follows the transfer function:
-        H(s) = L{z(t)}(s) / L{y"(t)}(s) = (1/s²)(Z(s)/Y(s))
-    for the PDE:
-        z" + (2ζω)z' + (ω²)z = -y"
 
-    :param accel: the absolute acceleration y"
-    :param omega: the natural frequency ω of the SDOF system
-    :param damp: the damping coefficient ζ of the SDOF system
-    :return: the relative displacement z of the SDOF system
+        `H(s) = L{z(t)}(s) / L{y"(t)}(s) = (1/s²)(Z(s)/Y(s))`
+
+    for the PDE:
+
+        `z" + (2ζω)z' + (ω²)z = -y"`
+
+    :param accel: the absolute acceleration `y"`
+    :param omega: the natural frequency `ω` of the SDOF system
+    :param damp: the damping coefficient `ζ` of the SDOF system
+    :return: the relative displacement `z` of the SDOF system
 
     .. seealso::
 
@@ -79,10 +85,13 @@ def _abs_accel_transfer_func(
     omega: float, damp: float = 0.0, dt: float = 1.0
 ) -> scipy.signal.ltisys.TransferFunctionDiscrete:
     """
-    Generate the transfer function
-        H(s) = L{x"(t)}(s) / L{y"(t)}(s) = X(s)/Y(s)
-    for the PDE
-        x" + (2ζω)x' + (ω²)x = (2ζω)y' + (ω²)y
+    Generate the transfer function:
+
+        `H(s) = L{x"(t)}(s) / L{y"(t)}(s) = X(s)/Y(s)`
+
+    for the PDE:
+
+        `x" + (2ζω)x' + (ω²)x = (2ζω)y' + (ω²)y`
 
     .. seealso::
 
@@ -105,14 +114,17 @@ def abs_accel(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
     Calculate the absolute acceleration for a SDOF system.
 
     The "absolute acceleration" follows the transfer function:
-        H(s) = L{x"(t)}(s) / L{y"(t)}(s) = X(s)/Y(s)
-    for the PDE:
-        x" + (2ζω)x' + (ω²)x = (2ζω)y' + (ω²)y
 
-    :param accel: the absolute acceleration y"
-    :param omega: the natural frequency ω of the SDOF system
-    :param damp: the damping coefficient ζ of the SDOF system
-    :return: the absolute acceleration x" of the SDOF system
+        `H(s) = L{x"(t)}(s) / L{y"(t)}(s) = X(s)/Y(s)`
+
+    for the PDE:
+
+        `x" + (2ζω)x' + (ω²)x = (2ζω)y' + (ω²)y`
+
+    :param accel: the absolute acceleration `y"`
+    :param omega: the natural frequency `ω` of the SDOF system
+    :param damp: the damping coefficient `ζ` of the SDOF system
+    :return: the absolute acceleration `x"` of the SDOF system
 
     .. seealso::
 
@@ -144,10 +156,10 @@ def shock_spectrum(
     """
     Calculate the shock spectrum of an acceleration signal.
 
-    :param accel: the absolute acceleration y"
+    :param accel: the absolute acceleration `y"`
     :param freqs: the natural frequencies across which to calculate the spectrum
-    :param damp: the damping coefficient ζ, related to the Q-factor by ζ = 1/(2Q);
-        defaults to 0
+    :param damp: the damping coefficient `ζ`, related to the Q-factor by
+        `ζ = 1/(2Q)`; defaults to 0
     :param mode: the type of spectrum to calculate:
 
         - `'srs'` (default) specifies the Shock Response Spectrum (SRS)

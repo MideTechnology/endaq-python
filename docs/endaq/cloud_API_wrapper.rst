@@ -23,11 +23,11 @@ Commands
 =================== ======================================================================
 ``files``           Outputs file information for selected number of files and attributes
 ``file-id``         Outputs file information for file with specified ID to output file
-``devices``         Ouputs device information for selected number of files
+``devices``         Output device information for selected number of files
 ``device-id``       Output device information for device with specified ID to output file
 ``account``         Prints out account information
 ``attributes``      Adds an attribute to a specified file
-``set-env``         Creates a .env file with passed-in API key (*NOT SECURE*)
+``set-env``         Creates a ``.env`` file with passed-in API key (*NOT SECURE*)
 =================== ======================================================================
 
 Parameters
@@ -37,7 +37,7 @@ Parameters
 --id, -i            File or Device ID
 --limit, -l         File or Device output limit; Max 100 default 50
 --key, -k           API Key
---attributes, -a    Attributes to be outputted; options = all or att1,att2...; default is none
+--attributes, -a    Attributes to be outputted; options = ``all`` or ``att1,att2...``; default is None
 --name, -n          Attribute Name
 --type, -t          Attribute Type; options = int, float, string, boolean
 --value, -v         Attribute Value

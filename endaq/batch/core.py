@@ -267,10 +267,10 @@ class GetDataBuilder:
         :param accel_start_margin: the number of samples before which to reject
             recording data; cannot be used in conjunction with
             `accel_start_time`
-        :param accel_end_margin: the numper of samples after which to reject
+        :param accel_end_margin: the number of samples after which to reject
             recording data; cannot be used in conjunction with
             `accel_end_time`
-        :param accel_integral_tukey_percent: the alpha parameter of a tukey
+        :param accel_integral_tukey_percent: the alpha parameter of a Tukey
             window applied to the acceleration before integrating into
             velocity & displacement; see the `tukey_percent` parameter in
             :py:func:`endaq.calc.integrate.integrals` for details
