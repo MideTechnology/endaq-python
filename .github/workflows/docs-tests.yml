@@ -61,4 +61,4 @@ jobs:
         run: sphinx-build -W -b doctest docs docs/_doctest
 
       - name: Run docs spell checker
-        run: sphinx-build -W -b spelling docs docs/_spellcheck
+        run: sphinx-build -b spelling docs docs/_spellcheck
