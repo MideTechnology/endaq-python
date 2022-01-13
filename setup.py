@@ -1,5 +1,8 @@
 import setuptools
 
+import versioneer
+
+
 with open('README.md', 'r', encoding='utf-8') as fh:
     long_description = fh.read()
 
@@ -36,6 +39,8 @@ EXAMPLE_REQUIRES = [
 setuptools.setup(
         name='endaq',
         version='1.3.0',
+        # version=versioneer.get_version(),
+        # cmdclass=versioneer.get_cmdclass(),
         author='Mide Technology',
         author_email='help@mide.com',
         description='A comprehensive, user-centric Python API for working with enDAQ data and devices',
@@ -54,10 +59,6 @@ setuptools.setup(
         keywords='ebml binary ide mide endaq',
         packages=setuptools.find_packages(exclude=('tests',)),
         package_dir={'endaq': './endaq'},
-        # package_data={
-        #     'idelib': ['schemata/*'],
-        # },
-        # test_suite='./testing',
         project_urls={
             "Bug Tracker": "https://github.com/MideTechnology/endaq-python/issues",
             "Documentation": "https://docs.endaq.com/en/latest/",
@@ -69,4 +70,4 @@ setuptools.setup(
             'docs': INSTALL_REQUIRES + DOCS_REQUIRES,
             'example': INSTALL_REQUIRES + EXAMPLE_REQUIRES,
             },
-)
+    )
