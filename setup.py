@@ -38,9 +38,8 @@ EXAMPLE_REQUIRES = [
 
 setuptools.setup(
         name='endaq',
-        version='1.3.0',
-        # version=versioneer.get_version(),
-        # cmdclass=versioneer.get_cmdclass(),
+        version=versioneer.get_version(),
+        cmdclass=versioneer.get_cmdclass(),
         author='Mide Technology',
         author_email='help@mide.com',
         description='A comprehensive, user-centric Python API for working with enDAQ data and devices',
