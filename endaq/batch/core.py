@@ -459,13 +459,16 @@ class GetDataBuilder:
 
         return data
 
-    def aggregate_data(self, filenames) -> OutputStruct:
+    def aggregate_data(self, filenames) -> Optional[OutputStruct]:
         """
         Compile configured data from the given files into a dataframe.
 
         :param filenames: a sequence of paths of recording files to process
         """
         filenames = [os.path.abspath(name) for name in filenames]
+        if len(filenames) == 0:
+            return None
+
         root_path = os.path.commonpath(filenames)
         file_display_names = [
             os.path.relpath(name, start=root_path) for name in filenames
