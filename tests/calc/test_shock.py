@@ -9,6 +9,7 @@ import hypothesis.strategies as hyp_st
 import hypothesis.extra.numpy as hyp_np
 
 import numpy as np
+import numpy.testing as npt
 import pandas as pd
 
 from endaq.calc import shock
@@ -67,7 +68,8 @@ def test_rel_displ(freq, damp):
     ) - 1 / omega ** 2
 
     # Test results
-    assert np.allclose(calc_result, expt_result)
+    npt.assert_allclose(calc_result[:200], expt_result[:200])
+    npt.assert_allclose(calc_result[200:], expt_result[200:])
 
 
 @hyp.given(
@@ -130,7 +132,8 @@ def test_abs_accel(freq, damp):
     )
 
     # Test results
-    assert np.allclose(calc_result, expt_result)
+    npt.assert_allclose(calc_result[:200], expt_result[:200])
+    npt.assert_allclose(calc_result[200:], expt_result[200:])
 
 
 @hyp.given(
