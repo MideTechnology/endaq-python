@@ -33,7 +33,7 @@ def _abs_accel_coeffs(omega, Q, T):
           Explicit implementations of digital filter coefficients for shock spectra.
     """
     A = omega*T/(2.*Q)
-    B = omega*T*np.sqrt(1. - 1./(4.*Q**2))
+    B = omega*T*np.sqrt(1. - 1./(4.*(Q**2)))
 
     b = (
         1. - np.exp(-A)*np.sin(B)/B,
@@ -104,9 +104,9 @@ def _rel_velocity_coeffs(omega, Q, T):
           Explicit implementations of digital filter coefficients for shock spectra.
     """
     A = omega*T/(2.*Q)
-    B = omega*T*np.sqrt(1. - 1./(4.*Q**2.))
-    C = np.exp(-A)*np.sin(B)/np.sqrt(4.*Q**2. - 1.)
-    D = T*omega**2.
+    B = omega*T*np.sqrt(1. - 1./(4.*(Q**2.)))
+    C = np.exp(-A)*np.sin(B)/np.sqrt(4.*(Q**2.) - 1.)
+    D = T*(omega**2.)
 
     b = (
         (-1. + np.exp(-A)*np.cos(B) + C)/D,
@@ -177,9 +177,9 @@ def _rel_displ_coeffs(omega, Q, T):
           Explicit implementations of digital filter coefficients for shock spectra.
     """
     A = omega*T/(2.*Q)
-    B = omega*T*np.sqrt(1. - 1./(4.*Q**2.))
-    C = 1./(T*omega**3.)
-    q = (1./(2.*Q**2.) - 1.)/(np.sqrt(1. - 1./(4.*Q**2.)))
+    B = omega*T*np.sqrt(1. - 1./(4.*(Q**2.)))
+    C = 1./(T*(omega**3.))
+    q = (1./(2.*(Q**2.)) - 1.)/np.sqrt(1. - 1./(4.*(Q**2.)))
 
     b = (
         ((1. - np.exp(-A)*np.cos(B))/Q - q*np.exp(-A)*np.sin(B) - omega*T)/C,
@@ -250,13 +250,13 @@ def _pseudo_velocity_coeffs(omega, Q, T):
 
     .. seealso::
 
-        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`__
+        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`
           Explicit implementations of digital filter coefficients for shock spectra.
     """
     A = omega*T/(2.*Q)
-    B = omega*T*np.sqrt(1. - 1/(4.*Q**2))
-    C = (T*omega**2)
-    q = (1./(2.*Q**2.) - 1.)/(np.sqrt(1. - 1./(4.*Q**2.)))
+    B = omega*T*np.sqrt(1. - 1./(4.*(Q**2)))
+    C = T*(omega**2)
+    q = (1./(2.*(Q**2.)) - 1.)/np.sqrt(1. - 1./(4.*(Q**2.)))
 
     b = (
         ((1. - np.exp(-A)*np.cos(B))/Q - q*np.exp(-A)*np.sin(B) - omega*T)/C,
@@ -328,9 +328,9 @@ def _relative_disp_static_coeffs(omega, Q, T):
           Explicit implementations of digital filter coefficients for shock spectra.
     """
     A = omega*T/(2.*Q)
-    B = omega*T*np.sqrt(1. - 1/(4.*Q**2.))
+    B = omega*T*np.sqrt(1. - 1/(4.*(Q**2.)))
     C = (T*omega)
-    q = (1./(2.*Q**2.) - 1.)/(np.sqrt(1. - 1./(4.*Q**2.)))
+    q = (1./(2.*(Q**2.)) - 1.)/(np.sqrt(1. - 1./(4.*(Q**2.))))
 
     b = (
         ((1 - np.exp(-A)*np.cos(B))/Q - q*np.exp(-A)*np.sin(B) - omega*T)/C,
@@ -432,7 +432,7 @@ def shock_spectrum(
     if mode == "srs":
         make_coeffs = _abs_accel_coeffs
     elif mode == "pvss":
-        make_coeffs = _rel_displ_coeffs
+        make_coeffs = _pseudo_velocity_coeffs
     else:
         raise ValueError(f"invalid spectrum mode {mode:r}")
 
@@ -469,7 +469,7 @@ def shock_spectrum(
             rd_padding = L2_norm(rd_padding, axis=-1, keepdims=True)
 
         results[(0,) + i_nd] = -np.minimum(rd.min(axis=0), rd_padding.min(axis=0))
-        results[(1,) + i_nd] = np.maximum(rd.max(axis=0), rd_padding.max(axis=0))   
+        results[(1,) + i_nd] = np.maximum(rd.max(axis=0), rd_padding.max(axis=0))
 
     if aggregate_axes or not two_sided:
         return pd.DataFrame(
