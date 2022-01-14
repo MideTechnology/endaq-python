@@ -130,7 +130,6 @@ def test_abs_accel(freq, damp):
     )
 
     # Test results
-    print(damp, freq, np.abs(expt_result-calc_result)[200:].max())
     assert np.allclose(calc_result, expt_result)
 
 
