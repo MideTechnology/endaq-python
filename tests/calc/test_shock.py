@@ -16,7 +16,7 @@ from endaq.calc import shock
 
 @hyp.given(
     freq=hyp_st.floats(12.5, 1000),
-    damp=hyp_st.floats(0, 1, exclude_max=True),
+    damp=hyp_st.floats(1e-25, 1, exclude_max=True),
 )
 def test_rel_displ(freq, damp):
     """
@@ -72,7 +72,7 @@ def test_rel_displ(freq, damp):
 
 @hyp.given(
     freq=hyp_st.floats(12.5, 1000),
-    damp=hyp_st.floats(0, 1, exclude_max=True),
+    damp=hyp_st.floats(1e-25, 1, exclude_max=True),
 )
 def test_abs_accel(freq, damp):
     """
@@ -130,6 +130,7 @@ def test_abs_accel(freq, damp):
     )
 
     # Test results
+    print(damp, freq, np.abs(expt_result-calc_result)[200:].max())
     assert np.allclose(calc_result, expt_result)
 
 
@@ -140,7 +141,7 @@ def test_abs_accel(freq, damp):
         elements=hyp_st.floats(1e-20, 1e20),
     ).map(lambda array: pd.DataFrame(array, index=np.arange(40) * 1e-4)),
     freq=hyp_st.floats(1, 20),
-    damp=hyp_st.floats(0, 1, exclude_max=True),
+    damp=hyp_st.floats(1e-25, 1, exclude_max=True),
     mode=hyp_st.sampled_from(["srs", "pvss"]),
     aggregate_axes_two_sided=hyp_st.sampled_from(
         [(False, False), (False, True), (True, False)]
@@ -198,7 +199,7 @@ def test_shock_spectrum_linearity(
         )
     ),
     freq=hyp_st.floats(1, 20),
-    damp=hyp_st.floats(0, 1, exclude_max=True),
+    damp=hyp_st.floats(1e-25, 1, exclude_max=True),
     mode=hyp_st.sampled_from(["srs", "pvss"]),
     aggregate_axes_two_sided=hyp_st.sampled_from(
         [(False, False), (False, True), (True, False)]
@@ -247,7 +248,7 @@ def test_pseudo_velocity_zero_padding(
         shape=(40, 2),
         elements=hyp_st.floats(1e-20, 1e20),
     ).map(lambda array: pd.DataFrame(array, index=np.arange(1, 41))),
-    damp=hyp_st.floats(0, 0.2),
+    damp=hyp_st.floats(1e-25, 0.2),
 )
 def test_enveloping_half_sine(df_pvss, damp):
     env_half_sine = shock.enveloping_half_sine(df_pvss, damp=damp)
