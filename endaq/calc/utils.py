@@ -14,7 +14,7 @@ import scipy.signal
 def sample_spacing(
     data: Union[np.ndarray, pd.DataFrame],
     convert: typing.Literal[None, "to_seconds"] = "to_seconds",
-) -> Union[float, np.timedelta64]:
+) -> Union[None, float, np.timedelta64]:
     """
     Calculate the average spacing between individual samples.
 
@@ -27,6 +27,8 @@ def sample_spacing(
     """
     if isinstance(data, (pd.DataFrame, pd.Series)):
         data = data.index
+    if len(data) <= 1:
+        return None
 
     dt = (data[-1] - data[0]) / (len(data) - 1)
     if convert == "to_seconds" and isinstance(dt, (np.timedelta64, pd.Timedelta)):
@@ -136,7 +138,7 @@ def resample(df: pd.DataFrame, sample_rate: Optional[float] = None) -> pd.DataFr
     resampled_data, resampled_time = scipy.signal.resample(
         df,
         num_samples_after_resampling,
-        t=df.index.values.astype('datetime64[s]'),
+        t=df.index.values.astype("datetime64[s]"),
     )
     resampled_df = pd.DataFrame(
         resampled_data,
