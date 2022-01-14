@@ -178,7 +178,7 @@ def _rel_displ_coeffs(omega, Q, T):
     """
     A = omega*T/(2.*Q)
     B = omega*T*np.sqrt(1. - 1./(4.*(Q**2.)))
-    C = 1./(T*(omega**3.))
+    C = T*(omega**3.)
     q = (1./(2.*(Q**2.)) - 1.)/np.sqrt(1. - 1./(4.*(Q**2.)))
 
     b = (
@@ -231,7 +231,7 @@ def rel_displ(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
     return accel.apply(
         functools.partial(
                 scipy.signal.lfilter,
-                *_rel_velocity_coeffs(omega, Q, T),
+                *_rel_displ_coeffs(omega, Q, T),
                 axis=0,
                 ),
         raw=True,
