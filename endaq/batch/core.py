@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 
 from functools import partial
 import warnings
@@ -71,7 +71,7 @@ def _make_pvss(ch_data_cache):
     return df_pvss.stack(level="axis").reorder_levels(["axis", "frequency (Hz)"])
 
 
-def _make_halfsine_pvss_envelope(ch_data_cache, **kwargs):
+def _make_halfsine_pvss_envelope(ch_data_cache, *args, **kwargs):
     df_pvss = ch_data_cache._PVSSData.copy()
     df_pvss["Resultant"] = ch_data_cache._PVSSResultantData
     df_pvss = df_pvss * endaq.batch.analyzer.MPS_TO_MMPS
@@ -80,7 +80,7 @@ def _make_halfsine_pvss_envelope(ch_data_cache, **kwargs):
 
     return (
         endaq.calc.shock.enveloping_half_sine(df_pvss)
-        .to_time_series(**kwargs)
+        .to_time_series(*args, **kwargs)
         .stack(level="axis")
         .reorder_levels(["axis", "timestamp"])
     )
@@ -307,9 +307,9 @@ class GetDataBuilder:
 
     def add_psd(
         self,
-        freq_bin_width=None,
-        freq_start_octave=None,
-        bins_per_octave=None,
+        freq_bin_width: Optional[float] = None,
+        freq_start_octave: Optional[float] = None,
+        bins_per_octave: Optional[float] = None,
         window="hanning",
     ):
         """
@@ -347,7 +347,7 @@ class GetDataBuilder:
 
         return self
 
-    def add_pvss(self, init_freq, bins_per_octave):
+    def add_pvss(self, init_freq: float = 1.0, bins_per_octave: float = 3.0):
         """
         Add the acceleration PVSS (Pseudo Velocity Shock Spectrum) to the
         calculation queue.
@@ -361,13 +361,21 @@ class GetDataBuilder:
 
         return self
 
-    def add_pvss_halfsine_envelope(self, **kwargs):
+    def add_pvss_halfsine_envelope(
+        self,
+        tstart: Optional[float] = None,
+        tstop: Optional[float] = None,
+        dt: Optional[float] = None,
+        tpulse: Optional[float] = None,
+    ):
         """
         Add the half-sine envelope for the acceleration's PVSS (Pseudo Velocity
         Shock Spectrum) to the calculation queue.
         """
         self._metrics_queue["halfsine"] = None
-        self._pvss_halfsine_envelope_kwargs = kwargs
+        self._pvss_halfsine_envelope_kwargs = dict(
+            tstart=tstart, tstop=tstop, dt=dt, tpulse=tpulse
+        )
 
         return self
 
@@ -381,7 +389,7 @@ class GetDataBuilder:
 
         return self
 
-    def add_peaks(self, margin_len):
+    def add_peaks(self, margin_len: int = 1000):
         """
         Add windows about the acceleration's peak value to the calculation
         queue.
@@ -394,7 +402,7 @@ class GetDataBuilder:
 
         return self
 
-    def add_vc_curves(self, init_freq, bins_per_octave):
+    def add_vc_curves(self, init_freq: float = 1.0, bins_per_octave: float = 3.0):
         """
         Add Vibration Criteria (VC) Curves to the calculation queue.
 
