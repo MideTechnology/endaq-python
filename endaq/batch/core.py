@@ -315,7 +315,6 @@ class GetDataBuilder:
 
     def add_psd(
         self,
-        *,
         freq_bin_width=None,
         freq_start_octave=None,
         bins_per_octave=None,
@@ -360,7 +359,7 @@ class GetDataBuilder:
 
         return self
 
-    def add_pvss(self, *, init_freq, bins_per_octave):
+    def add_pvss(self, init_freq, bins_per_octave):
         """
         Add the acceleration PVSS (Pseudo Velocity Shock Spectrum) to the
         calculation queue.
@@ -421,7 +420,7 @@ class GetDataBuilder:
 
         return self
 
-    def add_peaks(self, *, margin_len):
+    def add_peaks(self, margin_len):
         """
         Add windows about the acceleration's peak value to the calculation
         queue.
@@ -438,7 +437,7 @@ class GetDataBuilder:
 
         return self
 
-    def add_vc_curves(self, *, init_freq, bins_per_octave):
+    def add_vc_curves(self, init_freq, bins_per_octave):
         """
         Add Vibration Criteria (VC) Curves to the calculation queue.
 
