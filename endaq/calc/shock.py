@@ -100,7 +100,7 @@ def transfer_function(
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", scipy.signal.BadCoefficients)
 
-        return scipy.signal.TransferFunction(num, den).to_discrete(dt=dt)
+        return scipy.signal.TransferFunction(num, den).to_discrete(dt=dt, method="foh")
 
 
 def rel_displ(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFrame:
