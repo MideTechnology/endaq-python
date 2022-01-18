@@ -19,6 +19,7 @@ from .measurement import ANY, get_channels
 __all__ = [
     "get_channel_table",
     "to_pandas",
+    "get_primary_sensor_data",
 ]
 
 
@@ -328,3 +329,83 @@ def to_pandas(
         columns = [channel.name]
 
     return pd.DataFrame(data, index=pd.Series(t, name="timestamp"), columns=columns)
+
+
+def get_primary_sensor_data(  
+    name: str = "",
+    doc: idelib.dataset = None,
+    measurement_type = "any",
+    sort_by: typing.Literal["samples", "rate", "duration"] = "samples",
+    time_mode: typing.Literal["seconds", "timedelta", "datetime"] = "datetime",
+    force_data_return: bool = False
+) -> pd.DataFrame:
+    """ Get the data from the primary sensor in a given .ide file using :py:func:`~endaq.ide.to_pandas()` 
+
+        :param name: The file location to pull the data from, see :py:func:`~endaq.ide.get_doc()` 
+            for more. This can be a local file location or a URL.
+        :param doc: An open `Dataset` object, see :py:func:`~endaq.ide.get_doc()` 
+            for more. If one is provided it will not attempt to use `name` to 
+            load a new one.
+        :param measurement_type: The sensor type to return data from, see :py:func:`~endaq.ide.measurement` 
+            for more. The default is `"any"`, but to get the primary accelerometer
+            for example, set this to `"accel"`.
+        :param sort_by: How to determine the "primary" sensor using the summary
+            information provided by :py:func:`~endaq.ide.get_channel_table()`: 
+        
+            * `"sample"` - the number of samples, default behavior
+            * `"rate"` - the sampling rate in Hz
+            * `"duration"` - the duration from start to the end of data from that sensor
+        :param time_mode: how to temporally index samples; each mode uses either
+            relative times (with respect to the start of the recording) or
+            absolute times (i.e., date-times):
+
+            * `"seconds"` - a `pandas.Float64Index` of relative timestamps, in seconds
+            * `"timedelta"` - a `pandas.TimeDeltaIndex` of relative timestamps
+            * `"datetime"` - a `pandas.DateTimeIndex` of absolute timestamps
+        :param force_data_return: If set to `True` and the specified `measurement_type`
+            is not included in the file, it will return the data from any sensor 
+            instead of raising an error which is the default behavior.
+
+        :return: a `pandas.DataFrame` containing the sensor's data
+
+        Here are some examples:
+        
+        .. code:: python3
+
+            #Get sensor with the most samples, may return data of mixed units
+            data = get_primary_sensor_data('https://info.endaq.com/hubfs/data/All-Channels.ide')
+
+            #Instead get just the primary accelerometer data defined by number of samples
+            accel = get_primary_sensor_data('https://info.endaq.com/hubfs/data/All-Channels.ide', measurement_type='accel')
+    """
+    
+    #Get the doc object if it isn't provided
+    if doc is None:
+        doc = endaq.ide.get_doc(name)
+        
+    #Get Channels of the Measurement Type
+    channels = endaq.ide.get_channel_table(doc, measurement_type).data
+    
+    #Raise error if measurement type isn't in the file
+    if len(channels)==0:
+        error_str = f'measurement type "{measurement_type}" is not included in this file'
+        if force_data_return:
+            print(error_str)
+            channels = endaq.ide.get_channel_table(doc, "any").data
+        else:
+            raise ValueError(error_str)
+    
+    #Filter based on sort_by
+    if (sort_by in ["samples", "rate", "duration"]):
+        channels = channels[channels[sort_by]==channels[sort_by].max()]
+    else:        
+        raise ValueError(f'invalid sort_by "{sort_by}"')
+    
+    #Get parent channel
+    parent = channels.iloc[0].channel.parent
+    
+    #Get parent channel data
+    data = endaq.ide.to_pandas(parent, time_mode=time_mode)
+    
+    #Return only the subchannels with right units
+    return data[channels.name]    
