@@ -384,14 +384,14 @@ def get_primary_sensor_data(
         doc = endaq.ide.get_doc(name)
         
     #Get Channels of the Measurement Type
-    channels = endaq.ide.get_channel_table(doc, measurement_type).data
+    channels = get_channel_table(doc, measurement_type).data
     
     #Raise error if measurement type isn't in the file
     if len(channels)==0:
         error_str = f'measurement type "{measurement_type}" is not included in this file'
         if force_data_return:
             print(error_str)
-            channels = endaq.ide.get_channel_table(doc, "any").data
+            channels = get_channel_table(doc, "any").data
         else:
             raise ValueError(error_str)
     
@@ -405,7 +405,7 @@ def get_primary_sensor_data(
     parent = channels.iloc[0].channel.parent
     
     #Get parent channel data
-    data = endaq.ide.to_pandas(parent, time_mode=time_mode)
+    data = to_pandas(parent, time_mode=time_mode)
     
     #Return only the subchannels with right units
     return data[channels.name]    
