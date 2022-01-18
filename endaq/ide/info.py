@@ -14,6 +14,7 @@ import pandas as pd
 import idelib
 
 from .measurement import ANY, get_channels
+from .files import get_doc
 
 
 __all__ = [
@@ -381,7 +382,7 @@ def get_primary_sensor_data(
     
     #Get the doc object if it isn't provided
     if doc is None:
-        doc = endaq.ide.get_doc(name)
+        doc = get_doc(name)
         
     #Get Channels of the Measurement Type
     channels = get_channel_table(doc, measurement_type).data
