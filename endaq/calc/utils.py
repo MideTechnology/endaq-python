@@ -100,9 +100,9 @@ def to_dB(
         defaults to `False`
 
     .. seealso::
-        - ``endaq.calc.stats.rms``
-        - ``endaq.calc.stats.rolling_rms``
-        - ``endaq.calc.psd.welch``
+        - :py:func:`endaq.calc.stats.rms`
+        - :py:func:`endaq.calc.stats.rolling_rms`
+        - :py:func:`endaq.calc.psd.welch`
     """
     if isinstance(reference, str):
         try:
