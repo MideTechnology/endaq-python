@@ -84,21 +84,23 @@ class CalcCache:
         """
         Instantiate a new `CalcCache` object from an IDE file.
         """
-        data = ide_utils.dict_chs_best(
-            (
-                (utype, ch_struct)
-                for (utype, ch_struct) in ide_utils.combine_utypes(
-                    # Rotation and Quaternion data should be grouped together
-                    ide_utils.chs_by_utype(dataset),
-                    "Rotation",
-                    "Quaternion",
-                )
-                if len(ch_struct.eventarray) > 0
-            ),
+        # Rotation and Quaternion data should be grouped together
+        utype_mapping = dict(
+            Rotation="Rotation/Quaternion",
+            Quaternion="Rotation/Quaternion",
+        )
+
+        data_valid = (
+            (utype, ch_struct)
+            for (utype, ch_struct) in ide_utils.chs_by_utype(dataset)
+            if len(ch_struct.eventarray) > 0
+        )
+        data_grouped_best = ide_utils.dict_chs_best(
+            (ide_utils.map_utypes(data_valid, utype_mapping)),
             max_key=lambda x: (x.channel.id in preferred_chs, len(x.eventarray)),
         )
 
-        return cls(data, params=params)
+        return cls(data_grouped_best, params=params)
 
     @dataclass
     class InputDataWrapper:
@@ -133,15 +135,17 @@ class CalcCache:
         """
         Instantiate a new `CalcCache` object from raw DataFrame / metadata pairs.
         """
-        units_gyro = ("Rotation", "Quaternion")
-        data = {
-            # Rotation and Quaternion data should be grouped together
-            units_gyro
-            if units[0] in units_gyro
-            else units[0]: cls.InputDataWrapper(data, units)
-            for (data, units) in data
-        }
-        return cls(data, params=params)
+        # Rotation and Quaternion data should be grouped together
+        utype_mapping = dict(
+            Rotation="Rotation/Quaternion",
+            Quaternion="Rotation/Quaternion",
+        )
+
+        data_formatted = (
+            (units[0], cls.InputDataWrapper(datum, units)) for (datum, units) in data
+        )
+        data_grouped = dict(ide_utils.map_utypes(data_formatted, utype_mapping))
+        return cls(data_grouped, params=params)
 
     # ==========================================================================
     # Data Processing, just to make init cleaner
@@ -423,7 +427,7 @@ class CalcCache:
     @cached_property
     def _gyroscopeData(self):
         """Populate the _gyro* fields, including splitting and extending data."""
-        ch_struct = self._channels.get(("Rotation", "Quaternion"), None)
+        ch_struct = self._channels.get("Rotation/Quaternion", None)
         if ch_struct is None:
             return pd.DataFrame(
                 np.empty((0, 3), dtype=float),

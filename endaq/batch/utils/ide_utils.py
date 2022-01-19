@@ -44,15 +44,9 @@ def chs_by_utype(dataset):
             yield utype, ChannelStruct(channel, sch_ids)
 
 
-def combine_utypes(iterable, *utypes):
-    """
-    Re-label utype-schs pairs of the given utypes with a common combined utype.
-    """
-    utypes = tuple(utypes)
-    return (
-        (utypes if utype in utypes else utype, ch_struct)
-        for utype, ch_struct in iterable
-    )
+def map_utypes(iterable, utypes_map):
+    """Re-label utype-schs pairs with new utypes."""
+    return ((utypes_map.get(utype, utype), ch_struct) for utype, ch_struct in iterable)
 
 
 def dict_groups(iterable):
