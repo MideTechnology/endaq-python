@@ -557,7 +557,7 @@ class OutputStruct:
         :param theme: The enDAQ plotly theme to use; see
             :py:func:`endaq.plot.utilities.set_theme` for details on the
             supported options. Defaults to `"endaq"`. If `None`, the default
-            plotly theme is used.
+            Plotly theme is used.
         """
         if not any((folder_path, show)):
             return
