@@ -106,13 +106,13 @@ class EndaqCloud:
         Download the specified file to local_name if provided, use the file
         name from the cloud if no local name is provided.
         
-        .. todo:: This should be made to match `endaq.ide.get_doc()`
+        .. todo:: This should be made to match :py:func:`endaq.ide.get_doc()`
 
         :param file_id: The file's cloud ID.
         :param local_name: The downloaded file's destination pathname; defaults
             to the file's original basename & located in the directory in which
             the Python interpreter was launched
-        :return: The imported file, as an `idelib.Dataset`.
+        :return: The imported file, as an ``idelib.dataset.Dataset``.
         """
         file_url = self.domain + "/api/v1/files/download/" + file_id
         response = requests.get(file_url, headers={"x-api-key": self.api_key}).json()
@@ -316,11 +316,11 @@ class EndaqCloud:
 
 def count_tags(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Given the dataframe returned by ``EndaqCloud.get_file_table()``, provide
+    Given the dataframe returned by :py:func:`EndaqCloud.get_file_table()`, provide
     some info on the tags of the files in that account.
 
     :param df: A `DataFrame` of file information, as returned by
-        ``EndaqCloud.get_file_table()``.
+        :py:func:`EndaqCloud.get_file_table()`.
     :return: A `DataFrame` summarizing the tags in `df`.
     """
     # NOTE: Called `tags_count()` in Confluence docs. Function names should
