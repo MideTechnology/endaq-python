@@ -1,5 +1,8 @@
 import setuptools
 
+import endaq
+
+
 with open('README.md', 'r', encoding='utf-8') as fh:
     long_description = fh.read()
 
@@ -35,7 +38,7 @@ EXAMPLE_REQUIRES = [
 
 setuptools.setup(
         name='endaq',
-        version='1.3.0',
+        version=endaq.__version__,
         author='Mide Technology',
         author_email='help@mide.com',
         description='A comprehensive, user-centric Python API for working with enDAQ data and devices',
