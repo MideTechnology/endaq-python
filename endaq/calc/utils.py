@@ -68,7 +68,11 @@ def logfreqs(
     )
 
 
-def to_dB(data: np.ndarray, reference: float, squared: bool = False) -> np.ndarray:
+def to_dB(
+    data: np.ndarray,
+    reference: Union[float, typing.Literal[tuple(dB_refs.keys())]],
+    squared: bool = False,
+) -> np.ndarray:
     """
     Scale data into units of decibels.
 
@@ -100,7 +104,12 @@ def to_dB(data: np.ndarray, reference: float, squared: bool = False) -> np.ndarr
         - ``endaq.calc.stats.rolling_rms``
         - ``endaq.calc.psd.welch``
     """
-    if reference <= 0:
+    if isinstance(reference, str):
+        try:
+            reference = dB_refs[reference]
+        except KeyError:
+            raise ValueError(f'unknown reference "{reference}"')
+    elif reference <= 0:
         raise ValueError("reference value must be strictly positive")
 
     data = np.asarray(data)
