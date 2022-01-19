@@ -108,14 +108,12 @@ def welch(
     else:
         nfft = kwargs["nfft"]
 
-    freqs, psd = scipy.signal.welch(
-        df.values, fs=fs, nperseg=nperseg, **kwargs, axis=0
-    )
+    freqs, psd = scipy.signal.welch(df.values, fs=fs, nperseg=nperseg, **kwargs, axis=0)
     if scaling == "parseval":
         psd = psd * freqs[1]
     elif scaling == "unit":
-        psd *= 2*freqs[1]
-        psd *= nfft/nperseg
+        psd *= 2 * freqs[1]
+        psd *= nfft / nperseg
         psd **= 0.5
 
     return pd.DataFrame(
@@ -152,7 +150,7 @@ def to_jagged(
     """
     Calculate a periodogram over non-uniformly spaced frequency bins.
 
-    :param df: the returned values from ``endaq.calc.psd.welch``
+    :param df: the returned values from :py:func:`endaq.calc.psd.welch`
     :param freq_splits: the boundaries of the frequency bins; must be strictly
         increasing
     :param agg: the method for aggregating values into bins; `'mean'` preserves
@@ -211,11 +209,11 @@ def to_octave(
     """
     Calculate a periodogram over log-spaced frequency bins.
 
-    :param df: the returned values from ``endaq.calc.psd.welch``
+    :param df: the returned values from :py:func:`endaq.calc.psd.welch`
     :param fstart: the first frequency bin, in Hz; defaults to 1 Hz
     :param octave_bins: the number of frequency bins in each octave; defaults
         to 12
-    :param kwargs: other parameters to pass directly to ``to_jagged``
+    :param kwargs: other parameters to pass directly to :py:func:`to_jagged`
     :return: a periodogram with the given logarithmic frequency spacing
     """
     max_f = df.index.max()

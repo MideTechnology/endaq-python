@@ -32,12 +32,12 @@ M_TO_MM = 1000
 class CalcParams:
     """
     The parameters for configuring the calculation routines in
-    `CalcCache`.
+    :py:class:`CalcCache`.
 
     Each of these parameters is *intentionally* left w/o a default value.
     Instead, defaults are provided at the function signatures for the
-    `endaq.batch.core` functions. This ensures that data is passed correctly
-    to them from the `CalcParam` object.
+    :py:mod:`endaq.batch.core` functions. This ensures that data is passed
+    correctly to them from the `CalcParam` object.
     """
 
     accel_highpass_cutoff: Optional[float]
@@ -64,10 +64,6 @@ class CalcCache:
     PV_NATURAL_FREQS = np.logspace(0, 12, base=2, num=12 * 12 + 1, endpoint=True)
 
     def __init__(self, data, params: CalcParams):
-        """
-        Copies out the numpy arrays for the highest priority channel for each
-        sensor type, and any relevant metadata.  Cuts them into chunks.
-        """
         if (
             params.accel_start_time is not None
             and params.accel_start_margin is not None

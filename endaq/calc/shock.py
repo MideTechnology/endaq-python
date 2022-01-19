@@ -236,7 +236,7 @@ def shock_spectrum(
 @dataclass
 class HalfSineWavePulse:
     """
-    The output data type for ``enveloping_half_sine``.
+    The output data type for :py:func:`enveloping_half_sine`.
 
     The significant data members are `amplitude` and `duration`, which can
     simply be unpacked as if from a plain tuple:
