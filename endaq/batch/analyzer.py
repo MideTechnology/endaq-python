@@ -87,7 +87,12 @@ class CalcCache:
         data = ide_utils.dict_chs_best(
             (
                 (utype, ch_struct)
-                for (utype, ch_struct) in ide_utils.chs_by_utype(dataset)
+                for (utype, ch_struct) in ide_utils.combine_utypes(
+                    # Rotation and Quaternion data should be grouped together
+                    ide_utils.chs_by_utype(dataset),
+                    "Rotation",
+                    "Quaternion",
+                )
                 if len(ch_struct.eventarray) > 0
             ),
             max_key=lambda x: (x.channel.id in preferred_chs, len(x.eventarray)),
@@ -128,8 +133,12 @@ class CalcCache:
         """
         Instantiate a new `CalcCache` object from raw DataFrame / metadata pairs.
         """
+        units_gyro = ("Rotation", "Quaternion")
         data = {
-            ide_utils.UTYPE_GROUPS[units[0]]: cls.InputDataWrapper(data, units)
+            # Rotation and Quaternion data should be grouped together
+            units_gyro
+            if units[0] in units_gyro
+            else units[0]: cls.InputDataWrapper(data, units)
             for (data, units) in data
         }
         return cls(data, params=params)
@@ -141,7 +150,7 @@ class CalcCache:
     @cached_property
     def _accelerationData(self):
         """Populate the _acceleration* fields, including splitting and extending data."""
-        ch_struct = self._channels.get("acc", None)
+        ch_struct = self._channels.get("Acceleration", None)
         if ch_struct is None:
             warnings.warn(f"no acceleration channel in data")
             return pd.DataFrame(
@@ -190,7 +199,7 @@ class CalcCache:
     @cached_property
     def _microphoneData(self):
         """Populate the _microphone* fields, including splitting and extending data."""
-        ch_struct = self._channels.get("mic", None)
+        ch_struct = self._channels.get("Audio", None)
         if ch_struct is None:
             return pd.DataFrame(
                 np.empty((0, 1), dtype=float),
@@ -349,7 +358,7 @@ class CalcCache:
     @cached_property
     def _pressureData(self):
         """Populate the _pressure* fields, including splitting and extending data."""
-        ch_struct = self._channels.get("pre", None)
+        ch_struct = self._channels.get("Pressure", None)
         if ch_struct is None:
             return pd.DataFrame(
                 np.empty((0, 1), dtype=float),
@@ -372,7 +381,7 @@ class CalcCache:
     @cached_property
     def _temperatureData(self):
         """Populate the _temperature* fields, including splitting and extending data."""
-        ch_struct = self._channels.get("tmp", None)
+        ch_struct = self._channels.get("Temperature", None)
         if ch_struct is None:
             return pd.DataFrame(
                 np.empty((0, 1), dtype=float),
@@ -397,7 +406,7 @@ class CalcCache:
     @cached_property
     def _humidityData(self):
         """Populates the _humidity* fields, including splitting and extending data"""
-        ch_struct = self._channels.get("hum", None)
+        ch_struct = self._channels.get("Relative Humidity", None)
         if ch_struct is None:
             return pd.DataFrame(
                 np.empty((0, 1), dtype=float),
@@ -414,7 +423,7 @@ class CalcCache:
     @cached_property
     def _gyroscopeData(self):
         """Populate the _gyro* fields, including splitting and extending data."""
-        ch_struct = self._channels.get("gyr", None)
+        ch_struct = self._channels.get(("Rotation", "Quaternion"), None)
         if ch_struct is None:
             return pd.DataFrame(
                 np.empty((0, 3), dtype=float),
@@ -462,7 +471,7 @@ class CalcCache:
 
     @cached_property
     def _gpsPositionData(self):
-        ch_struct = self._channels.get("gps", None)
+        ch_struct = self._channels.get("Location", None)
         if ch_struct is None:
             return pd.DataFrame(
                 np.empty((0, 2), dtype=float),
@@ -479,7 +488,7 @@ class CalcCache:
 
     @cached_property
     def _gpsSpeedData(self):
-        ch_struct = self._channels.get("spd", None)
+        ch_struct = self._channels.get("GNSS Speed", None)
         if ch_struct is None:
             return pd.DataFrame(
                 np.empty((0, 1), dtype=float),
