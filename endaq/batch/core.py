@@ -121,7 +121,7 @@ def _make_metrics(
             ("GPS Position", "gpsLocFull"),
             ("GPS Speed", "gpsSpeedFull"),
             ("RMS Angular Velocity", "gyroRMSFull"),
-            ("RMS Microphone", "micRMSFull"),
+            ("Sound Pressure Level", "micDecibelsFull"),
             ("Average Temperature", "tempFull"),
             ("Average Pressure", "pressFull"),
             ("Average Relative Humidity", "humidFull"),
