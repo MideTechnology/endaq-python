@@ -552,7 +552,7 @@ class CalcCache:
         max_pv_res = self._PVSSResultantData.max(axis="rows")
         max_pv["Resultant"] = max_pv_res.iloc[0]
         max_pv.name = "Peak Pseudo Velocity Shock Spectrum"
-        return MPS2_TO_G * max_pv
+        return MPS_TO_MMPS * max_pv
 
     @cached_property
     def gpsLocFull(self):
