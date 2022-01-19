@@ -28,6 +28,7 @@ DOCS_REQUIRES = [
     "sphinx",
     "pydata-sphinx-theme",
     "sphinx-plotly-directive",
+    "nbsphinx",
     ]
 
 EXAMPLE_REQUIRES = [

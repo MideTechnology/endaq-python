@@ -6,6 +6,7 @@ enDAQ: the Python library for enDAQ sensors
    :caption: Contents:
 
    api_ref
+   example_notebooks
 
 
 Indices and tables
