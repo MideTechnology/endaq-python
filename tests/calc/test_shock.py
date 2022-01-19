@@ -11,15 +11,74 @@ import hypothesis.extra.numpy as hyp_np
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
+import sympy as sp
 
 from endaq.calc import shock
+
+
+wn, fn, wi, fi, Q, d, T = sp.symbols('ωₙ, fₙ, ωᵢ, fᵢ, Q, ζ, T', real=True)
+s = sp.Symbol('s', complex=True)
+
+
+def laplace_amplitude(b, a, freqs, subs):
+
+    # first substitution
+    b = b.subs({wn: 2*sp.pi*fn, Q: 1/(2*d), s: sp.I*2*sp.pi*fi}).subs(subs)
+    a = a.subs({wn: 2*sp.pi*fn, Q: 1/(2*d), s: sp.I*2*sp.pi*fi}).subs(subs)
+
+    mag = sp.lambdify(fi, abs(b)/abs(a))
+
+    return mag(freqs)
+
+
+def laplace_phase(b, a, freqs, subs):
+
+    # first substitution
+    b = b.subs({wn: 2*sp.pi*fn, Q: 1/(2*d), s: sp.I*2*sp.pi*fi}).subs(subs)
+    a = a.subs({wn: 2*sp.pi*fn, Q: 1/(2*d), s: sp.I*2*sp.pi*fi}).subs(subs)
+
+    phase = sp.lambdify(fi, sp.atan2(*b.as_real_imag()[::-1]) - sp.atan2(*a.as_real_imag()[::-1]))
+
+    return phase(freqs)
+
+
+def z_amplitude(b, a, freqs, dt):
+
+    z = sp.exp(-s*T)
+
+    b = sum([x*z**i for i, x in enumerate(b)])
+    a = sum([x*z**i for i, x in enumerate(a)])
+
+    # first substitution
+    b = b.subs({s: sp.I*2*sp.pi*fi, T: dt})
+    a = a.subs({s: sp.I*2*sp.pi*fi, T: dt})
+
+    mag = sp.lambdify(fi, abs(b)/abs(a))
+
+    return abs(mag(freqs))
+
+
+def z_phase(b, a, freqs, dt):
+
+    z = sp.exp(-s*T)
+
+    b = sum([x*z**i for i, x in enumerate(b)])
+    a = sum([x*z**i for i, x in enumerate(a)])
+
+    # first substitution
+    b = b.subs({s: sp.I*2*sp.pi*fi, T: dt})
+    a = a.subs({s: sp.I*2*sp.pi*fi, T: dt})
+
+    phase = sp.lambdify(fi, sp.atan2(*b.as_real_imag()[::-1]) - sp.atan2(*a.as_real_imag()[::-1]))
+
+    return phase(freqs)
 
 
 @hyp.given(
     freq=hyp_st.floats(12.5, 1000),
     damp=hyp_st.floats(1e-25, 1, exclude_max=True),
 )
-def test_rel_displ(freq, damp):
+def test_rel_displ_amp(freq, damp):
     """
     This test uses a step-function input acceleration. In a SDOF spring system,
     the spring should be relaxed in the first portion where `a(t < t0) = 0`.
@@ -32,44 +91,145 @@ def test_rel_displ(freq, damp):
 
     This system is tested over a handful of different oscillation parameter
     (i.e., frequency & damping rate) configurations.
+
+    Laplace domain transfer function:
+           a₂(s)        -1
+    G(s) = ----- = ----------------
+           a₁(s)         ωₙ*s
+                   s² + ----- + ωₙ²
+                          Q
+    With the amplitude response of:
+                  |a₂(wᵢ*j)|
+    |G(wᵢ*j)|  = ------------
+                  |a₁(wᵢ*j)|
+
     """
-    # Data parameters
-    signal = np.zeros(1000, dtype=float)
-    signal[200:] = 1
-    fs = 10 ** 4  # Hz
-    # Other parameters
+    dt = 1e-4
     omega = 2 * np.pi * freq
 
-    # Calculate result
-    calc_result = (
-        shock.rel_displ(
-            pd.DataFrame(signal, index=np.arange(len(signal)) / fs),
-            omega=omega,
-            damp=damp,
+    freqs = np.concatenate([np.geomspace(1e-1, freq*0.99), [freq], np.geomspace(freq*1.01, 2e3)])
+
+    la = laplace_amplitude(sp.simplify(-1), s**2 + wn*s/Q + wn**2, freqs, {fn: freq, d: damp})
+    za = z_amplitude(*shock._rel_displ_coeffs(omega, 1/(2*damp), dt), freqs, dt)
+
+    npt.assert_allclose(za, la, atol=1e-6)
+
+@hyp.given(
+        freq=hyp_st.floats(12.5, 1000),
+        damp=hyp_st.floats(1e-25, 1, exclude_max=True),
         )
-        .to_numpy()
-        .flatten()
-    )
+def test_rel_displ_phase(freq, damp):
+    """
+    This test uses a step-function input acceleration. In a SDOF spring system,
+    the spring should be relaxed in the first portion where `a(t < t0) = 0`.
+    Once the acceleration flips on (`a(t > t0) = 1`), the mass should begin to
+    oscillate.
 
-    # Calculate expected result
-    t = np.arange(1, 801) / fs
-    atten = omega * (-damp + 1j * np.sqrt(1 - damp ** 2))
-    assert np.angle(atten) == pytest.approx(np.arccos(-damp))
-    assert np.abs(atten) == pytest.approx(omega)
+    (This scenario is mathematically identical to having the mass pulled out
+    some distance and held steady with a constant force at `t=0`, then
+    releasing the mass at `t > t0` and letting it oscillate freely.)
 
-    # γ = -ζ + i√(1 - ζ²)
-    # h(t) = (1/Im{γ}) Im{exp(γωt)}
-    # u(t) := Heaviside Step Function
-    # -> result = {h * u}(t) = ∫h(t) dt
-    #     = C + (1 / Im{γ}) Im{1/γω exp(γωt)}
-    expt_result = np.zeros_like(signal)
-    expt_result[200:] = (-1 / np.imag(atten)) * np.imag(
-        np.exp(t * atten) / atten
-    ) - 1 / omega ** 2
+    This system is tested over a handful of different oscillation parameter
+    (i.e., frequency & damping rate) configurations.
 
-    # Test results
-    npt.assert_allclose(calc_result[:200], expt_result[:200])
-    npt.assert_allclose(calc_result[200:], expt_result[200:])
+    Laplace domain transfer function:
+           a₂(s)        -1
+    G(s) = ----- = ----------------
+           a₁(s)         ωₙ*s
+                   s² + ----- + ωₙ²
+                          Q
+
+    With the phase response of:
+    ∠G(wᵢ*j) = ∠a₂(wᵢ*j) - ∠a₁(wᵢ*j)
+    """
+    dt = 1e-4
+    omega = 2*np.pi*freq
+
+    freqs = np.concatenate([np.geomspace(1e-1, freq*0.99), [freq], np.geomspace(freq*1.01, 2e3)])
+
+    la = laplace_phase(sp.simplify(-1), s**2 + wn*s/Q + wn**2, freqs, {fn:freq, d:damp})
+    za = z_phase(*shock._rel_displ_coeffs(omega, 1/(2*damp), dt), freqs, dt)
+
+    npt.assert_allclose(za, la, atol=np.pi*2e-6)
+
+
+@hyp.given(
+    freq=hyp_st.floats(12.5, 1000),
+    damp=hyp_st.floats(1e-25, 1, exclude_max=True),
+)
+def test_rel_velocity_amp(freq, damp):
+    """
+    This test uses a step-function input acceleration. In a SDOF spring system,
+    the spring should be relaxed in the first portion where `a(t < t0) = 0`.
+    Once the acceleration flips on (`a(t > t0) = 1`), the mass should begin to
+    oscillate.
+
+    (This scenario is mathematically identical to having the mass pulled out
+    some distance and held steady with a constant force at `t=0`, then
+    releasing the mass at `t > t0` and letting it oscillate freely.)
+
+    This system is tested over a handful of different oscillation parameter
+    (i.e., frequency & damping rate) configurations.
+
+    Laplace domain transfer function:
+           a₂(s)        -1
+    G(s) = ----- = ----------------
+           a₁(s)         ωₙ*s
+                   s² + ----- + ωₙ²
+                          Q
+    With the amplitude response of:
+                  |a₂(wᵢ*j)|
+    |G(wᵢ*j)|  = ------------
+                  |a₁(wᵢ*j)|
+
+    """
+    dt = 1e-4
+    omega = 2 * np.pi * freq
+
+    freqs = np.concatenate([np.geomspace(1e-1, freq*0.99), [freq], np.geomspace(freq*1.01, 2e3)])
+
+    la = laplace_amplitude(-s, s**2 + wn*s/Q + wn**2, freqs, {fn: freq, d: damp})
+    za = z_amplitude(*shock._rel_velocity_coeffs(omega, 1/(2*damp), dt), freqs, dt)
+
+    npt.assert_allclose(za, la, atol=1e-6)
+
+@hyp.given(
+        freq=hyp_st.floats(12.5, 1000),
+        damp=hyp_st.floats(1e-25, 1, exclude_max=True),
+        )
+def test_rel_velocity_phase(freq, damp):
+    """
+    This test uses a step-function input acceleration. In a SDOF spring system,
+    the spring should be relaxed in the first portion where `a(t < t0) = 0`.
+    Once the acceleration flips on (`a(t > t0) = 1`), the mass should begin to
+    oscillate.
+
+    (This scenario is mathematically identical to having the mass pulled out
+    some distance and held steady with a constant force at `t=0`, then
+    releasing the mass at `t > t0` and letting it oscillate freely.)
+
+    This system is tested over a handful of different oscillation parameter
+    (i.e., frequency & damping rate) configurations.
+
+    Laplace domain transfer function:
+           a₂(s)        -1
+    G(s) = ----- = ----------------
+           a₁(s)         ωₙ*s
+                   s² + ----- + ωₙ²
+                          Q
+
+    With the phase response of:
+    ∠G(wᵢ*j) = ∠a₂(wᵢ*j) - ∠a₁(wᵢ*j)
+    """
+    dt = 1e-4
+    omega = 2*np.pi*freq
+
+    freqs = np.concatenate([np.geomspace(1e-1, freq*0.99), [], np.geomspace(freq*1.01, 2e3)])
+
+    la = laplace_phase(-s, s**2 + wn*s/Q + wn**2, freqs, {fn:freq, d:damp})
+    za = z_phase(*shock._rel_velocity_coeffs(omega, 1/(2*damp), dt), freqs, dt)
+
+    npt.assert_allclose(za, la, atol=np.pi*2e-6)
 
 
 @hyp.given(
