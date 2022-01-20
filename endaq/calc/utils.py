@@ -91,18 +91,19 @@ def to_dB(
         Decibels can **NOT** be calculated from negative values.
 
         For example, to calculate dB on arbitrary time-series data, typically
-        data is first aggregated via a total or a rolling RMS or PSD, and the
-        non-negative result is then scaled into decibels.
+        data is first aggregated via:
+
+        - a *total RMS* (like :py:func:`endaq.calc.stats.rms`),
+        - a *rolling RMS* (like :py:func:`endaq.calc.stats.rolling_rms`), or
+        - a *PSD* (like :py:func:`endaq.calc.psd.welch`),
+
+        and the non-negative result from the aggregation is then scaled into
+        decibels.
 
     :param data: the input data
     :param reference: the reference value corresponding to 0dB
     :param squared: whether the input data & reference value are pre-squared;
         defaults to `False`
-
-    .. seealso::
-        - :py:func:`endaq.calc.stats.rms`
-        - :py:func:`endaq.calc.stats.rolling_rms`
-        - :py:func:`endaq.calc.psd.welch`
     """
     if isinstance(reference, str):
         try:
