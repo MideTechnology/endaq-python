@@ -194,7 +194,7 @@ def _make_vc_curves(ch_data_cache):
 
 class GetDataBuilder:
     """
-    The main interface for the calculations.
+    The main interface for calculations in ``endaq.batch``.
 
     This object has two types of functions:
 
@@ -202,12 +202,14 @@ class GetDataBuilder:
       performed on IDE recordings, and pass in any requisite parameters for said
       calculations. This includes the following functions:
 
-      - :py:meth:`add_psd`
-      - :py:meth:`add_pvss`
-      - :py:meth:`add_pvss_halfsine_envelope`
-      - :py:meth:`add_metrics`
-      - :py:meth:`add_peaks`
-      - :py:meth:`add_vc_curves`
+      .. hlist::
+
+          - :py:meth:`add_psd`
+          - :py:meth:`add_pvss`
+          - :py:meth:`add_pvss_halfsine_envelope`
+          - :py:meth:`add_metrics`
+          - :py:meth:`add_peaks`
+          - :py:meth:`add_vc_curves`
 
     - *execution functions* - these functions take recording files as parameters,
       perform the configured calculations on the data therein, and return the
@@ -389,20 +391,22 @@ class GetDataBuilder:
         """
         Add broad channel metrics to the calculation queue.
 
-        Calculation output units:
+        The output units for each metric are listed below:
 
-        - `RMS Acceleration`: :math:`\\text{G}`
-        - `RMS Velocity`: :math:`\\frac{\\text{mm}}{\\text{sec}}`
-        - `RMS Displacement`: :math:`\\text{mm}`
-        - `Peak Absolute Acceleration`: :math:`\\text{G}`
-        - `Peak Pseudo Velocity Shock Spectrum`: :math:`\\frac{\\text{mm}}{\\text{sec}}`
-        - `GPS Position`: :math:`\\text{degrees}`
-        - `GPS Speed`: :math:`\\frac{\\text{km}}{\\text{hr}}`
-        - `RMS Angular Velocity`: :math:`\\frac{\\text{degrees}}{\\text{sec}}`
-        - `RMS Microphone`: :math:`\\text{Pascals}`
-        - `Average Temperature`: :math:`{}^{\\circ} \\text{C}`
-        - `Average Pressure`: :math:`\\text{Pascals}`
-        - `Average Relative Humidity`: :math:`\\text{%}`
+        .. hlist::
+
+            - `RMS Acceleration`: :math:`\\text{G}`
+            - `RMS Velocity`: :math:`\\frac{\\text{mm}}{\\text{sec}}`
+            - `RMS Displacement`: :math:`\\text{mm}`
+            - `Peak Absolute Acceleration`: :math:`\\text{G}`
+            - `Peak Pseudo Velocity Shock Spectrum`: :math:`\\frac{\\text{mm}}{\\text{sec}}`
+            - `GPS Position`: :math:`\\text{degrees}`
+            - `GPS Speed`: :math:`\\frac{\\text{km}}{\\text{hr}}`
+            - `RMS Angular Velocity`: :math:`\\frac{\\text{degrees}}{\\text{sec}}`
+            - `RMS Microphone`: :math:`\\text{Pascals}`
+            - `Average Temperature`: :math:`{}^{\\circ} \\text{C}`
+            - `Average Pressure`: :math:`\\text{Pascals}`
+            - `Average Relative Humidity`: :math:`\\text{%}`
 
         where `G` is the acceleration of gravity :math:`\\left( 1 \\text{G}
         \\approx 9.80665 \\frac{ \\text{m} }{ \\text{sec}^2 } \\right)`
