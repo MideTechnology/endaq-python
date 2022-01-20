@@ -634,7 +634,7 @@ def test_output_to_csv_folder(output_struct):
 )
 def test_output_to_html_plots(output_struct):
     with tempfile.TemporaryDirectory() as dirpath:
-        output_struct.to_html_plots(folder_path=dirpath, show=False)
+        output_struct.to_html_plots(folder_path=dirpath, show=False, theme="endaq")
 
         for k in output_struct.dataframes:
             # Not all dataframes get plotted

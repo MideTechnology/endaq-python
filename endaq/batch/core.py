@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import typing
 from typing import List
 
 from functools import partial
@@ -542,18 +543,34 @@ class OutputStruct:
             path = os.path.join(folder_path, f"{k}.csv")
             df.to_csv(path, index=(k == "meta"))
 
-    def to_html_plots(self, folder_path=None, show=False):
+    def to_html_plots(
+        self,
+        folder_path=None,
+        show: bool = False,
+        theme: typing.Literal[
+            None, "endaq", "endaq_light", "endaq_arial", "endaq_light_arial"
+        ] = "endaq",
+    ):
         """
         Generate plots in HTML.
 
-        :param folder_path: the output directory for saving .HTML
-            plots; if `None` (default), plots are not saved
-        :param show: whether to open plots after generation; defaults to `False`
+        :param folder_path: The output directory for saving .HTML
+            plots. If `None` (default), plots are not saved.
+        :param show: Whether to open plots after generation. Defaults to `False`.
+        :param theme: The enDAQ plotly theme to use; see
+            :py:func:`endaq.plot.utilities.set_theme` for details on the
+            supported options. Defaults to `"endaq"`. If `None`, the default
+            Plotly theme is used.
         """
         if not any((folder_path, show)):
             return
 
         import plotly.express as px
+
+        if theme is not None:
+            from endaq.plot.utilities import set_theme
+
+            set_theme(theme)
 
         if folder_path:
             os.makedirs(folder_path, exist_ok=True)
