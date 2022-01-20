@@ -195,7 +195,7 @@ def _make_vc_curves(ch_data_cache):
 
 class GetDataBuilder:
     """
-    The main interface for the calculations.
+    The main interface for calculations in ``endaq.batch``.
 
     This object has two types of functions:
 
@@ -203,16 +203,19 @@ class GetDataBuilder:
       performed on IDE recordings, and pass in any requisite parameters for said
       calculations. This includes the following functions:
 
-      - :py:meth:`add_psd`
-      - :py:meth:`add_pvss`
-      - :py:meth:`add_pvss_halfsine_envelope`
-      - :py:meth:`add_metrics`
-      - :py:meth:`add_peaks`
-      - :py:meth:`add_vc_curves`
+      .. hlist::
+
+          - :py:meth:`add_psd`
+          - :py:meth:`add_pvss`
+          - :py:meth:`add_pvss_halfsine_envelope`
+          - :py:meth:`add_metrics`
+          - :py:meth:`add_peaks`
+          - :py:meth:`add_vc_curves`
 
     - *execution functions* - these functions take recording files as parameters,
       perform the configured calculations on the data therein, and return the
-      calculated data as a `OutputStruct` object that wraps pandas objects.
+      calculated data as a :py:class:`.OutputStruct` object that wraps pandas
+      objects.
 
       This includes the functions :py:meth:`_get_data` &
       :py:meth:`aggregate_data`, which operates on one & multiple file(s),
@@ -270,10 +273,11 @@ class GetDataBuilder:
         :param accel_integral_tukey_percent: the alpha parameter of a tukey
             window applied to the acceleration before integrating into
             velocity & displacement; see the `tukey_percent` parameter in
-            ``endaq.calc.integrate.integrals`` for details
+            :py:func:`endaq.calc.integrate.integrals` for details
         :param accel_integral_zero: the output quantity driven to zero when
             integrating the acceleration into velocity & displacement; see the
-            `zero` parameter in ``endaq.calc.integrate.integrals`` for details
+            `zero` parameter in :py:func:`endaq.calc.integrate.integrals` for
+            details
         """
         if accel_start_time is not None and accel_start_margin is not None:
             raise ValueError(
@@ -320,6 +324,10 @@ class GetDataBuilder:
         """
         Add the acceleration PSD to the calculation queue.
 
+        *calculation output units*: :math:`\\frac{\\text{G}^2}{\\text{Hz}}`,
+        where `G` is the acceleration of gravity :math:`\\left( 1 \\text{G}
+        \\approx 9.80665 \\frac{ \\text{m} }{ \\text{sec}^2 } \\right)`
+
         :param freq_bin_width: the desired spacing between adjacent PSD samples;
             a default is provided only if `bins_per_octave` is used, otherwise
             this parameter is required
@@ -357,6 +365,8 @@ class GetDataBuilder:
         Add the acceleration PVSS (Pseudo Velocity Shock Spectrum) to the
         calculation queue.
 
+        *calculation output units*: :math:`\\frac{\\text{mm}}{\\text{sec}}`
+
         :param init_freq: the first frequency sample in the spectrum
         :param bins_per_octave: the number of samples per frequency octave
         """
@@ -370,6 +380,8 @@ class GetDataBuilder:
         """
         Add the half-sine envelope for the acceleration's PVSS (Pseudo Velocity
         Shock Spectrum) to the calculation queue.
+
+        *calculation output units*: :math:`\\frac{\\text{mm}}{\\text{sec}}`
         """
         self._metrics_queue["halfsine"] = None
         self._pvss_halfsine_envelope_kwargs = kwargs
@@ -377,7 +389,30 @@ class GetDataBuilder:
         return self
 
     def add_metrics(self):
-        """Add broad channel metrics to the calculation queue."""
+        """
+        Add broad channel metrics to the calculation queue.
+
+        The output units for each metric are listed below:
+
+        .. hlist::
+
+            - `RMS Acceleration`: :math:`\\text{G}`
+            - `RMS Velocity`: :math:`\\frac{\\text{mm}}{\\text{sec}}`
+            - `RMS Displacement`: :math:`\\text{mm}`
+            - `Peak Absolute Acceleration`: :math:`\\text{G}`
+            - `Peak Pseudo Velocity Shock Spectrum`: :math:`\\frac{\\text{mm}}{\\text{sec}}`
+            - `GPS Position`: :math:`\\text{degrees}`
+            - `GPS Speed`: :math:`\\frac{\\text{km}}{\\text{hr}}`
+            - `RMS Angular Velocity`: :math:`\\frac{\\text{degrees}}{\\text{sec}}`
+            - `RMS Microphone`: :math:`\\text{Pascals}`
+            - `Average Temperature`: :math:`{}^{\\circ} \\text{C}`
+            - `Average Pressure`: :math:`\\text{Pascals}`
+            - `Average Relative Humidity`: :math:`\\text{%}`
+
+        where `G` is the acceleration of gravity :math:`\\left( 1 \\text{G}
+        \\approx 9.80665 \\frac{ \\text{m} }{ \\text{sec}^2 } \\right)`
+
+        """
         self._metrics_queue["metrics"] = None
 
         if "pvss" not in self._metrics_queue:
@@ -391,6 +426,10 @@ class GetDataBuilder:
         Add windows about the acceleration's peak value to the calculation
         queue.
 
+        *calculation output units*: :math:`\\text{G}`, where `G` is the
+        acceleration of gravity :math:`\\left( 1 \\text{G} \\approx 9.80665
+        \\frac{ \\text{m} }{ \\text{sec}^2 } \\right)`
+
         :param margin_len: the number of samples on each side of a peak to
             include in the windows
         """
@@ -402,6 +441,8 @@ class GetDataBuilder:
     def add_vc_curves(self, *, init_freq, bins_per_octave):
         """
         Add Vibration Criteria (VC) Curves to the calculation queue.
+
+        *calculation output units*: :math:`\\frac{\\text{μm}}{\\text{sec}}`
 
         :param init_freq: the first frequency
         :param bins_per_octave:  the number of samples per frequency octave
@@ -524,7 +565,7 @@ class OutputStruct:
     """
     A data wrapper class with methods for common export operations.
 
-    Objects of this class are generated by :py:meth:`GetDataBuilder.aggregate_data`.
+    Objects of this class are generated by :py:meth:`.GetDataBuilder.aggregate_data`.
     This class is not intended be instantiated manually.
     """
 
