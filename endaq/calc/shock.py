@@ -69,7 +69,7 @@ def abs_accel(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
         - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
           Documentation for the transfer function class used to characterize the
           relative displacement calculation.
-        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`_
+        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`__
           Documentation for the biquad function used to implement the transfer
           function.
         - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`__
@@ -142,7 +142,7 @@ def rel_velocity(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.Dat
         - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
           Documentation for the transfer function class used to characterize the
           relative displacement calculation.
-        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`_
+        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`__
           Documentation for the biquad function used to implement the transfer
           function.
         - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`__
@@ -219,7 +219,7 @@ def rel_displ(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
         - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
           Documentation for the transfer function class used to characterize the
           relative displacement calculation.
-        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`_
+        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`__
           Documentation for the biquad function used to implement the transfer
           function.
         - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`__
@@ -292,7 +292,7 @@ def pseudo_velocity(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.
         - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
           Documentation for the transfer function class used to characterize the
           relative displacement calculation.
-        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`_
+        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`__
           Documentation for the biquad function used to implement the transfer
           function.
         - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`__
@@ -366,7 +366,7 @@ def relative_disp_static(accel: pd.DataFrame, omega: float, damp: float = 0.0) -
         - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
           Documentation for the transfer function class used to characterize the
           relative displacement calculation.
-        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`_
+        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`__
           Documentation for the biquad function used to implement the transfer
           function.
         - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`__
@@ -418,7 +418,7 @@ def shock_spectrum(
         - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
           Documentation for the transfer function class used to characterize the
           relative displacement calculation.
-        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`_
+        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`__
           Documentation for the biquad function used to implement the transfer
           function.
     """
