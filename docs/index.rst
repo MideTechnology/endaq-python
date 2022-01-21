@@ -35,4 +35,4 @@ Indices and tables
 License
 -------
 
-The endaq-python repository is licensed under the MIT license. The full text can be found in the `LICENSE file <https://github.com/MideTechnology/endaq-python/blob/main/LICENSE>`_.
+The `endaq-python` repository is licensed under the MIT license. The full text can be found in the `LICENSE file <https://github.com/MideTechnology/endaq-python/blob/main/LICENSE>`_.

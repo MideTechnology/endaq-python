@@ -96,7 +96,7 @@ def general_get_correlation_figure(merged_df: pd.DataFrame,
     corresponding to the selected attributes from the drop-down menu.
 
     :param merged_df: A Pandas DataFrame of data to use for producing the plot
-    :param color_col: The column name in the given dataframe (as merged_df) that is used to color
+    :param color_col: The column name in the given dataframe (as ``merged_df``) that is used to color
      data points with.   This is used in combination with the color_discrete_map parameter
     :param color_discrete_map: A dictionary which maps the values given to color data points based on (see the
      color_col parameter description) to the colors that these data points should be
@@ -189,7 +189,7 @@ def get_pure_numpy_2d_pca(df: pd.DataFrame,
     which components are being used for the X and Y axis.
 
     :param df: The dataframe of points to compute the PCA with
-    :param color_col: The column name in the given dataframe (as merged_df) that is used to color
+    :param color_col: The column name in the given dataframe (as ``df``) that is used to color
      data points with.   This is used in combination with the color_discrete_map parameter
     :param color_discrete_map: A dictionary which maps the values given to color data points based on (see the
      color_col parameter description) to the colors that these data points should be

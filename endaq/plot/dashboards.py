@@ -307,7 +307,7 @@ def rolling_metric_dashboard(channel_df_dict: dict, desired_num_points: int = 25
      the `num_rows` parameter for more details on this parameter, and how the two interact.  This also follows the same
      approach to handling `None` when given
     :param rolling_metrics_to_plot: A tuple of strings which indicate what rolling metrics to plot for each subchannel.
-     The options are ['mean', 'std', 'absolute max', 'rms'] which correspond to the mean, standard deviation, maximum of
+     The options are ``['mean', 'std', 'absolute max', 'rms']`` which correspond to the mean, standard deviation, maximum of
      the absolute value, and root-mean-square.
     :param metric_colors: An "array-like" object of strings containing colors to be cycled through for the metrics.
      If `None` is given (which is the default), then the `colorway` variable in Plotly's current theme/template will
