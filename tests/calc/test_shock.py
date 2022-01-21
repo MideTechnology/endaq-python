@@ -19,6 +19,23 @@ from endaq.calc import shock
 wn, fn, wi, fi, Q, d, T = sp.symbols('ωₙ, fₙ, ωᵢ, fᵢ, Q, ζ, T', real=True)
 s = sp.Symbol('s', complex=True)
 
+DAMP_RANGE = (1e-2, 1.)
+
+
+def laplace(b, a, freqs, subs):
+
+    # first substitution
+    b = b.subs({wn: 2*sp.pi*fn, Q: 1/(2*d), s: sp.I*2*sp.pi*fi}).subs(subs)
+    a = a.subs({wn: 2*sp.pi*fn, Q: 1/(2*d), s: sp.I*2*sp.pi*fi}).subs(subs)
+
+    b_nums = sp.lambdify(fi, b)(freqs)
+    a_nums = sp.lambdify(fi, a)(freqs)
+
+    mag = abs(b_nums)/abs(a_nums)
+    phase = np.angle(b_nums) - np.angle(a_nums)
+
+    return mag, phase
+
 
 def laplace_amplitude(b, a, freqs, subs):
 
@@ -75,23 +92,11 @@ def z_phase(b, a, freqs, dt):
 
 
 @hyp.given(
-    freq=hyp_st.floats(12.5, 1000),
-    damp=hyp_st.floats(1e-25, 1, exclude_max=True),
+    freq=hyp_st.floats(12.5, 1200),
+    damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
 )
 def test_rel_displ_amp(freq, damp):
     """
-    This test uses a step-function input acceleration. In a SDOF spring system,
-    the spring should be relaxed in the first portion where `a(t < t0) = 0`.
-    Once the acceleration flips on (`a(t > t0) = 1`), the mass should begin to
-    oscillate.
-
-    (This scenario is mathematically identical to having the mass pulled out
-    some distance and held steady with a constant force at `t=0`, then
-    releasing the mass at `t > t0` and letting it oscillate freely.)
-
-    This system is tested over a handful of different oscillation parameter
-    (i.e., frequency & damping rate) configurations.
-
     Laplace domain transfer function:
            a₂(s)        -1
     G(s) = ----- = ----------------
@@ -107,31 +112,19 @@ def test_rel_displ_amp(freq, damp):
     dt = 1e-4
     omega = 2 * np.pi * freq
 
-    freqs = np.concatenate([np.geomspace(1e-1, freq*0.99), [freq], np.geomspace(freq*1.01, 2e3)])
+    freqs = np.geomspace(1e-1, 1000, 10000)
 
     la = laplace_amplitude(sp.simplify(-1), s**2 + wn*s/Q + wn**2, freqs, {fn: freq, d: damp})
     za = z_amplitude(*shock._rel_displ_coeffs(omega, 1/(2*damp), dt), freqs, dt)
 
-    npt.assert_allclose(za, la, atol=1e-6)
+    npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
 
 @hyp.given(
-        freq=hyp_st.floats(12.5, 1000),
-        damp=hyp_st.floats(1e-25, 1, exclude_max=True),
+        freq=hyp_st.floats(12.5, 1200),
+        damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
         )
 def test_rel_displ_phase(freq, damp):
     """
-    This test uses a step-function input acceleration. In a SDOF spring system,
-    the spring should be relaxed in the first portion where `a(t < t0) = 0`.
-    Once the acceleration flips on (`a(t > t0) = 1`), the mass should begin to
-    oscillate.
-
-    (This scenario is mathematically identical to having the mass pulled out
-    some distance and held steady with a constant force at `t=0`, then
-    releasing the mass at `t > t0` and letting it oscillate freely.)
-
-    This system is tested over a handful of different oscillation parameter
-    (i.e., frequency & damping rate) configurations.
-
     Laplace domain transfer function:
            a₂(s)        -1
     G(s) = ----- = ----------------
@@ -145,17 +138,17 @@ def test_rel_displ_phase(freq, damp):
     dt = 1e-4
     omega = 2*np.pi*freq
 
-    freqs = np.concatenate([np.geomspace(1e-1, freq*0.99), [freq], np.geomspace(freq*1.01, 2e3)])
+    freqs = np.geomspace(1e-1, 1000, 10000)
 
     la = laplace_phase(sp.simplify(-1), s**2 + wn*s/Q + wn**2, freqs, {fn:freq, d:damp})
     za = z_phase(*shock._rel_displ_coeffs(omega, 1/(2*damp), dt), freqs, dt)
 
-    npt.assert_allclose(za, la, atol=np.pi*2e-6)
+    npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
 
 
 @hyp.given(
     freq=hyp_st.floats(12.5, 1000),
-    damp=hyp_st.floats(1e-25, 1, exclude_max=True),
+        damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
 )
 def test_rel_velocity_amp(freq, damp):
     """
@@ -186,16 +179,16 @@ def test_rel_velocity_amp(freq, damp):
     dt = 1e-4
     omega = 2 * np.pi * freq
 
-    freqs = np.concatenate([np.geomspace(1e-1, freq*0.99), [freq], np.geomspace(freq*1.01, 2e3)])
+    freqs = np.geomspace(1e-1, 1000, 10000)
 
     la = laplace_amplitude(-s, s**2 + wn*s/Q + wn**2, freqs, {fn: freq, d: damp})
     za = z_amplitude(*shock._rel_velocity_coeffs(omega, 1/(2*damp), dt), freqs, dt)
 
-    npt.assert_allclose(za, la, atol=1e-6)
+    npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
 
 @hyp.given(
         freq=hyp_st.floats(12.5, 1000),
-        damp=hyp_st.floats(1e-25, 1, exclude_max=True),
+        damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
         )
 def test_rel_velocity_phase(freq, damp):
     """
@@ -229,124 +222,175 @@ def test_rel_velocity_phase(freq, damp):
     la = laplace_phase(-s, s**2 + wn*s/Q + wn**2, freqs, {fn:freq, d:damp})
     za = z_phase(*shock._rel_velocity_coeffs(omega, 1/(2*damp), dt), freqs, dt)
 
-    npt.assert_allclose(za, la, atol=np.pi*2e-6)
-
+    npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
 
 @hyp.given(
-    freq=hyp_st.floats(12.5, 1000),
-    damp=hyp_st.floats(1e-25, 1, exclude_max=True),
-)
-def test_abs_accel(freq, damp):
+        freq=hyp_st.floats(12.5, 1000),
+        damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
+        )
+def test_abs_accel_amp(freq, damp):
     """
-    This test uses a step-function input acceleration. In a SDOF spring system,
-    the spring should be relaxed in the first portion where `a(t < t0) = 0`.
-    Once the acceleration flips on (`a(t > t0) = 1`), the mass should begin to
-    oscillate.
+    Laplace domain transfer function:
+                       ωₙ*s
+                      ----- + ωₙ²
+           a₂(s)        Q
+    G(s) = ----- = ----------------
+           a₁(s)         ωₙ*s
+                   s² + ----- + ωₙ²
+                          Q
+    With the amplitude response of:
+                  |a₂(wᵢ*j)|
+    |G(wᵢ*j)|  = ------------
+                  |a₁(wᵢ*j)|
 
-    (This scenario is mathematically identical to having the mass pulled out
-    some distance and held steady with a constant force at `t=0`, then
-    releasing the mass at `t > t0` and letting it oscillate freely.)
-
-    This system is tested over a handful of different oscillation parameter
-    (i.e., frequency & damping rate) configurations.
     """
-    # Data parameters
-    signal = np.zeros(1000, dtype=float)
-    signal[200:] = 1
-    fs = 10 ** 4  # Hz
-    # Other parameters
+    dt = 1e-4
     omega = 2 * np.pi * freq
 
-    # Calculate result
-    calc_result = (
-        shock.abs_accel(
-            pd.DataFrame(signal, index=np.arange(len(signal)) / fs),
-            omega=omega,
-            damp=damp,
-        )
-        .to_numpy()
-        .flatten()
-    )
+    freqs = np.geomspace(1e-1, 1000, 10000)
 
-    # Calculate expected result
-    t = np.arange(1, 801) / fs
-    atten = omega * (-damp + 1j * np.sqrt(1 - damp ** 2))
-    assert np.angle(atten) == pytest.approx(np.arccos(-damp))
-    assert np.abs(atten) == pytest.approx(omega)
+    la = laplace_amplitude(wn*s/Q + wn**2, s**2 + wn*s/Q + wn**2, freqs, {fn: freq, d: damp})
+    za = z_amplitude(*shock._abs_accel_coeffs(omega, 1/(2*damp), dt), freqs, dt)
 
-    # γ = -ζ + i√(1 - ζ²)
-    # h(t) = (2ζω) Re{exp(γωt)} + ((1 - 2ζ)/Im{γ}) Im{exp(γωt)}
-    # u(t) := Heaviside Step Function
-    # -> result = {h * u}(t) = ∫h(t) dt
-    #     = C + (2ζω) Re{1/γω exp(γωt)} + ((1 - 2ζ)/Im{γ}) Im{1/γω exp(γωt)}
-    expt_result = np.zeros_like(signal)
-    expt_result[200:] = (
-        omega
-        * (
-            np.real(np.exp(t * atten) / atten) * 2 * damp
-            + np.imag(np.exp(t * atten) / atten)
-            * (1 - 2 * damp ** 2)
-            / np.sqrt(1 - damp ** 2)
-        )
-        + 1
-    )
-
-    # Test results
-    npt.assert_allclose(calc_result[:200], expt_result[:200])
-    npt.assert_allclose(calc_result[200:], expt_result[200:])
+    npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
 
 
 @hyp.given(
-    df_accel=hyp_np.arrays(
-        dtype=np.float64,
-        shape=(40, 2),
-        elements=hyp_st.floats(1e-20, 1e20),
-    ).map(lambda array: pd.DataFrame(array, index=np.arange(40) * 1e-4)),
-    freq=hyp_st.floats(1, 20),
-    damp=hyp_st.floats(1e-25, 1, exclude_max=True),
-    mode=hyp_st.sampled_from(["srs", "pvss"]),
-    aggregate_axes_two_sided=hyp_st.sampled_from(
-        [(False, False), (False, True), (True, False)]
-    ),
-    factor=hyp_st.floats(-1e2, 1e2),
-)
-def test_shock_spectrum_linearity(
-    df_accel,
-    freq,
-    damp,
-    mode,
-    aggregate_axes_two_sided,
-    factor,
-):
-    aggregate_axes, two_sided = aggregate_axes_two_sided
-
-    calc_result = shock.shock_spectrum(
-        df_accel,
-        [freq],
-        damp=damp,
-        mode=mode,
-        aggregate_axes=aggregate_axes,
-        two_sided=two_sided,
-    )
-    calc_result_prescale = shock.shock_spectrum(
-        factor * df_accel,
-        [freq],
-        damp=damp,
-        mode=mode,
-        aggregate_axes=aggregate_axes,
-        two_sided=two_sided,
-    )
-    if two_sided:
-        calc_result_postscale = tuple(
-            df_calc * np.abs(factor) for df_calc in calc_result
-        )[slice(None) if factor >= 0 else slice(None, None, -1)]
-        for prescale, postscale in zip(calc_result_prescale, calc_result_postscale):
-            pd.testing.assert_frame_equal(prescale, postscale)
-    else:
-        pd.testing.assert_frame_equal(
-            calc_result_prescale,
-            calc_result.mul(factor).abs(),
+        freq=hyp_st.floats(12.5, 1000),
+        damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
         )
+def test_abs_accel_phase(freq, damp):
+    """
+                       ωₙ*s
+                      ----- + ωₙ²
+           a₂(s)        Q
+    G(s) = ----- = ----------------
+           a₁(s)         ωₙ*s
+                   s² + ----- + ωₙ²
+                          Q
+
+    With the phase response of:
+    ∠G(wᵢ*j) = ∠a₂(wᵢ*j) - ∠a₁(wᵢ*j)
+    """
+    dt = 1e-4
+    omega = 2*np.pi*freq
+
+    freqs = np.concatenate([np.geomspace(1e-1, freq*0.99), [], np.geomspace(freq*1.01, 2e3)])
+
+    la = laplace_phase(wn*s/Q + wn**2, s**2 + wn*s/Q + wn**2, freqs, {fn:freq, d:damp})
+    za = z_phase(*shock._abs_accel_coeffs(omega, 1/(2*damp), dt), freqs, dt)
+
+    npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
+
+
+@hyp.given(
+    freq=hyp_st.floats(12.5, 1200),
+    damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
+)
+def test_pseudovelocity_amp(freq, damp):
+    """
+    Laplace domain transfer function:
+           a₂(s)        -1
+    G(s) = ----- = ----------------
+           a₁(s)         ωₙ*s
+                   s² + ----- + ωₙ²
+                          Q
+    With the amplitude response of:
+                  |a₂(wᵢ*j)|
+    |G(wᵢ*j)|  = ------------
+                  |a₁(wᵢ*j)|
+
+    """
+    dt = 1e-4
+    omega = 2 * np.pi * freq
+
+    freqs = np.geomspace(1e-1, 1000, 10000)
+
+    la = laplace_amplitude(-wn, s**2 + wn*s/Q + wn**2, freqs, {fn: freq, d: damp})
+    za = z_amplitude(*shock._pseudo_velocity_coeffs(omega, 1/(2*damp), dt), freqs, dt)
+
+    npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
+
+@hyp.given(
+        freq=hyp_st.floats(12.5, 1200),
+        damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
+        )
+def test_pseudovelocity_phase(freq, damp):
+    """
+    Laplace domain transfer function:
+           a₂(s)        -1
+    G(s) = ----- = ----------------
+           a₁(s)         ωₙ*s
+                   s² + ----- + ωₙ²
+                          Q
+
+    With the phase response of:
+    ∠G(wᵢ*j) = ∠a₂(wᵢ*j) - ∠a₁(wᵢ*j)
+    """
+    dt = 1e-4
+    omega = 2*np.pi*freq
+
+    freqs = np.geomspace(1e-1, 1000, 10000)
+
+    la = laplace_phase(-wn, s**2 + wn*s/Q + wn**2, freqs, {fn:freq, d:damp})
+    za = z_phase(*shock._pseudo_velocity_coeffs(omega, 1/(2*damp), dt), freqs, dt)
+
+    npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
+
+
+@hyp.given(
+    freq=hyp_st.floats(12.5, 1200),
+    damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
+)
+def test_eq_static_accel_amp(freq, damp):
+    """
+    Laplace domain transfer function:
+           a₂(s)        -1
+    G(s) = ----- = ----------------
+           a₁(s)         ωₙ*s
+                   s² + ----- + ωₙ²
+                          Q
+    With the amplitude response of:
+                  |a₂(wᵢ*j)|
+    |G(wᵢ*j)|  = ------------
+                  |a₁(wᵢ*j)|
+
+    """
+    dt = 1e-4
+    omega = 2 * np.pi * freq
+
+    freqs = np.geomspace(1e-1, 1000, 10000)
+
+    la = laplace_amplitude(-wn**2, s**2 + wn*s/Q + wn**2, freqs, {fn: freq, d: damp})
+    za = z_amplitude(*shock._relative_disp_static_coeffs(omega, 1/(2*damp), dt), freqs, dt)
+
+    npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
+
+@hyp.given(
+        freq=hyp_st.floats(12.5, 1200),
+        damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
+        )
+def test_eq_static_accel_phase(freq, damp):
+    """
+    Laplace domain transfer function:
+           a₂(s)        -1
+    G(s) = ----- = ----------------
+           a₁(s)         ωₙ*s
+                   s² + ----- + ωₙ²
+                          Q
+
+    With the phase response of:
+    ∠G(wᵢ*j) = ∠a₂(wᵢ*j) - ∠a₁(wᵢ*j)
+    """
+    dt = 1e-4
+    omega = 2*np.pi*freq
+
+    freqs = np.geomspace(1e-1, 1000, 10000)
+
+    la = laplace_phase(-wn**2, s**2 + wn*s/Q + wn**2, freqs, {fn:freq, d:damp})
+    za = z_phase(*shock._relative_disp_static_coeffs(omega, 1/(2*damp), dt), freqs, dt)
+
+    npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
 
 
 @hyp.given(
