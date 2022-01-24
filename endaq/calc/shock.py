@@ -29,7 +29,7 @@ def _abs_accel_coeffs(omega, Q, T):
 
     .. seealso::
 
-        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`__
+        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`
           Explicit implementations of digital filter coefficients for shock spectra.
     """
     A = omega*T/(2.*Q)
@@ -72,7 +72,7 @@ def abs_accel(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
         - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`__
           Documentation for the biquad function used to implement the transfer
           function.
-        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`__
+        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`
           Explicit implementations of digital filter coefficients for shock spectra.
     """
     T = utils.sample_spacing(accel)
@@ -100,7 +100,7 @@ def _rel_velocity_coeffs(omega, Q, T):
 
     .. seealso::
 
-        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`__
+        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`
           Explicit implementations of digital filter coefficients for shock spectra.
     """
     A = omega*T/(2.*Q)
@@ -145,7 +145,7 @@ def rel_velocity(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.Dat
         - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`__
           Documentation for the biquad function used to implement the transfer
           function.
-        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`__
+        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`
           Explicit implementations of digital filter coefficients for shock spectra.
     """
     T = utils.sample_spacing(accel)
@@ -173,7 +173,7 @@ def _rel_displ_coeffs(omega, Q, T):
 
     .. seealso::
 
-        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`__
+        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`
           Explicit implementations of digital filter coefficients for shock spectra.
     """
     A = omega*T/(2.*Q)
@@ -222,7 +222,7 @@ def rel_displ(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
         - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`__
           Documentation for the biquad function used to implement the transfer
           function.
-        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`__
+        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`
           Explicit implementations of digital filter coefficients for shock spectra.
     """
     T = utils.sample_spacing(accel)
@@ -295,7 +295,7 @@ def pseudo_velocity(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.
         - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`__
           Documentation for the biquad function used to implement the transfer
           function.
-        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`__
+        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`
           Explicit implementations of digital filter coefficients for shock spectra.
     """
     T = utils.sample_spacing(accel)
@@ -324,7 +324,7 @@ def _relative_disp_static_coeffs(omega, Q, T):
 
     .. seealso::
 
-        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`__
+        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`
           Explicit implementations of digital filter coefficients for shock spectra.
     """
     A = omega*T/(2.*Q)
@@ -369,7 +369,7 @@ def relative_disp_static(accel: pd.DataFrame, omega: float, damp: float = 0.0) -
         - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`__
           Documentation for the biquad function used to implement the transfer
           function.
-        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`__
+        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`
           Explicit implementations of digital filter coefficients for shock spectra.
     """
     T = utils.sample_spacing(accel)
