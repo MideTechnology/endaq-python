@@ -657,7 +657,9 @@ def test_output_to_html_plots(output_struct):
             os.path.join("tests", "batch", "test5.IDE"),
             os.path.join("tests", "batch", "GPS-Chick-Fil-A_003.IDE"),
             os.path.join("tests", "batch", "High-Drop.IDE"),
-        ]
+        ],
+        [os.path.join("tests", "batch", "SSX70065.IDE")],
+        [],
     ],
 )
 @pytest.mark.filterwarnings("ignore:empty frequency bins:RuntimeWarning")
@@ -676,6 +678,9 @@ def test_integration(filenames):
         .add_vc_curves(init_freq=1, bins_per_octave=3)
         .aggregate_data(filenames)
     )
+    if len(filenames) == 0:
+        assert output_struct is None
+        return
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         output_struct.to_csv_folder(tmp_dir)

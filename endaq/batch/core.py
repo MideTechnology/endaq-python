@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import typing
-from typing import List
+from typing import List, Optional
 
 from functools import partial
 import warnings
@@ -505,14 +505,21 @@ class GetDataBuilder:
 
         return data
 
-    def aggregate_data(self, filenames) -> OutputStruct:
+    def aggregate_data(self, filenames) -> Optional[OutputStruct]:
         """
         Compile configured data from the given files into a dataframe.
 
         :param filenames: a sequence of paths of recording files to process
         """
+        if len(filenames) == 0:
+            return None
+
         filenames = [os.path.abspath(name) for name in filenames]
         root_path = os.path.commonpath(filenames)
+        if len(filenames) == 1:
+            # Common path will take the one file's whole path as the "root path"
+            # -> remove the basename from this path
+            root_path = os.path.dirname(root_path)
         file_display_names = [
             os.path.relpath(name, start=root_path) for name in filenames
         ]
