@@ -647,19 +647,25 @@ def test_output_to_html_plots(output_struct):
             # can't do much else for validation...
 
 
+@pytest.mark.parametrize(
+    "filenames",
+    [
+        [
+            os.path.join("tests", "batch", "SSX70065.IDE"),
+            os.path.join("tests", "batch", "test1.IDE"),
+            os.path.join("tests", "batch", "test3.IDE"),
+            os.path.join("tests", "batch", "test5.IDE"),
+            os.path.join("tests", "batch", "GPS-Chick-Fil-A_003.IDE"),
+            os.path.join("tests", "batch", "High-Drop.IDE"),
+        ]
+    ],
+)
 @pytest.mark.filterwarnings("ignore:empty frequency bins:RuntimeWarning")
 @pytest.mark.filterwarnings("ignore:no acceleration channel in:UserWarning")
 @pytest.mark.filterwarnings(
     "ignore:HTML plot for metrics not currently implemented:UserWarning"
 )
-def test_integration():
-    filenames = [
-        os.path.join("tests", "batch", "SSX70065.IDE"),
-        os.path.join("tests", "batch", "test1.IDE"),
-        os.path.join("tests", "batch", "test3.IDE"),
-        os.path.join("tests", "batch", "test5.IDE"),
-        os.path.join("tests", "batch", "GPS-Chick-Fil-A_003.IDE"),
-    ]
+def test_integration(filenames):
     output_struct = (
         endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1)
         .add_psd(freq_bin_width=1)
