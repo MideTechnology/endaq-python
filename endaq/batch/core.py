@@ -514,25 +514,36 @@ class GetDataBuilder:
         if len(filenames) == 0:
             return None
 
-        filenames = [os.path.abspath(name) for name in filenames]
-        root_path = os.path.commonpath(filenames)
-        if len(filenames) == 1:
+        http_files, local_files = [], []
+        for file in filenames:
+            (
+                http_files
+                if file.startswith("http://") or file.startswith("https://")
+                else local_files
+            ).append(file)
+
+        local_files = [os.path.abspath(file) for file in local_files]
+        if len(local_files) == 0:
+            root_path = ""
+        elif len(local_files) == 1:
             # Common path will take the one file's whole path as the "root path"
             # -> remove the basename from this path
-            root_path = os.path.dirname(root_path)
-        file_display_names = [
-            os.path.relpath(name, start=root_path) for name in filenames
+            root_path = os.path.dirname(local_files[0])
+        else:
+            root_path = os.path.commonpath(local_files)
+
+        files = http_files + local_files
+        display_names = http_files + [
+            os.path.relpath(name, start=root_path) for name in local_files
         ]
 
-        series_lists = zip(
-            *(self._get_data(filename).values() for filename in filenames)
-        )
+        series_lists = zip(*(self._get_data(file).values() for file in files))
 
         print("aggregating data...")
         meta, *dfs = (
             pd.concat(
                 series_list,
-                keys=file_display_names,
+                keys=display_names,
                 names=["filename"]
                 + next(s for s in series_list if s is not None).index.names,
             )
