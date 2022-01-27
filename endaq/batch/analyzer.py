@@ -141,14 +141,16 @@ class CalcCache:
     @cached_property
     def _accelerationData(self):
         """Populate the _acceleration* fields, including splitting and extending data."""
+        error_result = pd.DataFrame(
+            np.empty((0, 3), dtype=float),
+            index=pd.Series([], dtype="timedelta64[ns]", name="time"),
+            columns=pd.Series(["X", "Y", "Z"], name="axis"),
+        )
+
         ch_struct = self._channels.get("acc", None)
         if ch_struct is None:
             warnings.warn(f"no acceleration channel in data")
-            return pd.DataFrame(
-                np.empty((0, 3), dtype=float),
-                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
-                columns=pd.Series(["X", "Y", "Z"], name="axis"),
-            )
+            return error_result
 
         aUnits = ch_struct.units[1]
         try:
@@ -157,7 +159,8 @@ class CalcCache:
                 "m/s\u00b2": 1,
             }[aUnits.lower()]
         except KeyError:
-            raise ValueError(f'unknown acceleration channel units "{aUnits}"')
+            warnings.warn(f'unknown acceleration channel units "{aUnits}"')
+            return error_result
 
         aData = conversionFactor * ch_struct.to_pandas(time_mode="timedelta")
         dt = endaq.calc.sample_spacing(aData, convert=None)
@@ -177,7 +180,6 @@ class CalcCache:
             aData, low_cutoff=self._params.accel_highpass_cutoff
         )
 
-        assert isinstance(aData, pd.DataFrame)
         return aData
 
     @cached_property
@@ -190,13 +192,15 @@ class CalcCache:
     @cached_property
     def _microphoneData(self):
         """Populate the _microphone* fields, including splitting and extending data."""
+        error_result = pd.DataFrame(
+            np.empty((0, 1), dtype=float),
+            index=pd.Series([], dtype="timedelta64[ns]", name="time"),
+            columns=pd.Series(["mic"], name="axis"),
+        )
+
         ch_struct = self._channels.get("mic", None)
         if ch_struct is None:
-            return pd.DataFrame(
-                np.empty((0, 1), dtype=float),
-                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
-                columns=pd.Series(["mic"], name="axis"),
-            )
+            return error_result
 
         units = ch_struct.units[1]
         try:
@@ -205,7 +209,8 @@ class CalcCache:
                 "a": -5.307530522779073,
             }[units.lower()]
         except KeyError:
-            raise ValueError(f'unknown microphone channel units "{units}"')
+            warnings.warn(f'unknown microphone channel units "{units}"')
+            return error_result
 
         return conversionFactor * ch_struct.to_pandas(time_mode="timedelta")
 
@@ -349,13 +354,15 @@ class CalcCache:
     @cached_property
     def _pressureData(self):
         """Populate the _pressure* fields, including splitting and extending data."""
+        error_result = pd.DataFrame(
+            np.empty((0, 1), dtype=float),
+            index=pd.Series([], dtype="timedelta64[ns]", name="time"),
+            columns=pd.Series(["Pressure"], name="axis"),
+        )
+
         ch_struct = self._channels.get("pre", None)
         if ch_struct is None:
-            return pd.DataFrame(
-                np.empty((0, 1), dtype=float),
-                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
-                columns=pd.Series(["Pressure"], name="axis"),
-            )
+            return error_result
 
         units = ch_struct.units[1]
         try:
@@ -365,20 +372,23 @@ class CalcCache:
                 "atm": 101.325,
             }[units.lower()]
         except KeyError:
-            raise ValueError(f'unknown pressure channel units "{units}"')
+            warnings.warn(f'unknown pressure channel units "{units}"')
+            return error_result
 
         return conversionFactor * ch_struct.to_pandas(time_mode="timedelta")
 
     @cached_property
     def _temperatureData(self):
         """Populate the _temperature* fields, including splitting and extending data."""
+        error_result = pd.DataFrame(
+            np.empty((0, 1), dtype=float),
+            index=pd.Series([], dtype="timedelta64[ns]", name="time"),
+            columns=pd.Series(["Temperature"], name="axis"),
+        )
+
         ch_struct = self._channels.get("tmp", None)
         if ch_struct is None:
-            return pd.DataFrame(
-                np.empty((0, 1), dtype=float),
-                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
-                columns=pd.Series(["Temperature"], name="axis"),
-            )
+            return error_result
 
         units = ch_struct.units[1]
         try:
@@ -388,7 +398,8 @@ class CalcCache:
                 "\xb0f": (5 / 9, -32 * (5 / 9)),
             }[units.lower()]
         except KeyError:
-            raise ValueError(f'unknown temperature channel units "{units}"')
+            warnings.warn(f'unknown temperature channel units "{units}"')
+            return error_result
 
         return conversionOffset + conversionFactor * ch_struct.to_pandas(
             time_mode="timedelta"
@@ -397,30 +408,35 @@ class CalcCache:
     @cached_property
     def _humidityData(self):
         """Populates the _humidity* fields, including splitting and extending data"""
+        error_result = pd.DataFrame(
+            np.empty((0, 1), dtype=float),
+            index=pd.Series([], dtype="timedelta64[ns]", name="time"),
+            columns=pd.Series(["Relative Humidity"], name="axis"),
+        )
+
         ch_struct = self._channels.get("hum", None)
         if ch_struct is None:
-            return pd.DataFrame(
-                np.empty((0, 1), dtype=float),
-                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
-                columns=pd.Series(["Relative Humidity"], name="axis"),
-            )
+            return error_result
 
         units = ch_struct.units[1]
         if units.lower() not in ("rh",):
-            raise ValueError(f'unknown humidity channel units "{units}"')
+            warnings.warn(f'unknown humidity channel units "{units}"')
+            return error_result
 
         return ch_struct.to_pandas(time_mode="timedelta")
 
     @cached_property
     def _gyroscopeData(self):
         """Populate the _gyro* fields, including splitting and extending data."""
+        error_result = pd.DataFrame(
+            np.empty((0, 3), dtype=float),
+            index=pd.Series([], dtype="timedelta64[ns]", name="time"),
+            columns=pd.Series(["X", "Y", "Z"], name="axis"),
+        )
+
         ch_struct = self._channels.get("gyr", None)
         if ch_struct is None:
-            return pd.DataFrame(
-                np.empty((0, 3), dtype=float),
-                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
-                columns=pd.Series(["X", "Y", "Z"], name="axis"),
-            )
+            return error_result
 
         data = ch_struct.to_pandas(time_mode="timedelta")
         dt = endaq.calc.sample_spacing(data, convert="to_seconds")
@@ -456,40 +472,47 @@ class CalcCache:
                 data, prefix_len=max(4, int(np.ceil(0.25 / dt)))
             )
         elif units.lower() not in ("dps", "deg/s"):
-            raise ValueError(f'unknown gyroscope channel units "{units}"')
+            warnings.warn(f'unknown gyroscope channel units "{units}"')
+            return error_result
 
         return data
 
     @cached_property
     def _gpsPositionData(self):
+        error_result = pd.DataFrame(
+            np.empty((0, 2), dtype=float),
+            index=pd.Series([], dtype="timedelta64[ns]", name="time"),
+            columns=pd.Series(["Latitude", "Longitude"], name="axis"),
+        )
+
         ch_struct = self._channels.get("gps", None)
         if ch_struct is None:
-            return pd.DataFrame(
-                np.empty((0, 2), dtype=float),
-                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
-                columns=pd.Series(["Latitude", "Longitude"], name="axis"),
-            )
+            return error_result
 
         units = ch_struct.units[1]
         if units.lower() != "degrees":
-            raise ValueError(f'unknown GPS position channel units "{units}"')
+            warnings.warn(f'unknown GPS position channel units "{units}"')
+            return error_result
 
         # resampling destroys last values -> no resampling
         return ch_struct.to_pandas(time_mode="timedelta")
 
     @cached_property
     def _gpsSpeedData(self):
+        error_result = pd.DataFrame(
+            np.empty((0, 1), dtype=float),
+            index=pd.Series([], dtype="timedelta64[ns]", name="time"),
+            columns=pd.Series(["GPS Speed"], name="axis"),
+        )
+
         ch_struct = self._channels.get("spd", None)
         if ch_struct is None:
-            return pd.DataFrame(
-                np.empty((0, 1), dtype=float),
-                index=pd.Series([], dtype="timedelta64[ns]", name="time"),
-                columns=pd.Series(["GPS Speed"], name="axis"),
-            )
+            return error_result
 
         units = ch_struct.units[1]
         if units != "m/s":
-            raise ValueError(f'unknown GPS ground speed channel units "{units}"')
+            warnings.warn(f'unknown GPS ground speed channel units "{units}"')
+            return error_result
 
         return MPS_TO_KMPH * ch_struct.to_pandas(time_mode="timedelta")
 
