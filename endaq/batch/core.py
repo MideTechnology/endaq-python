@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import typing
-from typing import Dict, List, Callable, Optional
+from typing import Any, Dict, List, Callable, Optional
 
 from dataclasses import dataclass
 from functools import partial
@@ -15,7 +15,7 @@ import endaq.ide
 from endaq.calc import stats as calc_stats
 from endaq.calc import psd as calc_psd
 
-import endaq.batch.analyzer
+from endaq.batch import analyzer
 
 
 def _make_meta(dataset):
@@ -32,7 +32,7 @@ def _make_meta(dataset):
     )
 
 
-def _make_psd(ch_data_cache, fstart=None, bins_per_octave=None):
+def _make_psd(ch_data_cache: analyzer.CalcCache, fstart=None, bins_per_octave=None):
     """
     Format the PSD of the main accelerometer channel into a pandas object.
 
@@ -52,12 +52,12 @@ def _make_psd(ch_data_cache, fstart=None, bins_per_octave=None):
         )
 
     df_psd["Resultant"] = np.sum(df_psd.to_numpy(), axis=1)
-    df_psd = df_psd * endaq.batch.analyzer.MPS2_TO_G ** 2  # (m/s^2)^2/Hz -> g^2/Hz
+    df_psd = df_psd * analyzer.MPS2_TO_G ** 2  # (m/s^2)^2/Hz -> g^2/Hz
 
     return df_psd.stack(level="axis").reorder_levels(["axis", "frequency (Hz)"])
 
 
-def _make_pvss(ch_data_cache):
+def _make_pvss(ch_data_cache: analyzer.CalcCache):
     """
     Format the PVSS of the main accelerometer channel into a pandas object.
 
@@ -68,7 +68,7 @@ def _make_pvss(ch_data_cache):
         return None
 
     df_pvss["Resultant"] = ch_data_cache._PVSSResultantData
-    df_pvss = df_pvss * endaq.batch.analyzer.MPS_TO_MMPS
+    df_pvss = df_pvss * analyzer.MPS_TO_MMPS
 
     return df_pvss.stack(level="axis").reorder_levels(["axis", "frequency (Hz)"])
 
@@ -76,7 +76,7 @@ def _make_pvss(ch_data_cache):
 def _make_halfsine_pvss_envelope(ch_data_cache, *args, **kwargs):
     df_pvss = ch_data_cache._PVSSData.copy()
     df_pvss["Resultant"] = ch_data_cache._PVSSResultantData
-    df_pvss = df_pvss * endaq.batch.analyzer.MPS_TO_MMPS
+    df_pvss = df_pvss * analyzer.MPS_TO_MMPS
     if df_pvss.size == 0:
         return None
 
@@ -88,7 +88,7 @@ def _make_halfsine_pvss_envelope(ch_data_cache, *args, **kwargs):
     )
 
 
-def _make_metrics(ch_data_cache):
+def _make_metrics(ch_data_cache: analyzer.CalcCache):
     """
     Format the channel metrics of a recording into a pandas object.
 
@@ -128,7 +128,7 @@ def _make_metrics(ch_data_cache):
     return series
 
 
-def _make_peak_windows(ch_data_cache, margin_len):
+def _make_peak_windows(ch_data_cache: analyzer.CalcCache, margin_len):
     """
     Store windows of the main accelerometer channel about its peaks in a pandas
     object.
@@ -138,7 +138,7 @@ def _make_peak_windows(ch_data_cache, margin_len):
     """
     df_accel = ch_data_cache._accelerationData.copy()
     df_accel["Resultant"] = ch_data_cache._accelerationResultantData
-    df_accel = endaq.batch.analyzer.MPS2_TO_G * df_accel
+    df_accel = analyzer.MPS2_TO_G * df_accel
     if df_accel.size == 0:
         return None
 
@@ -180,13 +180,11 @@ def _make_peak_windows(ch_data_cache, margin_len):
     return result
 
 
-def _make_vc_curves(ch_data_cache):
+def _make_vc_curves(ch_data_cache: analyzer.CalcCache):
     """
     Format the VC curves of the main accelerometer channel into a pandas object.
     """
-    df_vc = (
-        ch_data_cache._VCCurveData * endaq.batch.analyzer.MPS_TO_UMPS
-    )  # (m/s) -> (μm/s)
+    df_vc = ch_data_cache._VCCurveData * analyzer.MPS_TO_UMPS  # (m/s) -> (μm/s)
     df_vc["Resultant"] = calc_stats.L2_norm(df_vc.to_numpy(), axis=1)
     if df_vc.size == 0:
         return None
@@ -289,7 +287,7 @@ class GetDataBuilder:
                 "only one of `accel_end_time` and `accel_end_margin` may be set at once"
             )
 
-        self._metrics_queue: Dict[str, Callable] = {}
+        self._metrics_queue: Dict[str, Callable[[analyzer.CalcCache], Any]] = {}
 
         self._ch_data_cache_kwargs = dict(
             accel_highpass_cutoff=accel_highpass_cutoff,
@@ -479,9 +477,9 @@ class GetDataBuilder:
 
         data = {}
         with endaq.ide.get_doc(filename) as ds:
-            ch_data_cache = endaq.batch.analyzer.CalcCache.from_ide(
+            ch_data_cache = analyzer.CalcCache.from_ide(
                 ds,
-                endaq.batch.analyzer.CalcParams(
+                analyzer.CalcParams(
                     **self._ch_data_cache_kwargs,
                     psd_window=self._psd_window,
                     psd_freq_bin_width=self._psd_freq_bin_width,
