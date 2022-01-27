@@ -516,13 +516,13 @@ class GetDataBuilder:
 
         http_files, local_files = [], []
         for file in filenames:
-            (
-                http_files
-                if file.startswith("http://") or file.startswith("https://")
-                else local_files
-            ).append(file)
+            path_formatted, mode = endaq.ide.files.normalized_path(file)
 
-        local_files = [os.path.abspath(file) for file in local_files]
+            if mode == "url":
+                http_files.append(file)
+            else:  # mode == "local"
+                local_files.append(path_formatted)
+
         if len(local_files) == 0:
             root_path = ""
         elif len(local_files) == 1:
