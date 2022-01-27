@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import typing
-from typing import List, Optional
+from typing import Dict, List, Callable, Optional
 
+from dataclasses import dataclass
 from functools import partial
 import warnings
 import os
@@ -288,7 +289,7 @@ class GetDataBuilder:
                 "only one of `accel_end_time` and `accel_end_margin` may be set at once"
             )
 
-        self._metrics_queue = {}  # dict maintains insertion order, unlike set
+        self._metrics_queue: Dict[str, Callable] = {}
 
         self._ch_data_cache_kwargs = dict(
             accel_highpass_cutoff=accel_highpass_cutoff,
@@ -303,13 +304,9 @@ class GetDataBuilder:
 
         # Even unused parameters MUST be set; used to instantiate `CalcCache` in `_get_data`
         self._psd_freq_bin_width = None
-        self._psd_freq_start_octave = None
-        self._psd_bins_per_octave = None
         self._psd_window = None
         self._pvss_init_freq = None
         self._pvss_bins_per_octave = None
-        self._pvss_halfsine_envelope_kwargs = {}
-        self._peak_window_margin_len = None
         self._vc_init_freq = None
         self._vc_bins_per_octave = None
 
@@ -351,10 +348,13 @@ class GetDataBuilder:
             )
             freq_bin_width = freq_start_octave / int(5 / fstart_breadth)
 
-        self._metrics_queue["psd"] = None
+        self._metrics_queue["psd"] = partial(
+            _make_psd,
+            fstart=freq_start_octave,
+            bins_per_octave=bins_per_octave,
+        )
+
         self._psd_freq_bin_width = freq_bin_width
-        self._psd_freq_start_octave = freq_start_octave
-        self._psd_bins_per_octave = bins_per_octave
         self._psd_window = window
 
         return self
@@ -369,7 +369,7 @@ class GetDataBuilder:
         :param init_freq: the first frequency sample in the spectrum
         :param bins_per_octave: the number of samples per frequency octave
         """
-        self._metrics_queue["pvss"] = None
+        self._metrics_queue["pvss"] = _make_pvss
         self._pvss_init_freq = init_freq
         self._pvss_bins_per_octave = bins_per_octave
 
@@ -388,9 +388,12 @@ class GetDataBuilder:
 
         *calculation output units*: :math:`\\frac{\\text{mm}}{\\text{sec}}`
         """
-        self._metrics_queue["halfsine"] = None
-        self._pvss_halfsine_envelope_kwargs = dict(
-            tstart=tstart, tstop=tstop, dt=dt, tpulse=tpulse
+        self._metrics_queue["halfsine"] = partial(
+            _make_halfsine_pvss_envelope,
+            tstart=tstart,
+            tstop=tstop,
+            dt=dt,
+            tpulse=tpulse,
         )
 
         return self
@@ -420,7 +423,7 @@ class GetDataBuilder:
         \\approx 9.80665 \\frac{ \\text{m} }{ \\text{sec}^2 } \\right)`
 
         """
-        self._metrics_queue["metrics"] = None
+        self._metrics_queue["metrics"] = _make_metrics
 
         if "pvss" not in self._metrics_queue:
             self._pvss_init_freq = 1
@@ -440,8 +443,10 @@ class GetDataBuilder:
         :param margin_len: the number of samples on each side of a peak to
             include in the windows
         """
-        self._metrics_queue["peaks"] = None
-        self._peak_window_margin_len = margin_len
+        self._metrics_queue["peaks"] = partial(
+            _make_peak_windows,
+            margin_len=margin_len,
+        )
 
         return self
 
@@ -454,7 +459,7 @@ class GetDataBuilder:
         :param init_freq: the first frequency
         :param bins_per_octave:  the number of samples per frequency octave
         """
-        self._metrics_queue["vc_curves"] = None
+        self._metrics_queue["vc_curves"] = _make_vc_curves
 
         if "psd" not in self._metrics_queue:
             self._psd_freq_bin_width = 0.2
@@ -490,25 +495,8 @@ class GetDataBuilder:
 
             data["meta"] = _make_meta(ds)
 
-            funcs = dict(
-                psd=partial(
-                    _make_psd,
-                    fstart=self._psd_freq_start_octave,
-                    bins_per_octave=self._psd_bins_per_octave,
-                ),
-                pvss=_make_pvss,
-                halfsine=partial(
-                    _make_halfsine_pvss_envelope, **self._pvss_halfsine_envelope_kwargs
-                ),
-                metrics=_make_metrics,
-                peaks=partial(
-                    _make_peak_windows,
-                    margin_len=self._peak_window_margin_len,
-                ),
-                vc_curves=_make_vc_curves,
-            )
-            for output_type in self._metrics_queue.keys():
-                data[output_type] = funcs[output_type](ch_data_cache)
+            for output_type, func in self._metrics_queue.items():
+                data[output_type] = func(ch_data_cache)
 
         return data
 
