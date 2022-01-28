@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import typing
-from typing import List
+from typing import List, Optional
 
 from functools import partial
 import warnings
@@ -505,27 +505,45 @@ class GetDataBuilder:
 
         return data
 
-    def aggregate_data(self, filenames) -> OutputStruct:
+    def aggregate_data(self, filenames) -> Optional[OutputStruct]:
         """
         Compile configured data from the given files into a dataframe.
 
         :param filenames: a sequence of paths of recording files to process
         """
-        filenames = [os.path.abspath(name) for name in filenames]
-        root_path = os.path.commonpath(filenames)
-        file_display_names = [
-            os.path.relpath(name, start=root_path) for name in filenames
+        if len(filenames) == 0:
+            return None
+
+        http_files, local_files = [], []
+        for file in filenames:
+            path_formatted, mode = endaq.ide.files.normalized_path(file)
+
+            if mode == "url":
+                http_files.append(file)
+            else:  # mode == "local"
+                local_files.append(path_formatted)
+
+        if len(local_files) == 0:
+            root_path = ""
+        elif len(local_files) == 1:
+            # Common path will take the one file's whole path as the "root path"
+            # -> remove the basename from this path
+            root_path = os.path.dirname(local_files[0])
+        else:
+            root_path = os.path.commonpath(local_files)
+
+        files = http_files + local_files
+        display_names = http_files + [
+            os.path.relpath(name, start=root_path) for name in local_files
         ]
 
-        series_lists = zip(
-            *(self._get_data(filename).values() for filename in filenames)
-        )
+        series_lists = zip(*(self._get_data(file).values() for file in files))
 
         print("aggregating data...")
         meta, *dfs = (
             pd.concat(
                 series_list,
-                keys=file_display_names,
+                keys=display_names,
                 names=["filename"]
                 + next(s for s in series_list if s is not None).index.names,
             )
