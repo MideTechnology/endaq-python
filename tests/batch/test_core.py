@@ -47,7 +47,7 @@ def test_make_meta(filename, expt_result):
 )
 def test_make_peak_windows(filename):
     with idelib.importFile(filename) as ds:
-        accel_ch = ide_utils.get_ch_type_best(ds, "acc")
+        accel_ch = ide_utils.get_ch_type_best(ds, "Acceleration")
 
         data = accel_ch.to_pandas(time_mode="timedelta")
         utc_start_time = ds.lastUtcTime
