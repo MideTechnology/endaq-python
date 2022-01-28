@@ -15,6 +15,7 @@ import idelib
 
 from .measurement import ANY, get_channels
 from .files import get_doc
+from .util import parse_time
 
 
 __all__ = [
@@ -22,75 +23,6 @@ __all__ = [
     "to_pandas",
     "get_primary_sensor_data",
 ]
-
-
-# ============================================================================
-# Display formatting functions
-# ============================================================================
-
-def parse_time(t, datetime_start=None):
-    """ Convert a time in one of several user-friendly forms to microseconds
-        (the native time units used in `idelib`). Valid types are:
-
-        * `None`, `int`, or `float` (returns the same value)
-        * `str` (formatted as a time, e.g., `MM:SS`, `HH:MM:SS`,
-          `DDd HH:MM:SS`). More examples:
-
-          * ``":01"`` or ``":1"`` or ``"1s"`` (1 second)
-          * ``"22:11"`` (22 minutes, 11 seconds)
-          * ``"3:22:11"`` (3 hours, 22 minutes, 11 seconds)
-          * ``"1d 3:22:11"`` (3 hours, 22 minutes, 11 seconds)
-        * `datetime.timedelta` or `pandas.Timedelta`
-        * `datetime.datetime`
-
-        :param t: The time value to convert.
-        :param datetime_start: If `t` is a `datetime` object, the result will
-            be relative to `datetime_start`. It will default to the start of
-            the day portion of `t`. This has no effect on non-`datetime`
-            values of `t` .
-        :returns: The time in microseconds.
-    """
-    # TODO: Put this somewhere else? It will be useful elsewhere, and shouldn't
-    #   be bound to the `pandas` requirement in this module.
-
-    if t is None or isinstance(t, (int, float)):
-        return t
-
-    elif isinstance(t, str):
-        if not t:
-            return None
-        orig = t
-        t = t.strip().lower()
-        for c in ":dhms":
-            t = t.replace(c, ' ')
-        if not all(c in string.digits + ' ' for c in t):
-            raise ValueError(f"Bad time string for parse_time(): {orig!r}")
-
-        micros = 0
-        for part, mult in zip(reversed(t.split()), (1, 60, 3600, 86400)):
-            if not part:
-                continue
-            part = part.strip(string.ascii_letters + string.punctuation + string.whitespace)
-            micros += float(part) * mult
-        return micros * 10**6
-
-    elif isinstance(t, datetime.timedelta):
-        return t.total_seconds() * 10**6
-
-    elif isinstance(t, (datetime.time, datetime.datetime)):
-        if datetime_start is None:
-            # No starting time, assume midnight of same day.
-            datetime_start = datetime.datetime(t.year, t.month, t.day)
-
-        if isinstance(t, datetime.time):
-            # just time: make datetime
-            t = datetime.datetime.combine(datetime_start, t)
-
-        if isinstance(t, datetime.datetime):
-            # datetime: make timedelta
-            return (t - datetime_start).total_seconds() * 10**6
-
-    raise TypeError(f"Unsupported type for parse_time(): {type(t).__name__} ({t!r})")
 
 
 # ============================================================================
