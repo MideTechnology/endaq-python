@@ -2,15 +2,15 @@
 Functions for retrieving summary data from a dataset.
 """
 from __future__ import annotations
-import typing
+from typing import Literal, Optional, Union
 
 from collections import defaultdict
 import datetime
-import string
 import warnings
 
 import numpy as np
 import pandas as pd
+import pandas.io.formats.style
 import idelib.dataset
 
 from .measurement import MeasurementType, ANY, get_channels
@@ -29,7 +29,7 @@ __all__ = [
 # Display formatting functions
 # ============================================================================
 
-def format_channel_id(ch):
+def format_channel_id(ch: idelib.dataset.Channel) -> str:
     """ Function for formatting an `idelib.dataset.Channel` or `SubChannel`
         for display. Renders as only the channel and subchannel IDs (the other
         information is shown in the rest of the table).
@@ -49,7 +49,7 @@ def format_channel_id(ch):
         return str(ch)
 
 
-def format_timedelta(val):
+def format_timedelta(val: Union[int, float, datetime.datetime, datetime.timedelta]) -> str:
     """ Function for formatting microsecond timestamps (e.g., start, end,
         or duration) as times. Somewhat more condensed than the standard
         `DataFrame` formatting of `datetime.timedelta`.
@@ -78,7 +78,7 @@ def format_timedelta(val):
         return str(val)
 
 
-def format_timestamp(ts):
+def format_timestamp(ts: Union[int, float]) -> str:
     """ Function for formatting start/end timestamps. Somewhat more condensed
         than the standard Pandas formatting.
 
@@ -107,9 +107,15 @@ TABLE_FORMAT = {
 }
 
 
-def get_channel_table(dataset, measurement_type=ANY, start=0, end=None,
-                      formatting=None, index=True, precision=4,
-                      timestamps=False, **kwargs):
+def get_channel_table(dataset: Union[idelib.dataset.Dataset, list], 
+                      measurement_type=ANY, 
+                      start: Union[int, float, str, datetime.datetime, datetime.timedelta] = 0,
+                      end: Optional[int, float, str, datetime.datetime, datetime.timedelta] = None,
+                      formatting: Optional[dict] = None, 
+                      index: bool = True, 
+                      precision: int = 4,
+                      timestamps: bool = False, 
+                      **kwargs) -> Union[pd.DataFrame, pd.io.formats.style.Styler]:
     """ Get summary data for all `SubChannel` objects in a `Dataset` that
         contain one or more type of sensor data. By using the optional
         `start` and `end` parameters, information can be retrieved for a
@@ -232,8 +238,8 @@ def get_channel_table(dataset, measurement_type=ANY, start=0, end=None,
 
 
 def to_pandas(
-    channel: typing.Union[idelib.dataset.Channel, idelib.dataset.SubChannel],
-    time_mode: typing.Literal["seconds", "timedelta", "datetime"] = "datetime",
+    channel: Union[idelib.dataset.Channel, idelib.dataset.SubChannel],
+    time_mode: Literal["seconds", "timedelta", "datetime"] = "datetime",
 ) -> pd.DataFrame:
     """ Read IDE data into a pandas DataFrame.
 
@@ -275,9 +281,9 @@ def to_pandas(
 def get_primary_sensor_data(  
     name: str = "",
     doc: idelib.dataset.Dataset = None,
-    measurement_type: typing.Union[str, MeasurementType] = ANY,
-    sort_by: typing.Literal["samples", "rate", "duration"] = "samples",
-    time_mode: typing.Literal["seconds", "timedelta", "datetime"] = "datetime",
+    measurement_type: Union[str, MeasurementType] = ANY,
+    sort_by: Literal["samples", "rate", "duration"] = "samples",
+    time_mode: Literal["seconds", "timedelta", "datetime"] = "datetime",
     force_data_return: bool = False
 ) -> pd.DataFrame:
     """ Get the data from the primary sensor in a given .ide file using :py:func:`~endaq.ide.to_pandas()` 
