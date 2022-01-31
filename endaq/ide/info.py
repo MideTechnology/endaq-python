@@ -11,9 +11,9 @@ import warnings
 
 import numpy as np
 import pandas as pd
-import idelib
+import idelib.dataset
 
-from .measurement import ANY, get_channels
+from .measurement import MeasurementType, ANY, get_channels
 from .files import get_doc
 from .util import parse_time
 
@@ -226,6 +226,10 @@ def get_channel_table(dataset, measurement_type=ANY, start=0, end=None,
     else:
         return styled
 
+# ============================================================================
+#
+# ============================================================================
+
 
 def to_pandas(
     channel: typing.Union[idelib.dataset.Channel, idelib.dataset.SubChannel],
@@ -263,11 +267,15 @@ def to_pandas(
 
     return pd.DataFrame(data, index=pd.Series(t, name="timestamp"), columns=columns)
 
+# ============================================================================
+#
+# ============================================================================
+
 
 def get_primary_sensor_data(  
     name: str = "",
-    doc: idelib.dataset = None,
-    measurement_type = "any",
+    doc: idelib.dataset.Dataset = None,
+    measurement_type: typing.Union[str, MeasurementType] = ANY,
     sort_by: typing.Literal["samples", "rate", "duration"] = "samples",
     time_mode: typing.Literal["seconds", "timedelta", "datetime"] = "datetime",
     force_data_return: bool = False
@@ -279,7 +287,7 @@ def get_primary_sensor_data(
         :param doc: An open `Dataset` object, see :py:func:`~endaq.ide.get_doc()` 
             for more. If one is provided it will not attempt to use `name` to 
             load a new one.
-        :param measurement_type: The sensor type to return data from, see :py:func:`~endaq.ide.measurement` 
+        :param measurement_type: The sensor type to return data from, see :py:mod:`~endaq.ide.measurement`
             for more. The default is `"any"`, but to get the primary accelerometer
             for example, set this to `"accel"`.
         :param sort_by: How to determine the "primary" sensor using the summary
@@ -320,19 +328,19 @@ def get_primary_sensor_data(
     channels = get_channel_table(doc, measurement_type).data
     
     #Raise error if measurement type isn't in the file
-    if len(channels)==0:
-        error_str = f'measurement type "{measurement_type}" is not included in this file'
+    if len(channels) == 0:
+        error_str = f'measurement type "{measurement_type!r}" is not included in this file'
         if force_data_return:
-            print(error_str)
+            warnings.warn(error_str)
             channels = get_channel_table(doc, "any").data
         else:
             raise ValueError(error_str)
     
     #Filter based on sort_by
     if (sort_by in ["samples", "rate", "duration"]):
-        channels = channels[channels[sort_by]==channels[sort_by].max()]
+        channels = channels[channels[sort_by] == channels[sort_by].max()]
     else:        
-        raise ValueError(f'invalid sort_by "{sort_by}"')
+        raise ValueError(f'invalid sort_by "{sort_by!r}"')
     
     #Get parent channel
     parent = channels.iloc[0].channel.parent
