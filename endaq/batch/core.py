@@ -341,10 +341,9 @@ class GetDataBuilder:
             if freq_start_octave is None:
                 freq_start_octave = 1
 
-            fstart_breadth = 2 ** (1 / (2 * bins_per_octave)) - 2 ** (
-                -1 / (2 * bins_per_octave)
+            freq_bin_width = endaq.calc.psd._aligned_bin_width(
+                freq_start_octave, bins_per_octave
             )
-            freq_bin_width = freq_start_octave / int(5 / fstart_breadth)
 
         self._metrics_queue["psd"] = partial(
             _make_psd,
