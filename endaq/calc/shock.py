@@ -296,7 +296,7 @@ class HalfSineWavePulse:
             waveform; if `None` (default), the pulse starts at either:
 
             - ``tstart``, if provided
-            - ``tstop - self.duration.max())``, if `tstop` is provided
+            - ``tstop - self.duration.max()``, if `tstop` is provided
             - ``0.0`` otherwise
         :return: a time-series of the half-sine pulse
         """
