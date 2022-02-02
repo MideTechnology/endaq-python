@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import typing
-from typing import Any, Dict, List, Callable, Optional
+from typing import Any, Dict, List, Callable, Optional, Iterable
 
 from dataclasses import dataclass
 from functools import partial
@@ -89,7 +89,9 @@ def _make_halfsine_pvss_envelope(ch_data_cache, *args, **kwargs):
 
 
 def _make_metrics(
-    ch_data_cache: analyzer.CalcCache, include: List[str] = [], exclude: List[str] = []
+    ch_data_cache: analyzer.CalcCache,
+    include: Iterable[str] = [],
+    exclude: Iterable[str] = [],
 ):
     """
     Format the channel metrics of a recording into a pandas object.
@@ -108,25 +110,48 @@ def _make_metrics(
     if include and exclude:
         raise ValueError("parameters `include` and `exclude` are mutually-exclusive")
 
-    VALID_METRICS = [
+    VALID_METRICS = {
+        k.casefold(): v
+        for (k, v) in [
+            ("RMS Acceleration", "accRMSFull"),
+            ("RMS Velocity", "velRMSFull"),
+            ("RMS Displacement", "disRMSFull"),
+            ("Peak Absolute Acceleration", "accPeakFull"),
+            ("Peak Pseudo Velocity Shock Spectrum", "pseudoVelPeakFull"),
+            ("GPS Position", "gpsLocFull"),
+            ("GPS Speed", "gpsSpeedFull"),
+            ("RMS Angular Velocity", "gyroRMSFull"),
+            ("RMS Microphone", "micRMSFull"),
+            ("Average Temperature", "tempFull"),
+            ("Average Pressure", "pressFull"),
+            ("Average Relative Humidity", "humidFull"),
+        ]
+    }
+    assert len(VALID_METRICS) == (
         attr
         for attr in dir(analyzer.CalcCache)
         if not attr.startswith("_") and attr.endswith("Full")
-    ]
+    )
+
+    include = [x.casefold() for x in include]
+    exclude = [x.casefold() for x in exclude]
+
     invalid_metrics = set(include or exclude) - set(VALID_METRICS)
     if invalid_metrics:
         raise ValueError(f"invalid metrics {list(invalid_metrics)}")
 
+    metric_names: Iterable[str]
     if include:
         metric_names = include
     elif exclude:
         exclude = set(exclude)
-        metric_names = [x for x in VALID_METRICS if x not in exclude]
+        metric_names = (x for x in VALID_METRICS if x not in exclude)
     else:
         metric_names = VALID_METRICS
+    metric_attrs = [VALID_METRICS[name] for name in metric_names]
 
     df = pd.concat(
-        [getattr(ch_data_cache, attr) for attr in metric_names],
+        [getattr(ch_data_cache, attr) for attr in metric_attrs],
         axis="columns",
     )
 
