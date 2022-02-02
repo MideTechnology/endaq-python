@@ -92,19 +92,6 @@ def test_make_peak_windows(filename):
     assert np.all(calc_peak_times == expt_peak_times)
 
 
-@pytest.fixture
-def data_builder():
-    return (
-        endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1)
-        .add_psd(freq_bin_width=1)
-        .add_pvss(init_freq=1, bins_per_octave=12)
-        .add_pvss_halfsine_envelope()
-        .add_metrics()
-        .add_peaks(margin_len=1000)
-        .add_vc_curves(init_freq=1, bins_per_octave=3)
-    )
-
-
 @pytest.mark.parametrize(
     "filename",
     [
