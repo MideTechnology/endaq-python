@@ -287,7 +287,7 @@ class GetDataBuilder:
                 "only one of `accel_end_time` and `accel_end_margin` may be set at once"
             )
 
-        self._metrics_queue: Dict[str, Callable[[analyzer.CalcCache], Any]] = {}
+        self._metrics_queue: List[Tuple[str, Callable[[analyzer.CalcCache], Any]]] = []
 
         self._ch_data_cache_kwargs = dict(
             accel_highpass_cutoff=accel_highpass_cutoff,
@@ -345,10 +345,13 @@ class GetDataBuilder:
                 freq_start_octave, bins_per_octave
             )
 
-        self._metrics_queue["psd"] = partial(
-            _make_psd,
-            fstart=freq_start_octave,
-            bins_per_octave=bins_per_octave,
+        self._metrics_queue.append(
+            "psd",
+            partial(
+                _make_psd,
+                fstart=freq_start_octave,
+                bins_per_octave=bins_per_octave,
+            ),
         )
 
         self._psd_freq_bin_width = freq_bin_width
@@ -366,7 +369,7 @@ class GetDataBuilder:
         :param init_freq: the first frequency sample in the spectrum
         :param bins_per_octave: the number of samples per frequency octave
         """
-        self._metrics_queue["pvss"] = _make_pvss
+        self._metrics_queue.append("pvss", _make_pvss)
         self._pvss_init_freq = init_freq
         self._pvss_bins_per_octave = bins_per_octave
 
@@ -385,12 +388,15 @@ class GetDataBuilder:
 
         *calculation output units*: :math:`\\frac{\\text{mm}}{\\text{sec}}`
         """
-        self._metrics_queue["halfsine"] = partial(
-            _make_halfsine_pvss_envelope,
-            tstart=tstart,
-            tstop=tstop,
-            dt=dt,
-            tpulse=tpulse,
+        self._metrics_queue.append(
+            "halfsine",
+            partial(
+                _make_halfsine_pvss_envelope,
+                tstart=tstart,
+                tstop=tstop,
+                dt=dt,
+                tpulse=tpulse,
+            ),
         )
 
         return self
@@ -420,7 +426,7 @@ class GetDataBuilder:
         \\approx 9.80665 \\frac{ \\text{m} }{ \\text{sec}^2 } \\right)`
 
         """
-        self._metrics_queue["metrics"] = _make_metrics
+        self._metrics_queue.append("metrics", _make_metrics)
 
         if "pvss" not in self._metrics_queue:
             self._pvss_init_freq = 1
@@ -440,9 +446,12 @@ class GetDataBuilder:
         :param margin_len: the number of samples on each side of a peak to
             include in the windows
         """
-        self._metrics_queue["peaks"] = partial(
-            _make_peak_windows,
-            margin_len=margin_len,
+        self._metrics_queue.append(
+            "peaks",
+            partial(
+                _make_peak_windows,
+                margin_len=margin_len,
+            ),
         )
 
         return self
@@ -456,7 +465,7 @@ class GetDataBuilder:
         :param init_freq: the first frequency
         :param bins_per_octave:  the number of samples per frequency octave
         """
-        self._metrics_queue["vc_curves"] = _make_vc_curves
+        self._metrics_queue.append("vc_curves", _make_vc_curves)
 
         if "psd" not in self._metrics_queue:
             self._psd_freq_bin_width = 0.2
@@ -485,7 +494,7 @@ class GetDataBuilder:
         """
         print(f"processing {filename}...")
 
-        data = {}
+        data = []
         with endaq.ide.get_doc(filename) as ds:
             ch_data_cache = analyzer.CalcCache.from_ide(
                 ds,
@@ -493,10 +502,10 @@ class GetDataBuilder:
                 preferred_chs=self._preferred_chs,
             )
 
-            data["meta"] = _make_meta(ds)
+            data.append("meta", _make_meta(ds))
 
-            for output_type, func in self._metrics_queue.items():
-                data[output_type] = func(ch_data_cache)
+            for output_type, func in self._metrics_queue:
+                data.append(output_type, func(ch_data_cache))
 
         return data
 
@@ -564,10 +573,10 @@ class GetDataBuilder:
 
             return df
 
-        dfs = dict(
-            meta=meta,
-            **{key: reformat(df) for (key, df) in zip(self._metrics_queue.keys(), dfs)},
-        )
+        dfs = [("meta", meta)] + [
+            (df_type, reformat(df))
+            for ((df_type, _), df) in zip(self._metrics_queue, dfs)
+        ]
 
         print("done!")
 
@@ -583,7 +592,7 @@ class OutputStruct:
     """
 
     def __init__(self, data):
-        self.dataframes: List[pd.DataFrame] = data
+        self.dataframes: List[Tuple[str, pd.DataFrame]] = data
 
     def to_csv_folder(self, folder_path):
         """
