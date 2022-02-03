@@ -6,19 +6,22 @@ import typing
 
 from collections import defaultdict
 import datetime
-import string
 import warnings
 
 import numpy as np
 import pandas as pd
-import idelib
+import pandas.io.formats.style
+import idelib.dataset
 
-from .measurement import ANY, get_channels
+from .measurement import MeasurementType, ANY, get_channels
+from .files import get_doc
+from .util import parse_time
 
 
 __all__ = [
     "get_channel_table",
     "to_pandas",
+    "get_primary_sensor_data",
 ]
 
 
@@ -26,76 +29,7 @@ __all__ = [
 # Display formatting functions
 # ============================================================================
 
-def parse_time(t, datetime_start=None):
-    """ Convert a time in one of several user-friendly forms to microseconds
-        (the native time units used in `idelib`). Valid types are:
-
-        * `None`, `int`, or `float` (returns the same value)
-        * `str` (formatted as a time, e.g., `MM:SS`, `HH:MM:SS`,
-          `DDd HH:MM:SS`). More examples:
-
-          * ``":01"`` or ``":1"`` or ``"1s"`` (1 second)
-          * ``"22:11"`` (22 minutes, 11 seconds)
-          * ``"3:22:11"`` (3 hours, 22 minutes, 11 seconds)
-          * ``"1d 3:22:11"`` (3 hours, 22 minutes, 11 seconds)
-        * `datetime.timedelta` or `pandas.Timedelta`
-        * `datetime.datetime`
-
-        :param t: The time value to convert.
-        :param datetime_start: If `t` is a `datetime` object, the result will
-            be relative to `datetime_start`. It will default to the start of
-            the day portion of `t`. This has no effect on non-`datetime`
-            values of `t` .
-        :returns: The time in microseconds.
-    """
-    # TODO: Put this somewhere else? It will be useful elsewhere, and shouldn't
-    #   be bound to the `pandas` requirement in this module.
-
-    if t is None or isinstance(t, (int, float)):
-        return t
-
-    elif isinstance(t, str):
-        if not t:
-            return None
-        orig = t
-        t = t.strip().lower()
-        for c in ":dhms":
-            t = t.replace(c, ' ')
-        if not all(c in string.digits + ' ' for c in t):
-            raise ValueError(f"Bad time string for parse_time(): {orig!r}")
-
-        micros = 0
-        for part, mult in zip(reversed(t.split()), (1, 60, 3600, 86400)):
-            if not part:
-                continue
-            part = part.strip(string.ascii_letters + string.punctuation + string.whitespace)
-            micros += float(part) * mult
-        return micros * 10**6
-
-    elif isinstance(t, datetime.timedelta):
-        return t.total_seconds() * 10**6
-
-    elif isinstance(t, (datetime.time, datetime.datetime)):
-        if datetime_start is None:
-            # No starting time, assume midnight of same day.
-            datetime_start = datetime.datetime(t.year, t.month, t.day)
-
-        if isinstance(t, datetime.time):
-            # just time: make datetime
-            t = datetime.datetime.combine(datetime_start, t)
-
-        if isinstance(t, datetime.datetime):
-            # datetime: make timedelta
-            return (t - datetime_start).total_seconds() * 10**6
-
-    raise TypeError(f"Unsupported type for parse_time(): {type(t).__name__} ({t!r})")
-
-
-# ============================================================================
-# Display formatting functions
-# ============================================================================
-
-def format_channel_id(ch):
+def format_channel_id(ch: idelib.dataset.Channel) -> str:
     """ Function for formatting an `idelib.dataset.Channel` or `SubChannel`
         for display. Renders as only the channel and subchannel IDs (the other
         information is shown in the rest of the table).
@@ -115,7 +49,7 @@ def format_channel_id(ch):
         return str(ch)
 
 
-def format_timedelta(val):
+def format_timedelta(val: typing.Union[int, float, datetime.datetime, datetime.timedelta]) -> str:
     """ Function for formatting microsecond timestamps (e.g., start, end,
         or duration) as times. Somewhat more condensed than the standard
         `DataFrame` formatting of `datetime.timedelta`.
@@ -144,7 +78,7 @@ def format_timedelta(val):
         return str(val)
 
 
-def format_timestamp(ts):
+def format_timestamp(ts: typing.Union[int, float]) -> str:
     """ Function for formatting start/end timestamps. Somewhat more condensed
         than the standard Pandas formatting.
 
@@ -173,9 +107,15 @@ TABLE_FORMAT = {
 }
 
 
-def get_channel_table(dataset, measurement_type=ANY, start=0, end=None,
-                      formatting=None, index=True, precision=4,
-                      timestamps=False, **kwargs):
+def get_channel_table(dataset: typing.Union[idelib.dataset.Dataset, list],
+                      measurement_type=ANY, 
+                      start: typing.Union[int, float, str, datetime.datetime, datetime.timedelta] = 0,
+                      end: typing.Optional[int, float, str, datetime.datetime, datetime.timedelta] = None,
+                      formatting: typing.Optional[dict] = None,
+                      index: bool = True, 
+                      precision: int = 4,
+                      timestamps: bool = False, 
+                      **kwargs) -> typing.Union[pd.DataFrame, pd.io.formats.style.Styler]:
     """ Get summary data for all `SubChannel` objects in a `Dataset` that
         contain one or more type of sensor data. By using the optional
         `start` and `end` parameters, information can be retrieved for a
@@ -293,6 +233,10 @@ def get_channel_table(dataset, measurement_type=ANY, start=0, end=None,
     else:
         return styled
 
+# ============================================================================
+#
+# ============================================================================
+
 
 def to_pandas(
     channel: typing.Union[idelib.dataset.Channel, idelib.dataset.SubChannel],
@@ -329,3 +273,87 @@ def to_pandas(
         columns = [channel.name]
 
     return pd.DataFrame(data, index=pd.Series(t, name="timestamp"), columns=columns)
+
+# ============================================================================
+#
+# ============================================================================
+
+
+def get_primary_sensor_data(  
+    name: str = "",
+    doc: idelib.dataset.Dataset = None,
+    measurement_type: typing.Union[str, MeasurementType] = ANY,
+    sort_by: typing.Literal["samples", "rate", "duration"] = "samples",
+    time_mode: typing.Literal["seconds", "timedelta", "datetime"] = "datetime",
+    force_data_return: bool = False
+) -> pd.DataFrame:
+    """ Get the data from the primary sensor in a given .ide file using :py:func:`~endaq.ide.to_pandas()` 
+
+        :param name: The file location to pull the data from, see :py:func:`~endaq.ide.get_doc()` 
+            for more. This can be a local file location or a URL.
+        :param doc: An open `Dataset` object, see :py:func:`~endaq.ide.get_doc()` 
+            for more. If one is provided it will not attempt to use `name` to 
+            load a new one.
+        :param measurement_type: The sensor type to return data from, see :py:mod:`~endaq.ide.measurement`
+            for more. The default is `"any"`, but to get the primary accelerometer
+            for example, set this to `"accel"`.
+        :param sort_by: How to determine the "primary" sensor using the summary
+            information provided by :py:func:`~endaq.ide.get_channel_table()`: 
+        
+            * `"sample"` - the number of samples, default behavior
+            * `"rate"` - the sampling rate in Hz
+            * `"duration"` - the duration from start to the end of data from that sensor
+        :param time_mode: how to temporally index samples; each mode uses either
+            relative times (with respect to the start of the recording) or
+            absolute times (i.e., date-times):
+
+            * `"seconds"` - a `pandas.Float64Index` of relative timestamps, in seconds
+            * `"timedelta"` - a `pandas.TimeDeltaIndex` of relative timestamps
+            * `"datetime"` - a `pandas.DateTimeIndex` of absolute timestamps
+        :param force_data_return: If set to `True` and the specified `measurement_type`
+            is not included in the file, it will return the data from any sensor 
+            instead of raising an error which is the default behavior.
+
+        :return: a `pandas.DataFrame` containing the sensor's data
+
+        Here are some examples:
+        
+        .. code:: python3
+
+            #Get sensor with the most samples, may return data of mixed units
+            data = get_primary_sensor_data('https://info.endaq.com/hubfs/data/All-Channels.ide')
+
+            #Instead get just the primary accelerometer data defined by number of samples
+            accel = get_primary_sensor_data('https://info.endaq.com/hubfs/data/All-Channels.ide', measurement_type='accel')
+    """
+    
+    #Get the doc object if it isn't provided
+    if doc is None:
+        doc = get_doc(name)
+        
+    #Get Channels of the Measurement Type
+    channels = get_channel_table(doc, measurement_type).data
+    
+    #Raise error if measurement type isn't in the file
+    if len(channels) == 0:
+        error_str = f'measurement type "{measurement_type!r}" is not included in this file'
+        if force_data_return:
+            warnings.warn(error_str)
+            channels = get_channel_table(doc, "any").data
+        else:
+            raise ValueError(error_str)
+    
+    #Filter based on sort_by
+    if (sort_by in ["samples", "rate", "duration"]):
+        channels = channels[channels[sort_by] == channels[sort_by].max()]
+    else:        
+        raise ValueError(f'invalid sort_by "{sort_by!r}"')
+    
+    #Get parent channel
+    parent = channels.iloc[0].channel.parent
+    
+    #Get parent channel data
+    data = to_pandas(parent, time_mode=time_mode)
+    
+    #Return only the subchannels with right units
+    return data[channels.name]    

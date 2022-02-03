@@ -22,8 +22,7 @@ from idelib.util import extractTime
 import requests
 
 from .gdrive import gdrive_download
-from .info import parse_time
-from .util import validate
+from .util import parse_time, validate
 
 __all__ = ["get_doc", "extract_time"]
 
