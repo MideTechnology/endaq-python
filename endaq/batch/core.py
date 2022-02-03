@@ -466,6 +466,17 @@ class GetDataBuilder:
 
         return self
 
+    def _make_calc_params(self) -> analyzer.CalcParams:
+        return analyzer.CalcParams(
+            **self._ch_data_cache_kwargs,
+            psd_window=self._psd_window,
+            psd_freq_bin_width=self._psd_freq_bin_width,
+            pvss_init_freq=self._pvss_init_freq,
+            pvss_bins_per_octave=self._pvss_bins_per_octave,
+            vc_init_freq=self._vc_init_freq,
+            vc_bins_per_octave=self._vc_bins_per_octave,
+        )
+
     def _get_data(self, filename):
         """
         Calculate data from a single recording into a pandas object.
@@ -478,15 +489,7 @@ class GetDataBuilder:
         with endaq.ide.get_doc(filename) as ds:
             ch_data_cache = analyzer.CalcCache.from_ide(
                 ds,
-                analyzer.CalcParams(
-                    **self._ch_data_cache_kwargs,
-                    psd_window=self._psd_window,
-                    psd_freq_bin_width=self._psd_freq_bin_width,
-                    pvss_init_freq=self._pvss_init_freq,
-                    pvss_bins_per_octave=self._pvss_bins_per_octave,
-                    vc_init_freq=self._vc_init_freq,
-                    vc_bins_per_octave=self._vc_bins_per_octave,
-                ),
+                self._make_calc_params(),
                 preferred_chs=self._preferred_chs,
             )
 
