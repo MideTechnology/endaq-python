@@ -302,6 +302,7 @@ class GetDataBuilder:
 
         # Even unused parameters MUST be set; used to instantiate `CalcCache` in `_get_data`
         self._psd_freq_bin_width = None
+        self._psd_freq_bin_width_oct = None
         self._psd_window = None
         self._pvss_init_freq = None
         self._pvss_bins_per_octave = None
@@ -313,7 +314,7 @@ class GetDataBuilder:
         freq_bin_width: Optional[float] = None,
         freq_start_octave: Optional[float] = None,
         bins_per_octave: Optional[float] = None,
-        window="hanning",
+        window: Optional[str] = None,
     ):
         """
         Add the acceleration PSD to the calculation queue.
@@ -344,18 +345,29 @@ class GetDataBuilder:
             freq_bin_width = endaq.calc.psd._aligned_bin_width(
                 freq_start_octave, bins_per_octave
             )
+            self._psd_freq_bin_width_oct = min(
+                freq_bin_width, self._psd_freq_bin_width_oct or float("inf")
+            )
+        else:
+            self._psd_freq_bin_width = freq_bin_width
+
+        if not (self._psd_window is None or self._psd_window == window):
+            raise ValueError(
+                "inconsistent PSD windows provided:"
+                f" first {self._psd_window}, then {window}"
+            )
+        self._psd_window = window
 
         self._metrics_queue.append(
-            "psd",
-            partial(
-                _make_psd,
-                fstart=freq_start_octave,
-                bins_per_octave=bins_per_octave,
-            ),
+            (
+                "psd",
+                partial(
+                    _make_psd,
+                    fstart=freq_start_octave,
+                    bins_per_octave=bins_per_octave,
+                ),
+            )
         )
-
-        self._psd_freq_bin_width = freq_bin_width
-        self._psd_window = window
 
         return self
 
@@ -369,7 +381,7 @@ class GetDataBuilder:
         :param init_freq: the first frequency sample in the spectrum
         :param bins_per_octave: the number of samples per frequency octave
         """
-        self._metrics_queue.append("pvss", _make_pvss)
+        self._metrics_queue.append(("pvss", _make_pvss))
         self._pvss_init_freq = init_freq
         self._pvss_bins_per_octave = bins_per_octave
 
@@ -389,14 +401,16 @@ class GetDataBuilder:
         *calculation output units*: :math:`\\frac{\\text{mm}}{\\text{sec}}`
         """
         self._metrics_queue.append(
-            "halfsine",
-            partial(
-                _make_halfsine_pvss_envelope,
-                tstart=tstart,
-                tstop=tstop,
-                dt=dt,
-                tpulse=tpulse,
-            ),
+            (
+                "halfsine",
+                partial(
+                    _make_halfsine_pvss_envelope,
+                    tstart=tstart,
+                    tstop=tstop,
+                    dt=dt,
+                    tpulse=tpulse,
+                ),
+            )
         )
 
         return self
@@ -426,9 +440,12 @@ class GetDataBuilder:
         \\approx 9.80665 \\frac{ \\text{m} }{ \\text{sec}^2 } \\right)`
 
         """
-        self._metrics_queue.append("metrics", _make_metrics)
+        self._metrics_queue.append(("metrics", _make_metrics))
 
-        if "pvss" not in self._metrics_queue:
+        # no PSD metrics -> no need to provide PSD params
+
+        # Need to provide default PVSS metrics
+        if self._pvss_init_freq is None:
             self._pvss_init_freq = 1
             self._pvss_bins_per_octave = 12
 
@@ -447,11 +464,13 @@ class GetDataBuilder:
             include in the windows
         """
         self._metrics_queue.append(
-            "peaks",
-            partial(
-                _make_peak_windows,
-                margin_len=margin_len,
-            ),
+            (
+                "peaks",
+                partial(
+                    _make_peak_windows,
+                    margin_len=margin_len,
+                ),
+            )
         )
 
         return self
@@ -465,11 +484,13 @@ class GetDataBuilder:
         :param init_freq: the first frequency
         :param bins_per_octave:  the number of samples per frequency octave
         """
-        self._metrics_queue.append("vc_curves", _make_vc_curves)
+        self._metrics_queue.append(("vc_curves", _make_vc_curves))
 
         if "psd" not in self._metrics_queue:
-            self._psd_freq_bin_width = 0.2
-            self._psd_window = "hanning"
+            self._psd_freq_bin_width_oct = min(
+                0.2,  # TODO: use `endaq.calc.psd._aligned_bin_width`
+                self._psd_freq_bin_width_oct or float("inf"),
+            )
         self._vc_init_freq = init_freq
         self._vc_bins_per_octave = bins_per_octave
 
@@ -478,8 +499,8 @@ class GetDataBuilder:
     def _make_calc_params(self) -> analyzer.CalcParams:
         return analyzer.CalcParams(
             **self._ch_data_cache_kwargs,
-            psd_window=self._psd_window,
-            psd_freq_bin_width=self._psd_freq_bin_width,
+            psd_window=self._psd_window or "hanning",
+            psd_freq_bin_width=self._psd_freq_bin_width or self._psd_freq_bin_width_oct,
             pvss_init_freq=self._pvss_init_freq,
             pvss_bins_per_octave=self._pvss_bins_per_octave,
             vc_init_freq=self._vc_init_freq,
@@ -502,10 +523,10 @@ class GetDataBuilder:
                 preferred_chs=self._preferred_chs,
             )
 
-            data.append("meta", _make_meta(ds))
+            data.append(("meta", _make_meta(ds)))
 
             for output_type, func in self._metrics_queue:
-                data.append(output_type, func(ch_data_cache))
+                data.append((output_type, func(ch_data_cache)))
 
         return data
 
