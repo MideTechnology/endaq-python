@@ -381,6 +381,14 @@ class GetDataBuilder:
         :param init_freq: the first frequency sample in the spectrum
         :param bins_per_octave: the number of samples per frequency octave
         """
+        if (
+            self._pvss_init_freq is not None
+            # `self._pvss_init_freq` may be set by `add_metrics`
+            # -> check metrics queue entries specifically
+            and any(name == "pvss" for (name, _) in self._metrics_queue)
+        ):
+            raise RuntimeError('cannot call "add_pvss" twice')
+
         self._metrics_queue.append(("pvss", _make_pvss))
         self._pvss_init_freq = init_freq
         self._pvss_bins_per_octave = bins_per_octave
