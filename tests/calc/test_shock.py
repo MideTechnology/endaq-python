@@ -114,7 +114,7 @@ def test_rel_displ_amp(freq, damp):
 
     freqs = np.geomspace(1e-1, 1000, 10000)
 
-    la = laplace_amplitude(sp.simplify(-1), s**2 + wn*s/Q + wn**2, freqs, {fn: freq, d: damp})
+    la = laplace_amplitude(sp.sympify(-1), s**2 + wn*s/Q + wn**2, freqs, {fn: freq, d: damp})
     za = z_amplitude(*shock._rel_displ_coeffs(omega, 1/(2*damp), dt), freqs, dt)
 
     npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
@@ -140,7 +140,7 @@ def test_rel_displ_phase(freq, damp):
 
     freqs = np.geomspace(1e-1, 1000, 10000)
 
-    la = laplace_phase(sp.simplify(-1), s**2 + wn*s/Q + wn**2, freqs, {fn:freq, d:damp})
+    la = laplace_phase(sp.sympify(-1), s**2 + wn*s/Q + wn**2, freqs, {fn:freq, d:damp})
     za = z_phase(*shock._rel_displ_coeffs(omega, 1/(2*damp), dt), freqs, dt)
 
     npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
