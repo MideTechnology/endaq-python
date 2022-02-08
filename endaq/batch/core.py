@@ -562,7 +562,7 @@ class GetDataBuilder:
             os.path.relpath(name, start=root_path) for name in local_files
         ]
 
-        series_lists = zip(*(self._get_data(file).values() for file in files))
+        series_lists = zip(*([d for (_k, d) in self._get_data(file)] for file in files))
 
         print("aggregating data...")
         meta, *dfs = (
@@ -612,8 +612,8 @@ class OutputStruct:
     This class is not intended be instantiated manually.
     """
 
-    def __init__(self, data):
-        self.dataframes: List[Tuple[str, pd.DataFrame]] = data
+    def __init__(self, data: List[Tuple[str, pd.DataFrame]]):
+        self.dataframes = data
 
     def to_csv_folder(self, folder_path):
         """
@@ -623,7 +623,7 @@ class OutputStruct:
         """
         os.makedirs(folder_path, exist_ok=True)
 
-        for k, df in self.dataframes.items():
+        for k, df in self.dataframes:
             path = os.path.join(folder_path, f"{k}.csv")
             df.to_csv(path, index=(k == "meta"))
 
@@ -659,7 +659,7 @@ class OutputStruct:
         if folder_path:
             os.makedirs(folder_path, exist_ok=True)
 
-        for k, df in self.dataframes.items():
+        for k, df in self.dataframes:
             if k == "meta":
                 continue
             if k == "psd":
