@@ -20,7 +20,7 @@ from endaq.calc import utils
 def _abs_accel_coeffs(omega, Q, T):
     """
     Calculate the coefficients of the Z-domain transfer function for the
-    absolute acceleration according to ISO 18431-4
+    absolute acceleration response according to ISO 18431-4.
 
     :param omega: the natural frequency of the system
     :param Q: the quality factor of the system
@@ -91,7 +91,7 @@ def abs_accel(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
 def _rel_velocity_coeffs(omega, Q, T):
     """
     Calculate the coefficients of the Z-domain transfer function for the
-    relative velocity according to ISO 18431-4
+    relative velocity response according to ISO 18431-4.
 
     :param omega: the natural frequency of the system
     :param Q: the quality factor of the system
@@ -134,7 +134,7 @@ def rel_velocity(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.Dat
     :param accel: the absolute acceleration y"
     :param omega: the natural frequency ω of the SDOF system
     :param damp: the damping coefficient ζ of the SDOF system
-    :return: the relative displacement z of the SDOF system
+    :return: the relative velocity z' of the SDOF system
 
     .. seealso::
 
@@ -164,7 +164,7 @@ def rel_velocity(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.Dat
 def _rel_displ_coeffs(omega, Q, T):
     """
     Calculate the coefficients of the Z-domain transfer function for the
-    relative displacement according to ISO 18431-4
+    relative displacement response according to ISO 18431-4.
 
     :param omega: the natural frequency of the system
     :param Q: the quality factor of the system
@@ -241,7 +241,7 @@ def rel_displ(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
 def _pseudo_velocity_coeffs(omega, Q, T):
     """
     Calculate the coefficients of the Z-domain transfer function for the
-    pseudovelocity according to ISO 18431-4
+    pseudo-velocity response according to ISO 18431-4.
 
     :param omega: the natural frequency of the system
     :param Q: the quality factor of the system
@@ -274,7 +274,7 @@ def _pseudo_velocity_coeffs(omega, Q, T):
 
 def pseudo_velocity(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFrame:
     """
-    Calculate the relative displacement for a SDOF system.
+    Calculate the pseudo-velocity for a SDOF system.
 
     The "relative" displacement follows the transfer function:
         H(s) = L{z(t)}(s) / L{y"(t)}(s) = (1/s²)(Z(s)/Y(s))
@@ -284,7 +284,7 @@ def pseudo_velocity(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.
     :param accel: the absolute acceleration y"
     :param omega: the natural frequency ω of the SDOF system
     :param damp: the damping coefficient ζ of the SDOF system
-    :return: the relative displacement z of the SDOF system
+    :return: the pseudo-velocity of the SDOF system
 
     .. seealso::
 
@@ -314,8 +314,8 @@ def pseudo_velocity(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.
 def _relative_disp_static_coeffs(omega, Q, T):
     """
     Calculate the coefficients of the Z-domain transfer function for the
-    relative displacement expressed as equivalent static acceleration according
-    to ISO 18431-4
+    relative displacement response expressed as equivalent static acceleration
+    according to ISO 18431-4.
 
     :param omega: the natural frequency of the system
     :param Q: the quality factor of the system
@@ -348,7 +348,8 @@ def _relative_disp_static_coeffs(omega, Q, T):
 
 def relative_disp_static(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFrame:
     """
-    Calculate the relative displacement for a SDOF system.
+    Calculate the relative displacement expressed as equivalent static
+    acceleration for a SDOF system.
 
     The "relative" displacement follows the transfer function:
         H(s) = L{z(t)}(s) / L{y"(t)}(s) = (1/s²)(Z(s)/Y(s))
@@ -358,7 +359,8 @@ def relative_disp_static(accel: pd.DataFrame, omega: float, damp: float = 0.0) -
     :param accel: the absolute acceleration y"
     :param omega: the natural frequency ω of the SDOF system
     :param damp: the damping coefficient ζ of the SDOF system
-    :return: the relative displacement z of the SDOF system
+    :return: the relative displacement of the SDOF system expressed as
+        equivalent static acceleration
 
     .. seealso::
 
