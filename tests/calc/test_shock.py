@@ -92,9 +92,9 @@ def z_phase(b, a, freqs, dt):
 
 
 @hyp.given(
-    freq=hyp_st.floats(12.5, 1200),
-    damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
-)
+        freq=hyp_st.floats(12.5, 1200),
+        damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
+        )
 def test_rel_displ_amp(freq, damp):
     """
     Laplace domain transfer function:
@@ -147,9 +147,9 @@ def test_rel_displ_phase(freq, damp):
 
 
 @hyp.given(
-    freq=hyp_st.floats(12.5, 1000),
+        freq=hyp_st.floats(12.5, 1000),
         damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
-)
+        )
 def test_rel_velocity_amp(freq, damp):
     """
     Laplace domain transfer function:
@@ -260,9 +260,9 @@ def test_abs_accel_phase(freq, damp):
 
 
 @hyp.given(
-    freq=hyp_st.floats(12.5, 1200),
-    damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
-)
+        freq=hyp_st.floats(12.5, 1200),
+        damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
+        )
 def test_pseudovelocity_amp(freq, damp):
     """
     Laplace domain transfer function:
@@ -315,9 +315,9 @@ def test_pseudovelocity_phase(freq, damp):
 
 
 @hyp.given(
-    freq=hyp_st.floats(12.5, 1200),
-    damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
-)
+        freq=hyp_st.floats(12.5, 1200),
+        damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
+        )
 def test_eq_static_accel_amp(freq, damp):
     """
     Laplace domain transfer function:
