@@ -104,9 +104,9 @@ def test_rel_displ_amp(freq, damp):
                    s² + ----- + ωₙ²
                           Q
     With the amplitude response of:
-                  |a₂(wᵢ*j)|
-    |G(wᵢ*j)|  = ------------
-                  |a₁(wᵢ*j)|
+                  |a₂(ωᵢ*j)|
+    |G(ωᵢ*j)|  = ------------
+                  |a₁(ωᵢ*j)|
 
     """
     dt = 1e-4
@@ -133,7 +133,7 @@ def test_rel_displ_phase(freq, damp):
                           Q
 
     With the phase response of:
-    ∠G(wᵢ*j) = ∠a₂(wᵢ*j) - ∠a₁(wᵢ*j)
+    ∠G(ωᵢ*j) = ∠a₂(ωᵢ*j) - ∠a₁(ωᵢ*j)
     """
     dt = 1e-4
     omega = 2*np.pi*freq
@@ -171,9 +171,9 @@ def test_rel_velocity_amp(freq, damp):
                    s² + ----- + ωₙ²
                           Q
     With the amplitude response of:
-                  |a₂(wᵢ*j)|
-    |G(wᵢ*j)|  = ------------
-                  |a₁(wᵢ*j)|
+                  |a₂(ωᵢ*j)|
+    |G(ωᵢ*j)|  = ------------
+                  |a₁(ωᵢ*j)|
 
     """
     dt = 1e-4
@@ -212,7 +212,7 @@ def test_rel_velocity_phase(freq, damp):
                           Q
 
     With the phase response of:
-    ∠G(wᵢ*j) = ∠a₂(wᵢ*j) - ∠a₁(wᵢ*j)
+    ∠G(ωᵢ*j) = ∠a₂(ωᵢ*j) - ∠a₁(ωᵢ*j)
     """
     dt = 1e-4
     omega = 2*np.pi*freq
@@ -239,9 +239,9 @@ def test_abs_accel_amp(freq, damp):
                    s² + ----- + ωₙ²
                           Q
     With the amplitude response of:
-                  |a₂(wᵢ*j)|
-    |G(wᵢ*j)|  = ------------
-                  |a₁(wᵢ*j)|
+                  |a₂(ωᵢ*j)|
+    |G(ωᵢ*j)|  = ------------
+                  |a₁(ωᵢ*j)|
 
     """
     dt = 1e-4
@@ -270,7 +270,7 @@ def test_abs_accel_phase(freq, damp):
                           Q
 
     With the phase response of:
-    ∠G(wᵢ*j) = ∠a₂(wᵢ*j) - ∠a₁(wᵢ*j)
+    ∠G(ωᵢ*j) = ∠a₂(ωᵢ*j) - ∠a₁(ωᵢ*j)
     """
     dt = 1e-4
     omega = 2*np.pi*freq
@@ -296,9 +296,9 @@ def test_pseudovelocity_amp(freq, damp):
                    s² + ----- + ωₙ²
                           Q
     With the amplitude response of:
-                  |a₂(wᵢ*j)|
-    |G(wᵢ*j)|  = ------------
-                  |a₁(wᵢ*j)|
+                  |a₂(ωᵢ*j)|
+    |G(ωᵢ*j)|  = ------------
+                  |a₁(ωᵢ*j)|
 
     """
     dt = 1e-4
@@ -325,7 +325,7 @@ def test_pseudovelocity_phase(freq, damp):
                           Q
 
     With the phase response of:
-    ∠G(wᵢ*j) = ∠a₂(wᵢ*j) - ∠a₁(wᵢ*j)
+    ∠G(ωᵢ*j) = ∠a₂(ωᵢ*j) - ∠a₁(ωᵢ*j)
     """
     dt = 1e-4
     omega = 2*np.pi*freq
@@ -345,15 +345,15 @@ def test_pseudovelocity_phase(freq, damp):
 def test_eq_static_accel_amp(freq, damp):
     """
     Laplace domain transfer function:
-           a₂(s)        -1
+           a₂(s)        -ωₙ²
     G(s) = ----- = ----------------
            a₁(s)         ωₙ*s
                    s² + ----- + ωₙ²
                           Q
     With the amplitude response of:
-                  |a₂(wᵢ*j)|
-    |G(wᵢ*j)|  = ------------
-                  |a₁(wᵢ*j)|
+                  |a₂(ωᵢ*j)|
+    |G(ωᵢ*j)|  = ------------
+                  |a₁(ωᵢ*j)|
 
     """
     dt = 1e-4
@@ -373,14 +373,14 @@ def test_eq_static_accel_amp(freq, damp):
 def test_eq_static_accel_phase(freq, damp):
     """
     Laplace domain transfer function:
-           a₂(s)        -1
+           a₂(s)        -ωₙ²
     G(s) = ----- = ----------------
            a₁(s)         ωₙ*s
                    s² + ----- + ωₙ²
                           Q
 
     With the phase response of:
-    ∠G(wᵢ*j) = ∠a₂(wᵢ*j) - ∠a₁(wᵢ*j)
+    ∠G(ωᵢ*j) = ∠a₂(ωᵢ*j) - ∠a₁(ωᵢ*j)
     """
     dt = 1e-4
     omega = 2*np.pi*freq
