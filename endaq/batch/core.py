@@ -127,7 +127,7 @@ def _make_metrics(
             ("Average Relative Humidity", "humidFull"),
         ]
     }
-    assert len(VALID_METRICS) == (
+    assert sorted(VALID_METRICS.values()) == sorted(
         attr
         for attr in dir(analyzer.CalcCache)
         if not attr.startswith("_") and attr.endswith("Full")
