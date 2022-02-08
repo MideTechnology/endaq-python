@@ -152,20 +152,8 @@ def test_rel_displ_phase(freq, damp):
 )
 def test_rel_velocity_amp(freq, damp):
     """
-    This test uses a step-function input acceleration. In a SDOF spring system,
-    the spring should be relaxed in the first portion where `a(t < t0) = 0`.
-    Once the acceleration flips on (`a(t > t0) = 1`), the mass should begin to
-    oscillate.
-
-    (This scenario is mathematically identical to having the mass pulled out
-    some distance and held steady with a constant force at `t=0`, then
-    releasing the mass at `t > t0` and letting it oscillate freely.)
-
-    This system is tested over a handful of different oscillation parameter
-    (i.e., frequency & damping rate) configurations.
-
     Laplace domain transfer function:
-           a₂(s)        -1
+           a₂(s)        -s
     G(s) = ----- = ----------------
            a₁(s)         ωₙ*s
                    s² + ----- + ωₙ²
@@ -192,20 +180,8 @@ def test_rel_velocity_amp(freq, damp):
         )
 def test_rel_velocity_phase(freq, damp):
     """
-    This test uses a step-function input acceleration. In a SDOF spring system,
-    the spring should be relaxed in the first portion where `a(t < t0) = 0`.
-    Once the acceleration flips on (`a(t > t0) = 1`), the mass should begin to
-    oscillate.
-
-    (This scenario is mathematically identical to having the mass pulled out
-    some distance and held steady with a constant force at `t=0`, then
-    releasing the mass at `t > t0` and letting it oscillate freely.)
-
-    This system is tested over a handful of different oscillation parameter
-    (i.e., frequency & damping rate) configurations.
-
     Laplace domain transfer function:
-           a₂(s)        -1
+           a₂(s)        -s
     G(s) = ----- = ----------------
            a₁(s)         ωₙ*s
                    s² + ----- + ωₙ²
@@ -290,7 +266,7 @@ def test_abs_accel_phase(freq, damp):
 def test_pseudovelocity_amp(freq, damp):
     """
     Laplace domain transfer function:
-           a₂(s)        -1
+           a₂(s)        -ωₙ
     G(s) = ----- = ----------------
            a₁(s)         ωₙ*s
                    s² + ----- + ωₙ²
@@ -318,7 +294,7 @@ def test_pseudovelocity_amp(freq, damp):
 def test_pseudovelocity_phase(freq, damp):
     """
     Laplace domain transfer function:
-           a₂(s)        -1
+           a₂(s)        -ωₙ
     G(s) = ----- = ----------------
            a₁(s)         ωₙ*s
                    s² + ----- + ωₙ²
