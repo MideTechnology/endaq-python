@@ -285,6 +285,7 @@ def get_primary_sensor_data(
     measurement_type: typing.Union[str, MeasurementType] = ANY,
     sort_by: typing.Literal["samples", "rate", "duration"] = "samples",
     time_mode: typing.Literal["seconds", "timedelta", "datetime"] = "datetime",
+    descending: bool = True,
     force_data_return: bool = False
 ) -> pd.DataFrame:
     """ Get the data from the primary sensor in a given .ide file using :py:func:`~endaq.ide.to_pandas()` 
@@ -310,6 +311,7 @@ def get_primary_sensor_data(
             * `"seconds"` - a `pandas.Float64Index` of relative timestamps, in seconds
             * `"timedelta"` - a `pandas.TimeDeltaIndex` of relative timestamps
             * `"datetime"` - a `pandas.DateTimeIndex` of absolute timestamps
+        :param descending: If set to `True` (default) it will sort the channels in descending order.
         :param force_data_return: If set to `True` and the specified `measurement_type`
             is not included in the file, it will return the data from any sensor 
             instead of raising an error which is the default behavior.
@@ -345,7 +347,10 @@ def get_primary_sensor_data(
     
     #Filter based on sort_by
     if (sort_by in ["samples", "rate", "duration"]):
-        channels = channels[channels[sort_by] == channels[sort_by].max()]
+        if descending:
+            channels = channels[channels[sort_by] == channels[sort_by].max()]
+        else:
+            channels = channels[channels[sort_by] == channels[sort_by].min()]
     else:        
         raise ValueError(f'invalid sort_by "{sort_by!r}"')
     
