@@ -54,9 +54,12 @@ def abs_accel(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
     Calculate the absolute acceleration for a SDOF system.
 
     The absolute acceleration follows the transfer function:
-        H(s) = L{x"(t)}(s) / L{y"(t)}(s) = X(s)/Y(s)
+
+        `H(s) = L{x"(t)}(s) / L{y"(t)}(s) = X(s)/Y(s)`
+
     for the PDE:
-        x" + (2ζω)x' + (ω²)x = (2ζω)y' + (ω²)y
+
+        `x" + (2ζω)x' + (ω²)x = (2ζω)y' + (ω²)y`
 
     :param accel: the absolute acceleration y"
     :param omega: the natural frequency ω of the SDOF system
@@ -127,9 +130,12 @@ def rel_velocity(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.Dat
     Calculate the relative velocity for a SDOF system.
 
     The relative velocity follows the transfer function:
-        H(s) = L{z'(t)}(s) / L{y"(t)}(s) = (1/s)(Z(s)/Y(s))
+
+        `H(s) = L{z'(t)}(s) / L{y"(t)}(s) = (1/s)(Z(s)/Y(s))`
+
     for the PDE:
-        z" + (2ζω)z' + (ω²)z = -y"
+
+        `z" + (2ζω)z' + (ω²)z = -y"`
 
     :param accel: the absolute acceleration y"
     :param omega: the natural frequency ω of the SDOF system
@@ -204,9 +210,12 @@ def rel_displ(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
     Calculate the relative displacement for a SDOF system.
 
     The relative displacement follows the transfer function:
-        H(s) = L{z(t)}(s) / L{y"(t)}(s) = (1/s²)(Z(s)/Y(s))
+
+        `H(s) = L{z(t)}(s) / L{y"(t)}(s) = (1/s²)(Z(s)/Y(s))`
+
     for the PDE:
-        z" + (2ζω)z' + (ω²)z = -y"
+
+        `z" + (2ζω)z' + (ω²)z = -y"`
 
     :param accel: the absolute acceleration y"
     :param omega: the natural frequency ω of the SDOF system
@@ -277,9 +286,12 @@ def pseudo_velocity(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.
     Calculate the pseudo-velocity for a SDOF system.
 
     The pseudo-velocity follows the transfer function:
-        H(s) = L{ωz(t)}(s) / L{y"(t)}(s) = (ω/s²)(Z(s)/Y(s))
+
+        `H(s) = L{ωz(t)}(s) / L{y"(t)}(s) = (ω/s²)(Z(s)/Y(s))`
+
     for the PDE:
-        z" + (2ζω)z' + (ω²)z = -y"
+
+        `z" + (2ζω)z' + (ω²)z = -y"`
 
     :param accel: the absolute acceleration y"
     :param omega: the natural frequency ω of the SDOF system
@@ -353,9 +365,12 @@ def relative_disp_static(accel: pd.DataFrame, omega: float, damp: float = 0.0) -
 
     The relative displacement as static acceleration follows the transfer
     function:
-        H(s) = L{ω²z(t)}(s) / L{y"(t)}(s) = (ω²/s²)(Z(s)/Y(s))
+
+        `H(s) = L{ω²z(t)}(s) / L{y"(t)}(s) = (ω²/s²)(Z(s)/Y(s))`
+
     for the PDE:
-        z" + (2ζω)z' + (ω²)z = -y"
+
+        `z" + (2ζω)z' + (ω²)z = -y"`
 
     :param accel: the absolute acceleration y"
     :param omega: the natural frequency ω of the SDOF system
