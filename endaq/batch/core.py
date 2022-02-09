@@ -110,6 +110,7 @@ def _make_metrics(
     if include and exclude:
         raise ValueError("parameters `include` and `exclude` are mutually-exclusive")
 
+    DEFAULT_EXCLUDE = [x.casefold() for x in ["RMS Sound Pressure"]]
     VALID_METRICS = {
         k.casefold(): v
         for (k, v) in [
@@ -121,6 +122,7 @@ def _make_metrics(
             ("GPS Position", "gpsLocFull"),
             ("GPS Speed", "gpsSpeedFull"),
             ("RMS Angular Velocity", "gyroRMSFull"),
+            ("RMS Sound Pressure", "micRMSFull"),
             ("Sound Pressure Level", "micDecibelsFull"),
             ("Average Temperature", "tempFull"),
             ("Average Pressure", "pressFull"),
@@ -147,7 +149,7 @@ def _make_metrics(
         exclude = set(exclude)
         metric_names = (x for x in VALID_METRICS if x not in exclude)
     else:
-        metric_names = VALID_METRICS
+        metric_names = (x for x in VALID_METRICS if x not in DEFAULT_EXCLUDE)
     metric_attrs = [VALID_METRICS[name] for name in metric_names]
 
     df = pd.concat(

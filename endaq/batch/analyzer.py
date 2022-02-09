@@ -611,6 +611,20 @@ class CalcCache:
         return rms
 
     @cached_property
+    def micRMSFull(self):
+        """Microphone RMS"""
+        warnings.warn("use `micDecibelsFull` instead", DeprecationWarning)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            mic = self._microphoneData.apply(
+                stats.rms, axis="rows", raw=True
+            )  # RuntimeWarning: Mean of empty slice.
+
+        mic.name = "RMS Sound Pressure"
+        return mic
+
+    @cached_property
     def micDecibelsFull(self):
         """Microphone dB"""
         with warnings.catch_warnings():
@@ -620,7 +634,7 @@ class CalcCache:
             )  # RuntimeWarning: Mean of empty slice.
         mic = mic.apply(endaq.calc.to_dB, reference="SPL")
 
-        mic.name = "Average Microphone Intensity"
+        mic.name = "Average Sound Pressure Level"
         return mic
 
     @cached_property
