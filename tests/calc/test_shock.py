@@ -92,9 +92,9 @@ def z_phase(b, a, freqs, dt):
 
 
 @hyp.given(
-    freq=hyp_st.floats(12.5, 1200),
-    damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
-)
+        freq=hyp_st.floats(12.5, 1200),
+        damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
+        )
 def test_rel_displ_amp(freq, damp):
     """
     Laplace domain transfer function:
@@ -104,9 +104,9 @@ def test_rel_displ_amp(freq, damp):
                    s² + ----- + ωₙ²
                           Q
     With the amplitude response of:
-                  |a₂(wᵢ*j)|
-    |G(wᵢ*j)|  = ------------
-                  |a₁(wᵢ*j)|
+                  |a₂(ωᵢ*j)|
+    |G(ωᵢ*j)|  = ------------
+                  |a₁(ωᵢ*j)|
 
     """
     dt = 1e-4
@@ -114,7 +114,7 @@ def test_rel_displ_amp(freq, damp):
 
     freqs = np.geomspace(1e-1, 1000, 10000)
 
-    la = laplace_amplitude(sp.simplify(-1), s**2 + wn*s/Q + wn**2, freqs, {fn: freq, d: damp})
+    la = laplace_amplitude(sp.sympify(-1), s**2 + wn*s/Q + wn**2, freqs, {fn: freq, d: damp})
     za = z_amplitude(*shock._rel_displ_coeffs(omega, 1/(2*damp), dt), freqs, dt)
 
     npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
@@ -133,47 +133,35 @@ def test_rel_displ_phase(freq, damp):
                           Q
 
     With the phase response of:
-    ∠G(wᵢ*j) = ∠a₂(wᵢ*j) - ∠a₁(wᵢ*j)
+    ∠G(ωᵢ*j) = ∠a₂(ωᵢ*j) - ∠a₁(ωᵢ*j)
     """
     dt = 1e-4
     omega = 2*np.pi*freq
 
     freqs = np.geomspace(1e-1, 1000, 10000)
 
-    la = laplace_phase(sp.simplify(-1), s**2 + wn*s/Q + wn**2, freqs, {fn:freq, d:damp})
+    la = laplace_phase(sp.sympify(-1), s**2 + wn*s/Q + wn**2, freqs, {fn:freq, d:damp})
     za = z_phase(*shock._rel_displ_coeffs(omega, 1/(2*damp), dt), freqs, dt)
 
     npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
 
 
 @hyp.given(
-    freq=hyp_st.floats(12.5, 1000),
+        freq=hyp_st.floats(12.5, 1000),
         damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
-)
+        )
 def test_rel_velocity_amp(freq, damp):
     """
-    This test uses a step-function input acceleration. In a SDOF spring system,
-    the spring should be relaxed in the first portion where `a(t < t0) = 0`.
-    Once the acceleration flips on (`a(t > t0) = 1`), the mass should begin to
-    oscillate.
-
-    (This scenario is mathematically identical to having the mass pulled out
-    some distance and held steady with a constant force at `t=0`, then
-    releasing the mass at `t > t0` and letting it oscillate freely.)
-
-    This system is tested over a handful of different oscillation parameter
-    (i.e., frequency & damping rate) configurations.
-
     Laplace domain transfer function:
-           a₂(s)        -1
+           a₂(s)        -s
     G(s) = ----- = ----------------
            a₁(s)         ωₙ*s
                    s² + ----- + ωₙ²
                           Q
     With the amplitude response of:
-                  |a₂(wᵢ*j)|
-    |G(wᵢ*j)|  = ------------
-                  |a₁(wᵢ*j)|
+                  |a₂(ωᵢ*j)|
+    |G(ωᵢ*j)|  = ------------
+                  |a₁(ωᵢ*j)|
 
     """
     dt = 1e-4
@@ -192,27 +180,15 @@ def test_rel_velocity_amp(freq, damp):
         )
 def test_rel_velocity_phase(freq, damp):
     """
-    This test uses a step-function input acceleration. In a SDOF spring system,
-    the spring should be relaxed in the first portion where `a(t < t0) = 0`.
-    Once the acceleration flips on (`a(t > t0) = 1`), the mass should begin to
-    oscillate.
-
-    (This scenario is mathematically identical to having the mass pulled out
-    some distance and held steady with a constant force at `t=0`, then
-    releasing the mass at `t > t0` and letting it oscillate freely.)
-
-    This system is tested over a handful of different oscillation parameter
-    (i.e., frequency & damping rate) configurations.
-
     Laplace domain transfer function:
-           a₂(s)        -1
+           a₂(s)        -s
     G(s) = ----- = ----------------
            a₁(s)         ωₙ*s
                    s² + ----- + ωₙ²
                           Q
 
     With the phase response of:
-    ∠G(wᵢ*j) = ∠a₂(wᵢ*j) - ∠a₁(wᵢ*j)
+    ∠G(ωᵢ*j) = ∠a₂(ωᵢ*j) - ∠a₁(ωᵢ*j)
     """
     dt = 1e-4
     omega = 2*np.pi*freq
@@ -239,9 +215,9 @@ def test_abs_accel_amp(freq, damp):
                    s² + ----- + ωₙ²
                           Q
     With the amplitude response of:
-                  |a₂(wᵢ*j)|
-    |G(wᵢ*j)|  = ------------
-                  |a₁(wᵢ*j)|
+                  |a₂(ωᵢ*j)|
+    |G(ωᵢ*j)|  = ------------
+                  |a₁(ωᵢ*j)|
 
     """
     dt = 1e-4
@@ -270,7 +246,7 @@ def test_abs_accel_phase(freq, damp):
                           Q
 
     With the phase response of:
-    ∠G(wᵢ*j) = ∠a₂(wᵢ*j) - ∠a₁(wᵢ*j)
+    ∠G(ωᵢ*j) = ∠a₂(ωᵢ*j) - ∠a₁(ωᵢ*j)
     """
     dt = 1e-4
     omega = 2*np.pi*freq
@@ -284,21 +260,21 @@ def test_abs_accel_phase(freq, damp):
 
 
 @hyp.given(
-    freq=hyp_st.floats(12.5, 1200),
-    damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
-)
+        freq=hyp_st.floats(12.5, 1200),
+        damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
+        )
 def test_pseudovelocity_amp(freq, damp):
     """
     Laplace domain transfer function:
-           a₂(s)        -1
+           a₂(s)        -ωₙ
     G(s) = ----- = ----------------
            a₁(s)         ωₙ*s
                    s² + ----- + ωₙ²
                           Q
     With the amplitude response of:
-                  |a₂(wᵢ*j)|
-    |G(wᵢ*j)|  = ------------
-                  |a₁(wᵢ*j)|
+                  |a₂(ωᵢ*j)|
+    |G(ωᵢ*j)|  = ------------
+                  |a₁(ωᵢ*j)|
 
     """
     dt = 1e-4
@@ -318,14 +294,14 @@ def test_pseudovelocity_amp(freq, damp):
 def test_pseudovelocity_phase(freq, damp):
     """
     Laplace domain transfer function:
-           a₂(s)        -1
+           a₂(s)        -ωₙ
     G(s) = ----- = ----------------
            a₁(s)         ωₙ*s
                    s² + ----- + ωₙ²
                           Q
 
     With the phase response of:
-    ∠G(wᵢ*j) = ∠a₂(wᵢ*j) - ∠a₁(wᵢ*j)
+    ∠G(ωᵢ*j) = ∠a₂(ωᵢ*j) - ∠a₁(ωᵢ*j)
     """
     dt = 1e-4
     omega = 2*np.pi*freq
@@ -339,21 +315,21 @@ def test_pseudovelocity_phase(freq, damp):
 
 
 @hyp.given(
-    freq=hyp_st.floats(12.5, 1200),
-    damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
-)
+        freq=hyp_st.floats(12.5, 1200),
+        damp=hyp_st.floats(*DAMP_RANGE, exclude_max=True),
+        )
 def test_eq_static_accel_amp(freq, damp):
     """
     Laplace domain transfer function:
-           a₂(s)        -1
+           a₂(s)        -ωₙ²
     G(s) = ----- = ----------------
            a₁(s)         ωₙ*s
                    s² + ----- + ωₙ²
                           Q
     With the amplitude response of:
-                  |a₂(wᵢ*j)|
-    |G(wᵢ*j)|  = ------------
-                  |a₁(wᵢ*j)|
+                  |a₂(ωᵢ*j)|
+    |G(ωᵢ*j)|  = ------------
+                  |a₁(ωᵢ*j)|
 
     """
     dt = 1e-4
@@ -373,14 +349,14 @@ def test_eq_static_accel_amp(freq, damp):
 def test_eq_static_accel_phase(freq, damp):
     """
     Laplace domain transfer function:
-           a₂(s)        -1
+           a₂(s)        -ωₙ²
     G(s) = ----- = ----------------
            a₁(s)         ωₙ*s
                    s² + ----- + ωₙ²
                           Q
 
     With the phase response of:
-    ∠G(wᵢ*j) = ∠a₂(wᵢ*j) - ∠a₁(wᵢ*j)
+    ∠G(ωᵢ*j) = ∠a₂(ωᵢ*j) - ∠a₁(ωᵢ*j)
     """
     dt = 1e-4
     omega = 2*np.pi*freq
