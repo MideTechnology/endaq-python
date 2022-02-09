@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import typing
-from typing import List, Optional
+from typing import Any, Dict, List, Callable, Optional
 
+from dataclasses import dataclass
 from functools import partial
 import warnings
 import os
@@ -14,7 +15,7 @@ import endaq.ide
 from endaq.calc import stats as calc_stats
 from endaq.calc import psd as calc_psd
 
-import endaq.batch.analyzer
+from endaq.batch import analyzer
 
 
 def _make_meta(dataset):
@@ -31,7 +32,7 @@ def _make_meta(dataset):
     )
 
 
-def _make_psd(ch_data_cache, fstart=None, bins_per_octave=None):
+def _make_psd(ch_data_cache: analyzer.CalcCache, fstart=None, bins_per_octave=None):
     """
     Format the PSD of the main accelerometer channel into a pandas object.
 
@@ -51,12 +52,12 @@ def _make_psd(ch_data_cache, fstart=None, bins_per_octave=None):
         )
 
     df_psd["Resultant"] = np.sum(df_psd.to_numpy(), axis=1)
-    df_psd = df_psd * endaq.batch.analyzer.MPS2_TO_G ** 2  # (m/s^2)^2/Hz -> g^2/Hz
+    df_psd = df_psd * analyzer.MPS2_TO_G ** 2  # (m/s^2)^2/Hz -> g^2/Hz
 
     return df_psd.stack(level="axis").reorder_levels(["axis", "frequency (Hz)"])
 
 
-def _make_pvss(ch_data_cache):
+def _make_pvss(ch_data_cache: analyzer.CalcCache):
     """
     Format the PVSS of the main accelerometer channel into a pandas object.
 
@@ -67,7 +68,7 @@ def _make_pvss(ch_data_cache):
         return None
 
     df_pvss["Resultant"] = ch_data_cache._PVSSResultantData
-    df_pvss = df_pvss * endaq.batch.analyzer.MPS_TO_MMPS
+    df_pvss = df_pvss * analyzer.MPS_TO_MMPS
 
     return df_pvss.stack(level="axis").reorder_levels(["axis", "frequency (Hz)"])
 
@@ -75,7 +76,7 @@ def _make_pvss(ch_data_cache):
 def _make_halfsine_pvss_envelope(ch_data_cache, *args, **kwargs):
     df_pvss = ch_data_cache._PVSSData.copy()
     df_pvss["Resultant"] = ch_data_cache._PVSSResultantData
-    df_pvss = df_pvss * endaq.batch.analyzer.MPS_TO_MMPS
+    df_pvss = df_pvss * analyzer.MPS_TO_MMPS
     if df_pvss.size == 0:
         return None
 
@@ -87,7 +88,7 @@ def _make_halfsine_pvss_envelope(ch_data_cache, *args, **kwargs):
     )
 
 
-def _make_metrics(ch_data_cache):
+def _make_metrics(ch_data_cache: analyzer.CalcCache):
     """
     Format the channel metrics of a recording into a pandas object.
 
@@ -127,7 +128,7 @@ def _make_metrics(ch_data_cache):
     return series
 
 
-def _make_peak_windows(ch_data_cache, margin_len):
+def _make_peak_windows(ch_data_cache: analyzer.CalcCache, margin_len):
     """
     Store windows of the main accelerometer channel about its peaks in a pandas
     object.
@@ -137,7 +138,7 @@ def _make_peak_windows(ch_data_cache, margin_len):
     """
     df_accel = ch_data_cache._accelerationData.copy()
     df_accel["Resultant"] = ch_data_cache._accelerationResultantData
-    df_accel = endaq.batch.analyzer.MPS2_TO_G * df_accel
+    df_accel = analyzer.MPS2_TO_G * df_accel
     if df_accel.size == 0:
         return None
 
@@ -179,13 +180,11 @@ def _make_peak_windows(ch_data_cache, margin_len):
     return result
 
 
-def _make_vc_curves(ch_data_cache):
+def _make_vc_curves(ch_data_cache: analyzer.CalcCache):
     """
     Format the VC curves of the main accelerometer channel into a pandas object.
     """
-    df_vc = (
-        ch_data_cache._VCCurveData * endaq.batch.analyzer.MPS_TO_UMPS
-    )  # (m/s) -> (μm/s)
+    df_vc = ch_data_cache._VCCurveData * analyzer.MPS_TO_UMPS  # (m/s) -> (μm/s)
     df_vc["Resultant"] = calc_stats.L2_norm(df_vc.to_numpy(), axis=1)
     if df_vc.size == 0:
         return None
@@ -288,7 +287,7 @@ class GetDataBuilder:
                 "only one of `accel_end_time` and `accel_end_margin` may be set at once"
             )
 
-        self._metrics_queue = {}  # dict maintains insertion order, unlike set
+        self._metrics_queue: Dict[str, Callable[[analyzer.CalcCache], Any]] = {}
 
         self._ch_data_cache_kwargs = dict(
             accel_highpass_cutoff=accel_highpass_cutoff,
@@ -303,13 +302,9 @@ class GetDataBuilder:
 
         # Even unused parameters MUST be set; used to instantiate `CalcCache` in `_get_data`
         self._psd_freq_bin_width = None
-        self._psd_freq_start_octave = None
-        self._psd_bins_per_octave = None
         self._psd_window = None
         self._pvss_init_freq = None
         self._pvss_bins_per_octave = None
-        self._pvss_halfsine_envelope_kwargs = {}
-        self._peak_window_margin_len = None
         self._vc_init_freq = None
         self._vc_bins_per_octave = None
 
@@ -346,15 +341,17 @@ class GetDataBuilder:
             if freq_start_octave is None:
                 freq_start_octave = 1
 
-            fstart_breadth = 2 ** (1 / (2 * bins_per_octave)) - 2 ** (
-                -1 / (2 * bins_per_octave)
+            freq_bin_width = endaq.calc.psd._aligned_bin_width(
+                freq_start_octave, bins_per_octave
             )
-            freq_bin_width = freq_start_octave / int(5 / fstart_breadth)
 
-        self._metrics_queue["psd"] = None
+        self._metrics_queue["psd"] = partial(
+            _make_psd,
+            fstart=freq_start_octave,
+            bins_per_octave=bins_per_octave,
+        )
+
         self._psd_freq_bin_width = freq_bin_width
-        self._psd_freq_start_octave = freq_start_octave
-        self._psd_bins_per_octave = bins_per_octave
         self._psd_window = window
 
         return self
@@ -369,7 +366,7 @@ class GetDataBuilder:
         :param init_freq: the first frequency sample in the spectrum
         :param bins_per_octave: the number of samples per frequency octave
         """
-        self._metrics_queue["pvss"] = None
+        self._metrics_queue["pvss"] = _make_pvss
         self._pvss_init_freq = init_freq
         self._pvss_bins_per_octave = bins_per_octave
 
@@ -388,9 +385,12 @@ class GetDataBuilder:
 
         *calculation output units*: :math:`\\frac{\\text{mm}}{\\text{sec}}`
         """
-        self._metrics_queue["halfsine"] = None
-        self._pvss_halfsine_envelope_kwargs = dict(
-            tstart=tstart, tstop=tstop, dt=dt, tpulse=tpulse
+        self._metrics_queue["halfsine"] = partial(
+            _make_halfsine_pvss_envelope,
+            tstart=tstart,
+            tstop=tstop,
+            dt=dt,
+            tpulse=tpulse,
         )
 
         return self
@@ -420,7 +420,7 @@ class GetDataBuilder:
         \\approx 9.80665 \\frac{ \\text{m} }{ \\text{sec}^2 } \\right)`
 
         """
-        self._metrics_queue["metrics"] = None
+        self._metrics_queue["metrics"] = _make_metrics
 
         if "pvss" not in self._metrics_queue:
             self._pvss_init_freq = 1
@@ -440,8 +440,10 @@ class GetDataBuilder:
         :param margin_len: the number of samples on each side of a peak to
             include in the windows
         """
-        self._metrics_queue["peaks"] = None
-        self._peak_window_margin_len = margin_len
+        self._metrics_queue["peaks"] = partial(
+            _make_peak_windows,
+            margin_len=margin_len,
+        )
 
         return self
 
@@ -454,7 +456,7 @@ class GetDataBuilder:
         :param init_freq: the first frequency
         :param bins_per_octave:  the number of samples per frequency octave
         """
-        self._metrics_queue["vc_curves"] = None
+        self._metrics_queue["vc_curves"] = _make_vc_curves
 
         if "psd" not in self._metrics_queue:
             self._psd_freq_bin_width = 0.2
@@ -463,6 +465,17 @@ class GetDataBuilder:
         self._vc_bins_per_octave = bins_per_octave
 
         return self
+
+    def _make_calc_params(self) -> analyzer.CalcParams:
+        return analyzer.CalcParams(
+            **self._ch_data_cache_kwargs,
+            psd_window=self._psd_window,
+            psd_freq_bin_width=self._psd_freq_bin_width,
+            pvss_init_freq=self._pvss_init_freq,
+            pvss_bins_per_octave=self._pvss_bins_per_octave,
+            vc_init_freq=self._vc_init_freq,
+            vc_bins_per_octave=self._vc_bins_per_octave,
+        )
 
     def _get_data(self, filename):
         """
@@ -474,41 +487,16 @@ class GetDataBuilder:
 
         data = {}
         with endaq.ide.get_doc(filename) as ds:
-            ch_data_cache = endaq.batch.analyzer.CalcCache.from_ide(
+            ch_data_cache = analyzer.CalcCache.from_ide(
                 ds,
-                endaq.batch.analyzer.CalcParams(
-                    **self._ch_data_cache_kwargs,
-                    psd_window=self._psd_window,
-                    psd_freq_bin_width=self._psd_freq_bin_width,
-                    pvss_init_freq=self._pvss_init_freq,
-                    pvss_bins_per_octave=self._pvss_bins_per_octave,
-                    vc_init_freq=self._vc_init_freq,
-                    vc_bins_per_octave=self._vc_bins_per_octave,
-                ),
+                self._make_calc_params(),
                 preferred_chs=self._preferred_chs,
             )
 
             data["meta"] = _make_meta(ds)
 
-            funcs = dict(
-                psd=partial(
-                    _make_psd,
-                    fstart=self._psd_freq_start_octave,
-                    bins_per_octave=self._psd_bins_per_octave,
-                ),
-                pvss=_make_pvss,
-                halfsine=partial(
-                    _make_halfsine_pvss_envelope, **self._pvss_halfsine_envelope_kwargs
-                ),
-                metrics=_make_metrics,
-                peaks=partial(
-                    _make_peak_windows,
-                    margin_len=self._peak_window_margin_len,
-                ),
-                vc_curves=_make_vc_curves,
-            )
-            for output_type in self._metrics_queue.keys():
-                data[output_type] = funcs[output_type](ch_data_cache)
+            for output_type, func in self._metrics_queue.items():
+                data[output_type] = func(ch_data_cache)
 
         return data
 
