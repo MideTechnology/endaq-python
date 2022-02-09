@@ -157,6 +157,10 @@ class PrimarySensorTest(unittest.TestCase):
         self.assertEqual(data4.axes[1][0], 'Control Pad Temperature',
                          msg="Wrong measurement type")
 
+        data5 = info.get_primary_sensor_data(doc=doc, descending=False)
+        self.assertNotEqual(data.axes[0][0], data5.axes[0][0],
+                            msg="Primary sensor data returned as least sensor data")
+
 
 @pytest.mark.parametrize("time_mode, subchannel", [
     ("seconds", False),
