@@ -32,7 +32,12 @@ def _make_meta(dataset):
     )
 
 
-def _make_psd(ch_data_cache: analyzer.CalcCache, fstart=None, bins_per_octave=None):
+def _make_psd(
+    ch_data_cache: analyzer.CalcCache,
+    fstart=None,
+    bins_per_octave=None,
+    mode: typing.Literal["mean", "envelope"] = "mean",
+):
     """
     Format the PSD of the main accelerometer channel into a pandas object.
 
@@ -43,12 +48,19 @@ def _make_psd(ch_data_cache: analyzer.CalcCache, fstart=None, bins_per_octave=No
     if df_psd.size == 0:
         return None
 
+    if mode == "mean":
+        agg_func = np.mean
+    elif mode == "envelope":
+        agg_func = partial(np.amax, initial=-np.inf)
+    else:
+        raise ValueError(f"invalid mode parameter '{mode}'")
+
     if bins_per_octave is not None:
         df_psd = calc_psd.to_octave(
             df_psd,
             fstart=(fstart or 1),
             octave_bins=bins_per_octave,
-            agg=np.mean,
+            agg=agg_func,
         )
 
     df_psd["Resultant"] = np.sum(df_psd.to_numpy(), axis=1)
@@ -349,6 +361,7 @@ class GetDataBuilder:
         freq_start_octave: Optional[float] = None,
         bins_per_octave: Optional[float] = None,
         window: Optional[str] = None,
+        mode: typing.Literal["mean", "envelope"] = "mean",
     ):
         """
         Add the acceleration PSD to the calculation queue.
@@ -399,6 +412,7 @@ class GetDataBuilder:
                     _make_psd,
                     fstart=freq_start_octave,
                     bins_per_octave=bins_per_octave,
+                    mode=mode,
                 ),
             )
         )

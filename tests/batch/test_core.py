@@ -704,8 +704,9 @@ def test_integration(filenames):
     output_struct = (
         endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1)
         .add_psd(freq_bin_width=1)
-        .add_psd(freq_start_octave=2, bins_per_octave=12)
-        .add_pvss(init_freq=1, bins_per_octave=12)
+        .add_psd(freq_start_octave=2, bins_per_octave=3)
+        .add_psd(freq_start_octave=2, bins_per_octave=3, mode="envelope")
+        .add_pvss(init_freq=1, bins_per_octave=3)
         .add_pvss_halfsine_envelope()
         .add_metrics(exclude=["RMS Velocity"])
         .add_peaks(margin_len=1000)

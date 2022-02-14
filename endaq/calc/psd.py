@@ -185,7 +185,8 @@ def to_jagged(
         # Adjust values for mean calculation
         if agg == "mean":
             with warnings.catch_warnings():
-                warnings.simplefilter("ignore", category=RuntimeWarning)  # x/0
+                # x/0: "Mean of empty slice."
+                warnings.simplefilter("ignore", category=RuntimeWarning)
 
                 psd_jagged = np.nan_to_num(  # <- fix divisions by zero
                     psd_jagged
@@ -193,8 +194,14 @@ def to_jagged(
                 )
 
     else:
-        psd_binned = np.split(df, np.searchsorted(df.index, freq_splits), axis=0)[1:-1]
-        psd_jagged = np.stack([agg(a, axis=0) for a in psd_binned], axis=0)
+        with warnings.catch_warnings():
+            # x/0: "Mean of empty slice."
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+
+            psd_binned = np.split(
+                df.to_numpy(), np.searchsorted(df.index, freq_splits), axis=0
+            )[1:-1]
+            psd_jagged = np.stack([agg(a, axis=0) for a in psd_binned], axis=0)
 
     return pd.DataFrame(
         psd_jagged,
