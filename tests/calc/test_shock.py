@@ -115,7 +115,7 @@ def test_rel_displ_amp(freq, damp):
     freqs = np.geomspace(1e-1, 1000, 10000)
 
     la = laplace_amplitude(sp.sympify(-1), s**2 + wn*s/Q + wn**2, freqs, {fn: freq, d: damp})
-    za = z_amplitude(*shock._rel_displ_coeffs(omega, 1/(2*damp), dt), freqs, dt)
+    za = z_amplitude(*shock._relative_displacement_coefficients(omega, 1/(2*damp), dt), freqs, dt)
 
     npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
 
@@ -141,7 +141,7 @@ def test_rel_displ_phase(freq, damp):
     freqs = np.geomspace(1e-1, 1000, 10000)
 
     la = laplace_phase(sp.sympify(-1), s**2 + wn*s/Q + wn**2, freqs, {fn:freq, d:damp})
-    za = z_phase(*shock._rel_displ_coeffs(omega, 1/(2*damp), dt), freqs, dt)
+    za = z_phase(*shock._relative_displacement_coefficients(omega, 1/(2*damp), dt), freqs, dt)
 
     npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
 
@@ -170,7 +170,7 @@ def test_rel_velocity_amp(freq, damp):
     freqs = np.geomspace(1e-1, 1000, 10000)
 
     la = laplace_amplitude(-s, s**2 + wn*s/Q + wn**2, freqs, {fn: freq, d: damp})
-    za = z_amplitude(*shock._rel_velocity_coeffs(omega, 1/(2*damp), dt), freqs, dt)
+    za = z_amplitude(*shock._relative_velocity_coefficients(omega, 1/(2*damp), dt), freqs, dt)
 
     npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
 
@@ -196,7 +196,7 @@ def test_rel_velocity_phase(freq, damp):
     freqs = np.concatenate([np.geomspace(1e-1, freq*0.99), [], np.geomspace(freq*1.01, 2e3)])
 
     la = laplace_phase(-s, s**2 + wn*s/Q + wn**2, freqs, {fn:freq, d:damp})
-    za = z_phase(*shock._rel_velocity_coeffs(omega, 1/(2*damp), dt), freqs, dt)
+    za = z_phase(*shock._relative_velocity_coefficients(omega, 1/(2*damp), dt), freqs, dt)
 
     npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
 
@@ -226,7 +226,7 @@ def test_abs_accel_amp(freq, damp):
     freqs = np.geomspace(1e-1, 1000, 10000)
 
     la = laplace_amplitude(wn*s/Q + wn**2, s**2 + wn*s/Q + wn**2, freqs, {fn: freq, d: damp})
-    za = z_amplitude(*shock._abs_accel_coeffs(omega, 1/(2*damp), dt), freqs, dt)
+    za = z_amplitude(*shock._absolute_acceleration_coefficients(omega, 1/(2*damp), dt), freqs, dt)
 
     npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
 
@@ -254,7 +254,7 @@ def test_abs_accel_phase(freq, damp):
     freqs = np.concatenate([np.geomspace(1e-1, freq*0.99), [], np.geomspace(freq*1.01, 2e3)])
 
     la = laplace_phase(wn*s/Q + wn**2, s**2 + wn*s/Q + wn**2, freqs, {fn:freq, d:damp})
-    za = z_phase(*shock._abs_accel_coeffs(omega, 1/(2*damp), dt), freqs, dt)
+    za = z_phase(*shock._absolute_acceleration_coefficients(omega, 1/(2*damp), dt), freqs, dt)
 
     npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
 
@@ -338,7 +338,7 @@ def test_eq_static_accel_amp(freq, damp):
     freqs = np.geomspace(1e-1, 1000, 10000)
 
     la = laplace_amplitude(-wn**2, s**2 + wn*s/Q + wn**2, freqs, {fn: freq, d: damp})
-    za = z_amplitude(*shock._relative_disp_static_coeffs(omega, 1/(2*damp), dt), freqs, dt)
+    za = z_amplitude(*shock._relative_displacement_static_coefficients(omega, 1/(2*damp), dt), freqs, dt)
 
     npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
 
@@ -364,7 +364,7 @@ def test_eq_static_accel_phase(freq, damp):
     freqs = np.geomspace(1e-1, 1000, 10000)
 
     la = laplace_phase(-wn**2, s**2 + wn*s/Q + wn**2, freqs, {fn:freq, d:damp})
-    za = z_phase(*shock._relative_disp_static_coeffs(omega, 1/(2*damp), dt), freqs, dt)
+    za = z_phase(*shock._relative_displacement_static_coefficients(omega, 1/(2*damp), dt), freqs, dt)
 
     npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
 

@@ -17,7 +17,7 @@ from endaq.calc.stats import L2_norm
 from endaq.calc import utils
 
 
-def _abs_accel_coeffs(omega, Q, T):
+def _absolute_acceleration_coefficients(omega, Q, T):
     """
     Calculate the coefficients of the Z-domain transfer function for the
     absolute acceleration response according to ISO 18431-4.
@@ -49,7 +49,7 @@ def _abs_accel_coeffs(omega, Q, T):
     return b, a
 
 
-def abs_accel(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFrame:
+def absolute_acceleration(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFrame:
     """
     Calculate the absolute acceleration for a SDOF system.
 
@@ -84,14 +84,14 @@ def abs_accel(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
     return accel.apply(
         functools.partial(
                 scipy.signal.lfilter,
-                *_abs_accel_coeffs(omega, Q, T),
+                *_absolute_acceleration_coefficients(omega, Q, T),
                 axis=0,
                 ),
         raw=True,
         )
 
 
-def _rel_velocity_coeffs(omega, Q, T):
+def _relative_velocity_coefficients(omega, Q, T):
     """
     Calculate the coefficients of the Z-domain transfer function for the
     relative velocity response according to ISO 18431-4.
@@ -125,7 +125,7 @@ def _rel_velocity_coeffs(omega, Q, T):
     return b, a
 
 
-def rel_velocity(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFrame:
+def relative_velocity(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFrame:
     """
     Calculate the relative velocity for a SDOF system.
 
@@ -160,14 +160,14 @@ def rel_velocity(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.Dat
     return accel.apply(
         functools.partial(
                 scipy.signal.lfilter,
-                *_rel_velocity_coeffs(omega, Q, T),
+                *_relative_velocity_coefficients(omega, Q, T),
                 axis=0,
                 ),
         raw=True,
         )
 
 
-def _rel_displ_coeffs(omega, Q, T):
+def _relative_displacement_coefficients(omega, Q, T):
     """
     Calculate the coefficients of the Z-domain transfer function for the
     relative displacement response according to ISO 18431-4.
@@ -205,7 +205,7 @@ def _rel_displ_coeffs(omega, Q, T):
     return b, a
 
 
-def rel_displ(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFrame:
+def relative_displacement(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFrame:
     """
     Calculate the relative displacement for a SDOF system.
 
@@ -240,7 +240,7 @@ def rel_displ(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
     return accel.apply(
         functools.partial(
                 scipy.signal.lfilter,
-                *_rel_displ_coeffs(omega, Q, T),
+                *_relative_displacement_coefficients(omega, Q, T),
                 axis=0,
                 ),
         raw=True,
@@ -323,7 +323,7 @@ def pseudo_velocity(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.
         )
 
 
-def _relative_disp_static_coeffs(omega, Q, T):
+def _relative_displacement_static_coefficients(omega, Q, T):
     """
     Calculate the coefficients of the Z-domain transfer function for the
     relative displacement response expressed as equivalent static acceleration
@@ -358,7 +358,7 @@ def _relative_disp_static_coeffs(omega, Q, T):
     return b, a
 
 
-def relative_disp_static(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFrame:
+def relative_displacement_static(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFrame:
     """
     Calculate the relative displacement expressed as equivalent static
     acceleration for a SDOF system.
@@ -396,7 +396,7 @@ def relative_disp_static(accel: pd.DataFrame, omega: float, damp: float = 0.0) -
     return accel.apply(
         functools.partial(
                 scipy.signal.lfilter,
-                *_relative_disp_static_coeffs(omega, Q, T),
+                *_relative_displacement_static_coefficients(omega, Q, T),
                 axis=0,
                 ),
         raw=True,
@@ -448,7 +448,7 @@ def shock_spectrum(
     omega = 2 * np.pi * freqs
 
     if mode == "srs":
-        make_coeffs = _abs_accel_coeffs
+        make_coeffs = _absolute_acceleration_coefficients
     elif mode == "pvss":
         make_coeffs = _pseudo_velocity_coeffs
     else:
