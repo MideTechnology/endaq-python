@@ -283,8 +283,9 @@ def get_primary_sensor_data(
     name: str = "",
     doc: idelib.dataset.Dataset = None,
     measurement_type: typing.Union[str, MeasurementType] = ANY,
-    sort_by: typing.Literal["samples", "rate", "duration"] = "samples",
+    criteria: typing.Literal["samples", "rate", "duration"] = "samples",
     time_mode: typing.Literal["seconds", "timedelta", "datetime"] = "datetime",
+    least: bool = False,
     force_data_return: bool = False
 ) -> pd.DataFrame:
     """ Get the data from the primary sensor in a given .ide file using :py:func:`~endaq.ide.to_pandas()` 
@@ -297,7 +298,7 @@ def get_primary_sensor_data(
         :param measurement_type: The sensor type to return data from, see :py:mod:`~endaq.ide.measurement`
             for more. The default is `"any"`, but to get the primary accelerometer
             for example, set this to `"accel"`.
-        :param sort_by: How to determine the "primary" sensor using the summary
+        :param criteria: How to determine the "primary" sensor using the summary
             information provided by :py:func:`~endaq.ide.get_channel_table()`: 
         
             * `"sample"` - the number of samples, default behavior
@@ -310,6 +311,8 @@ def get_primary_sensor_data(
             * `"seconds"` - a `pandas.Float64Index` of relative timestamps, in seconds
             * `"timedelta"` - a `pandas.TimeDeltaIndex` of relative timestamps
             * `"datetime"` - a `pandas.DateTimeIndex` of absolute timestamps
+        :param least: If set to `True` it will return the channels ranked lowest by
+            the given criteria.
         :param force_data_return: If set to `True` and the specified `measurement_type`
             is not included in the file, it will return the data from any sensor 
             instead of raising an error which is the default behavior.
@@ -343,11 +346,15 @@ def get_primary_sensor_data(
         else:
             raise ValueError(error_str)
     
-    #Filter based on sort_by
-    if (sort_by in ["samples", "rate", "duration"]):
-        channels = channels[channels[sort_by] == channels[sort_by].max()]
+    #Filter based on criteria
+    criteria = str(criteria).lower()
+    if (criteria in ["samples", "rate", "duration"]):
+        if least:
+            channels = channels[channels[criteria] == channels[criteria].min()]
+        else:
+            channels = channels[channels[criteria] == channels[criteria].max()]
     else:        
-        raise ValueError(f'invalid sort_by "{sort_by!r}"')
+        raise ValueError(f'invalid criteria "{criteria!r}"')
     
     #Get parent channel
     parent = channels.iloc[0].channel.parent
