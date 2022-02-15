@@ -149,7 +149,7 @@ class PrimarySensorTest(unittest.TestCase):
         self.assertAlmostEqual(data2.axes[0][0], 0.338775, 5,
                                msg="Incorrect time value")
 
-        data3 = info.get_primary_sensor_data(doc=doc, measurement_type='accel', time_mode='seconds', sort_by='duration')
+        data3 = info.get_primary_sensor_data(doc=doc, measurement_type='accel', time_mode='seconds', criteria='duration')
         self.assertAlmostEqual(data3.axes[0][0], 0.341217, 5,
                                msg="Incorrect time value after sorting")
 
@@ -157,7 +157,7 @@ class PrimarySensorTest(unittest.TestCase):
         self.assertEqual(data4.axes[1][0], 'Control Pad Temperature',
                          msg="Wrong measurement type")
 
-        data5 = info.get_primary_sensor_data(doc=doc, descending=False)
+        data5 = info.get_primary_sensor_data(doc=doc, least=True)
         self.assertNotEqual(data.axes[0][0], data5.axes[0][0],
                             msg="Primary sensor data returned as least sensor data")
 
