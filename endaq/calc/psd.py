@@ -184,9 +184,13 @@ def to_jagged(
 
         # Adjust values for mean calculation
         if agg == "mean":
-            with warnings.catch_warnings():
-                # x/0: "Mean of empty slice."
-                warnings.simplefilter("ignore", category=RuntimeWarning)
+            with warnings.catch_warnings():  # x/0
+                warnings.filterwarnings(
+                    "ignore",
+                    message="invalid value encountered in true_divide",
+                    category=RuntimeWarning,
+                    module=".*",
+                )
 
                 psd_jagged = np.nan_to_num(  # <- fix divisions by zero
                     psd_jagged
@@ -195,7 +199,10 @@ def to_jagged(
 
     else:
         with warnings.catch_warnings():
-            # x/0: "Mean of empty slice."
+            # Error messages:
+            # - "Mean of empty slice."
+            # - "invalid value encountered in true_divide"
+            # - others?
             warnings.simplefilter("ignore", category=RuntimeWarning)
 
             psd_binned = np.split(
