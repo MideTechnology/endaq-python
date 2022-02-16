@@ -55,10 +55,6 @@ setuptools.setup(
         keywords='ebml binary ide mide endaq',
         packages=setuptools.find_packages(exclude=('tests',)),
         package_dir={'endaq': './endaq'},
-        # package_data={
-        #     'idelib': ['schemata/*'],
-        # },
-        # test_suite='./testing',
         project_urls={
             "Bug Tracker": "https://github.com/MideTechnology/endaq-python/issues",
             "Documentation": "https://docs.endaq.com/en/latest/",
