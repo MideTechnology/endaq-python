@@ -17,103 +17,43 @@ from endaq.calc.stats import L2_norm
 from endaq.calc import utils
 
 
-def _rel_displ_transfer_func(
-    omega: float, damp: float = 0.0, dt: float = 1.0
-) -> scipy.signal.ltisys.TransferFunctionDiscrete:
+def _absolute_acceleration_coefficients(omega, Q, T):
     """
-    Generate the transfer function:
+    Calculate the coefficients of the Z-domain transfer function for the
+    absolute acceleration response according to ISO 18431-4.
 
-        `H(s) = L{z(t)}(s) / L{y"(t)}(s) = (1/s²)(Z(s)/Y(s))`
-
-    for the PDE:
-
-        `z" + (2ζω)z' + (ω²)z = -y"`
+    :param omega: the natural frequency of the system
+    :param Q: the quality factor of the system
+    :param T: the time step in seconds
+    :return: the coefficients of the Z-domain transfer function b, a
 
     .. seealso::
 
-        - `Pseudo Velocity Shock Spectrum Rules For Analysis Of Mechanical Shock, Howard A. Gaberson <https://info.endaq.com/hubfs/pvsrs_rules.pdf>`_
-        - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
-          Documentation for the transfer function class used to characterize the
-          relative displacement calculation.
+        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`
+          Explicit implementations of digital filter coefficients for shock spectra.
     """
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", scipy.signal.BadCoefficients)
+    A = omega*T/(2.*Q)
+    B = omega*T*np.sqrt(1. - 1./(4.*(Q**2)))
 
-        return scipy.signal.TransferFunction(
-            [-1],
-            [1, 2 * damp * omega, omega ** 2],
-        ).to_discrete(dt=dt)
+    b = (
+        1. - np.exp(-A)*np.sin(B)/B,
+        2.*np.exp(-A)*(np.sin(B)/B - np.cos(B)),
+        np.exp(-2*A) - np.exp(-A)*np.sin(B)/B,
+        )
+    a = (
+        1.,
+        -2.*np.exp(-A)*np.cos(B),
+        np.exp(-2.*A),
+        )
 
-
-def rel_displ(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFrame:
-    """
-    Calculate the relative displacement for a SDOF system.
-
-    The "relative" displacement follows the transfer function:
-
-        `H(s) = L{z(t)}(s) / L{y"(t)}(s) = (1/s²)(Z(s)/Y(s))`
-
-    for the PDE:
-
-        `z" + (2ζω)z' + (ω²)z = -y"`
-
-    :param accel: the absolute acceleration `y"`
-    :param omega: the natural frequency `ω` of the SDOF system
-    :param damp: the damping coefficient `ζ` of the SDOF system
-    :return: the relative displacement `z` of the SDOF system
-
-    .. seealso::
-
-        - `Pseudo Velocity Shock Spectrum Rules For Analysis Of Mechanical Shock, Howard A. Gaberson <https://info.endaq.com/hubfs/pvsrs_rules.pdf>`_
-        - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
-          Documentation for the transfer function class used to characterize the
-          relative displacement calculation.
-        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`_
-          Documentation for the biquad function used to implement the transfer
-          function.
-    """
-    dt = utils.sample_spacing(accel)
-    tf = _rel_displ_transfer_func(omega, damp, dt)
-
-    return accel.apply(
-        functools.partial(scipy.signal.lfilter, tf.num, tf.den, axis=0),
-        raw=True,
-    )
+    return b, a
 
 
-def _abs_accel_transfer_func(
-    omega: float, damp: float = 0.0, dt: float = 1.0
-) -> scipy.signal.ltisys.TransferFunctionDiscrete:
-    """
-    Generate the transfer function:
-
-        `H(s) = L{x"(t)}(s) / L{y"(t)}(s) = X(s)/Y(s)`
-
-    for the PDE:
-
-        `x" + (2ζω)x' + (ω²)x = (2ζω)y' + (ω²)y`
-
-    .. seealso::
-
-        - `An Introduction To The Shock Response Spectrum, Tom Irvine, 9 July 2012 <http://www.vibrationdata.com/tutorials2/srs_intr.pdf>`_
-        - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
-          Documentation for the transfer function class used to characterize the
-          relative displacement calculation.
-    """
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", scipy.signal.BadCoefficients)
-
-        return scipy.signal.TransferFunction(
-            [0, 2 * damp * omega, omega ** 2],
-            [1, 2 * damp * omega, omega ** 2],
-        ).to_discrete(dt=dt)
-
-
-def abs_accel(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFrame:
+def absolute_acceleration(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFrame:
     """
     Calculate the absolute acceleration for a SDOF system.
 
-    The "absolute acceleration" follows the transfer function:
+    The absolute acceleration follows the transfer function:
 
         `H(s) = L{x"(t)}(s) / L{y"(t)}(s) = X(s)/Y(s)`
 
@@ -132,17 +72,335 @@ def abs_accel(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFr
         - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
           Documentation for the transfer function class used to characterize the
           relative displacement calculation.
-        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`_
+        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`__
           Documentation for the biquad function used to implement the transfer
           function.
+        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`
+          Explicit implementations of digital filter coefficients for shock spectra.
     """
-    dt = utils.sample_spacing(accel)
-    tf = _abs_accel_transfer_func(omega, damp, dt)
+    T = utils.sample_spacing(accel)
+    Q = 1./(2.*damp)
 
     return accel.apply(
-        functools.partial(scipy.signal.lfilter, tf.num, tf.den, axis=0),
+        functools.partial(
+                scipy.signal.lfilter,
+                *_absolute_acceleration_coefficients(omega, Q, T),
+                axis=0,
+                ),
         raw=True,
-    )
+        )
+
+
+def _relative_velocity_coefficients(omega, Q, T):
+    """
+    Calculate the coefficients of the Z-domain transfer function for the
+    relative velocity response according to ISO 18431-4.
+
+    :param omega: the natural frequency of the system
+    :param Q: the quality factor of the system
+    :param T: the time step in seconds
+    :return: the coefficients of the Z-domain transfer function b, a
+
+    .. seealso::
+
+        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`
+          Explicit implementations of digital filter coefficients for shock spectra.
+    """
+    A = omega*T/(2.*Q)
+    B = omega*T*np.sqrt(1. - 1./(4.*(Q**2.)))
+    C = np.exp(-A)*np.sin(B)/np.sqrt(4.*(Q**2.) - 1.)
+    D = T*(omega**2.)
+
+    b = (
+        (-1. + np.exp(-A)*np.cos(B) + C)/D,
+        (1. - np.exp(-2.*A) - 2.*C)/D,
+        (np.exp(-2.*A) - np.exp(-A)*np.cos(B) + C)/D,
+        )
+    a = (
+        1.,
+        -2.*np.exp(-A)*np.cos(B),
+        np.exp(-2.*A),
+        )
+
+    return b, a
+
+
+def relative_velocity(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFrame:
+    """
+    Calculate the relative velocity for a SDOF system.
+
+    The relative velocity follows the transfer function:
+
+        `H(s) = L{z'(t)}(s) / L{y"(t)}(s) = (1/s)(Z(s)/Y(s))`
+
+    for the PDE:
+
+        `z" + (2ζω)z' + (ω²)z = -y"`
+
+    :param accel: the absolute acceleration y"
+    :param omega: the natural frequency ω of the SDOF system
+    :param damp: the damping coefficient ζ of the SDOF system
+    :return: the relative velocity z' of the SDOF system
+
+    .. seealso::
+
+        - `Pseudo Velocity Shock Spectrum Rules For Analysis Of Mechanical Shock, Howard A. Gaberson <https://info.endaq.com/hubfs/pvsrs_rules.pdf>`_
+        - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
+          Documentation for the transfer function class used to characterize the
+          relative displacement calculation.
+        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`__
+          Documentation for the biquad function used to implement the transfer
+          function.
+        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`
+          Explicit implementations of digital filter coefficients for shock spectra.
+    """
+    T = utils.sample_spacing(accel)
+    Q = 1./(2.*damp)
+
+    return accel.apply(
+        functools.partial(
+                scipy.signal.lfilter,
+                *_relative_velocity_coefficients(omega, Q, T),
+                axis=0,
+                ),
+        raw=True,
+        )
+
+
+def _relative_displacement_coefficients(omega, Q, T):
+    """
+    Calculate the coefficients of the Z-domain transfer function for the
+    relative displacement response according to ISO 18431-4.
+
+    :param omega: the natural frequency of the system
+    :param Q: the quality factor of the system
+    :param T: the time step in seconds
+    :return: the coefficients of the Z-domain transfer function b, a
+
+    .. seealso::
+
+        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`
+          Explicit implementations of digital filter coefficients for shock spectra.
+    """
+    A = omega*T/(2.*Q)
+    B = omega*T*np.sqrt(1. - 1./(4.*(Q**2.)))
+    C = T*(omega**3.)
+    q = (1./(2.*(Q**2.)) - 1.)/np.sqrt(1. - 1./(4.*(Q**2.)))
+
+    b = (
+        ((1. - np.exp(-A)*np.cos(B))/Q - q*np.exp(-A)*np.sin(B) - omega*T)/C,
+        (2.*np.exp(-A)*np.cos(B)*omega*T -
+         (1. - np.exp(-2.*A))/Q +
+         2*q*np.exp(-A)*np.sin(B))/C,
+        (-np.exp(-2.*A)*(omega*T + 1./Q) +
+         np.exp(-A)*np.cos(B)/Q -
+         q*np.exp(-A)*np.sin(B))/C,
+        )
+    a = (
+        1.,
+        -2.*np.exp(-A)*np.cos(B),
+        np.exp(-2.*A),
+        )
+
+    return b, a
+
+
+def relative_displacement(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFrame:
+    """
+    Calculate the relative displacement for a SDOF system.
+
+    The relative displacement follows the transfer function:
+
+        `H(s) = L{z(t)}(s) / L{y"(t)}(s) = (1/s²)(Z(s)/Y(s))`
+
+    for the PDE:
+
+        `z" + (2ζω)z' + (ω²)z = -y"`
+
+    :param accel: the absolute acceleration y"
+    :param omega: the natural frequency ω of the SDOF system
+    :param damp: the damping coefficient ζ of the SDOF system
+    :return: the relative displacement z of the SDOF system
+
+    .. seealso::
+
+        - `Pseudo Velocity Shock Spectrum Rules For Analysis Of Mechanical Shock, Howard A. Gaberson <https://info.endaq.com/hubfs/pvsrs_rules.pdf>`_
+        - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
+          Documentation for the transfer function class used to characterize the
+          relative displacement calculation.
+        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`__
+          Documentation for the biquad function used to implement the transfer
+          function.
+        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`
+          Explicit implementations of digital filter coefficients for shock spectra.
+    """
+    T = utils.sample_spacing(accel)
+    Q = 1./(2.*damp)
+
+    return accel.apply(
+        functools.partial(
+                scipy.signal.lfilter,
+                *_relative_displacement_coefficients(omega, Q, T),
+                axis=0,
+                ),
+        raw=True,
+        )
+
+
+def _pseudo_velocity_coefficients(omega, Q, T):
+    """
+    Calculate the coefficients of the Z-domain transfer function for the
+    pseudo-velocity response according to ISO 18431-4.
+
+    :param omega: the natural frequency of the system
+    :param Q: the quality factor of the system
+    :param T: the time step in seconds
+    :return: the coefficients of the Z-domain transfer function b, a
+
+    .. seealso::
+
+        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`
+          Explicit implementations of digital filter coefficients for shock spectra.
+    """
+    A = omega*T/(2.*Q)
+    B = omega*T*np.sqrt(1. - 1./(4.*(Q**2)))
+    C = T*(omega**2)
+    q = (1./(2.*(Q**2.)) - 1.)/np.sqrt(1. - 1./(4.*(Q**2.)))
+
+    b = (
+        ((1. - np.exp(-A)*np.cos(B))/Q - q*np.exp(-A)*np.sin(B) - omega*T)/C,
+        (2.*np.exp(-A)*np.cos(B)*omega*T - (1. - np.exp(-2.*A))/Q + 2.*q*np.exp(-A)*np.sin(B))/C,
+        (-np.exp(-2.*A)*(omega*T + 1./Q) + np.exp(-A)*np.cos(B)/Q - q*np.exp(-A)*np.sin(B))/C,
+        )
+    a = (
+        1.,
+        -2.*np.exp(-A)*np.cos(B),
+        np.exp(-2.*A),
+        )
+
+    return b, a
+
+
+def pseudo_velocity(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFrame:
+    """
+    Calculate the pseudo-velocity for a SDOF system.
+
+    The pseudo-velocity follows the transfer function:
+
+        `H(s) = L{ωz(t)}(s) / L{y"(t)}(s) = (ω/s²)(Z(s)/Y(s))`
+
+    for the PDE:
+
+        `z" + (2ζω)z' + (ω²)z = -y"`
+
+    :param accel: the absolute acceleration y"
+    :param omega: the natural frequency ω of the SDOF system
+    :param damp: the damping coefficient ζ of the SDOF system
+    :return: the pseudo-velocity of the SDOF system
+
+    .. seealso::
+
+        - `Pseudo Velocity Shock Spectrum Rules For Analysis Of Mechanical Shock, Howard A. Gaberson <https://info.endaq.com/hubfs/pvsrs_rules.pdf>`_
+        - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
+          Documentation for the transfer function class used to characterize the
+          relative displacement calculation.
+        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`__
+          Documentation for the biquad function used to implement the transfer
+          function.
+        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`
+          Explicit implementations of digital filter coefficients for shock spectra.
+    """
+    T = utils.sample_spacing(accel)
+    Q = 1./(2.*damp)
+
+    return accel.apply(
+        functools.partial(
+                scipy.signal.lfilter,
+                *_pseudo_velocity_coefficients(omega, Q, T),
+                axis=0,
+                ),
+        raw=True,
+        )
+
+
+def _relative_displacement_static_coefficients(omega, Q, T):
+    """
+    Calculate the coefficients of the Z-domain transfer function for the
+    relative displacement response expressed as equivalent static acceleration
+    according to ISO 18431-4.
+
+    :param omega: the natural frequency of the system
+    :param Q: the quality factor of the system
+    :param T: the time step in seconds
+    :return: the coefficients of the Z-domain transfer function b, a
+
+    .. seealso::
+
+        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`
+          Explicit implementations of digital filter coefficients for shock spectra.
+    """
+    A = omega*T/(2.*Q)
+    B = omega*T*np.sqrt(1. - 1/(4.*(Q**2.)))
+    C = (T*omega)
+    q = (1./(2.*(Q**2.)) - 1.)/(np.sqrt(1. - 1./(4.*(Q**2.))))
+
+    b = (
+        ((1 - np.exp(-A)*np.cos(B))/Q - q*np.exp(-A)*np.sin(B) - omega*T)/C,
+        (2*np.exp(-A)*np.cos(B)*omega*T - (1 - np.exp(-2.*A))/Q + 2.*q*np.exp(-A)*np.sin(B))/C,
+        (-np.exp(-2.*A)*(omega*T + 1./Q) + np.exp(-A)*np.cos(B)/Q - q*np.exp(-A)*np.sin(B))/C,
+        )
+    a = (
+        1.,
+        -2.*np.exp(-A)*np.cos(B),
+        np.exp(-2.*A),
+        )
+
+    return b, a
+
+
+def relative_displacement_static(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.DataFrame:
+    """
+    Calculate the relative displacement expressed as equivalent static
+    acceleration for a SDOF system.
+
+    The relative displacement as static acceleration follows the transfer
+    function:
+
+        `H(s) = L{ω²z(t)}(s) / L{y"(t)}(s) = (ω²/s²)(Z(s)/Y(s))`
+
+    for the PDE:
+
+        `z" + (2ζω)z' + (ω²)z = -y"`
+
+    :param accel: the absolute acceleration y"
+    :param omega: the natural frequency ω of the SDOF system
+    :param damp: the damping coefficient ζ of the SDOF system
+    :return: the relative displacement of the SDOF system expressed as
+        equivalent static acceleration
+
+    .. seealso::
+
+        - `Pseudo Velocity Shock Spectrum Rules For Analysis Of Mechanical Shock, Howard A. Gaberson <https://info.endaq.com/hubfs/pvsrs_rules.pdf>`_
+        - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
+          Documentation for the transfer function class used to characterize the
+          relative displacement calculation.
+        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`__
+          Documentation for the biquad function used to implement the transfer
+          function.
+        - `ISO 18431-4 Mechanical vibration and shock — Signal processing — Part 4: Shock-response spectrum analysis`
+          Explicit implementations of digital filter coefficients for shock spectra.
+    """
+    T = utils.sample_spacing(accel)
+    Q = 1./(2.*damp)
+
+    return accel.apply(
+        functools.partial(
+                scipy.signal.lfilter,
+                *_relative_displacement_static_coefficients(omega, Q, T),
+                axis=0,
+                ),
+        raw=True,
+        )
 
 
 def shock_spectrum(
@@ -178,7 +436,7 @@ def shock_spectrum(
         - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
           Documentation for the transfer function class used to characterize the
           relative displacement calculation.
-        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`_
+        - `SciPy biquad filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter.html>`__
           Documentation for the biquad function used to implement the transfer
           function.
     """
@@ -190,9 +448,9 @@ def shock_spectrum(
     omega = 2 * np.pi * freqs
 
     if mode == "srs":
-        make_tf = _abs_accel_transfer_func
+        make_coeffs = _absolute_acceleration_coefficients
     elif mode == "pvss":
-        make_tf = _rel_displ_transfer_func
+        make_coeffs = _pseudo_velocity_coefficients
     else:
         raise ValueError(f"invalid spectrum mode {mode:r}")
 
@@ -211,11 +469,17 @@ def shock_spectrum(
     zi = np.zeros((2,) + accel.shape[1:])
     zero_padding = np.zeros((int(T_padding // dt) + 1,) + accel.shape[1:])
 
-    for i_nd in np.ndindex(freqs.shape):
-        tf = make_tf(omega[i_nd], damp, dt)
-        rd, zf = scipy.signal.lfilter(tf.num, tf.den, accel.to_numpy(), zi=zi, axis=0)
+    Q = 1./(2.*damp)
+
+    for i_nd in np.ndindex(freqs.shape[0]):
+        rd, zf = scipy.signal.lfilter(
+                *make_coeffs(omega[i_nd], Q, dt),
+                accel.to_numpy(),
+                zi=zi,
+                axis=0,
+                )
         rd_padding, _ = scipy.signal.lfilter(
-            tf.num, tf.den, zero_padding, zi=zf, axis=0
+            *make_coeffs(omega[i_nd], Q, dt), zero_padding, zi=zf, axis=0
         )
 
         if aggregate_axes:
@@ -224,9 +488,6 @@ def shock_spectrum(
 
         results[(0,) + i_nd] = -np.minimum(rd.min(axis=0), rd_padding.min(axis=0))
         results[(1,) + i_nd] = np.maximum(rd.max(axis=0), rd_padding.max(axis=0))
-
-    if mode == "pvss":
-        results = results * omega[..., np.newaxis]
 
     if aggregate_axes or not two_sided:
         return pd.DataFrame(
