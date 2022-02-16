@@ -1,8 +1,10 @@
+from typing import List, Tuple
+
 import pandas as pd
 import scipy.spatial
 
 
-def validate_euler_mode(mode):
+def validate_euler_mode(mode: str) -> Tuple[str, List[str]]:
 
     _mode = mode.lower()
 
@@ -59,7 +61,7 @@ def validate_euler_mode(mode):
                          'alpha-beta-gamma, α-β-γ, psi-theta-phi, ψ-θ-φ')
 
 
-def quaternion_to_euler(df, mode='x-y-z'):
+def quaternion_to_euler(df: pd.DataFrame, mode: str = 'x-y-z') -> pd.DataFrame:
     """
     Convert quaternion data in the dataframe ``df`` to euler angles.  This can
     be done with either intrinsic or extrinsic rotations, determined
