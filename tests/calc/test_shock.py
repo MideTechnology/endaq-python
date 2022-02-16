@@ -283,7 +283,7 @@ def test_pseudovelocity_amp(freq, damp):
     freqs = np.geomspace(1e-1, 1000, 10000)
 
     la = laplace_amplitude(-wn, s**2 + wn*s/Q + wn**2, freqs, {fn: freq, d: damp})
-    za = z_amplitude(*shock._pseudo_velocity_coeffs(omega, 1/(2*damp), dt), freqs, dt)
+    za = z_amplitude(*shock._pseudo_velocity_coefficients(omega, 1/(2*damp), dt), freqs, dt)
 
     npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
 
@@ -309,7 +309,7 @@ def test_pseudovelocity_phase(freq, damp):
     freqs = np.geomspace(1e-1, 1000, 10000)
 
     la = laplace_phase(-wn, s**2 + wn*s/Q + wn**2, freqs, {fn:freq, d:damp})
-    za = z_phase(*shock._pseudo_velocity_coeffs(omega, 1/(2*damp), dt), freqs, dt)
+    za = z_phase(*shock._pseudo_velocity_coefficients(omega, 1/(2*damp), dt), freqs, dt)
 
     npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
 

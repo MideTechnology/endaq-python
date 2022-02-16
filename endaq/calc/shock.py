@@ -247,7 +247,7 @@ def relative_displacement(accel: pd.DataFrame, omega: float, damp: float = 0.0) 
         )
 
 
-def _pseudo_velocity_coeffs(omega, Q, T):
+def _pseudo_velocity_coefficients(omega, Q, T):
     """
     Calculate the coefficients of the Z-domain transfer function for the
     pseudo-velocity response according to ISO 18431-4.
@@ -316,7 +316,7 @@ def pseudo_velocity(accel: pd.DataFrame, omega: float, damp: float = 0.0) -> pd.
     return accel.apply(
         functools.partial(
                 scipy.signal.lfilter,
-                *_pseudo_velocity_coeffs(omega, Q, T),
+                *_pseudo_velocity_coefficients(omega, Q, T),
                 axis=0,
                 ),
         raw=True,
@@ -450,7 +450,7 @@ def shock_spectrum(
     if mode == "srs":
         make_coeffs = _absolute_acceleration_coefficients
     elif mode == "pvss":
-        make_coeffs = _pseudo_velocity_coeffs
+        make_coeffs = _pseudo_velocity_coefficients
     else:
         raise ValueError(f"invalid spectrum mode {mode:r}")
 
