@@ -104,6 +104,7 @@ instance/
 # Sphinx documentation
 docs/_build/
 docs/_doctest/
+docs/_spellcheck/
 
 # PyBuilder
 .pybuilder/

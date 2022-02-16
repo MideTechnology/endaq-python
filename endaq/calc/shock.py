@@ -61,10 +61,10 @@ def absolute_acceleration(accel: pd.DataFrame, omega: float, damp: float = 0.0) 
 
         `x" + (2ζω)x' + (ω²)x = (2ζω)y' + (ω²)y`
 
-    :param accel: the absolute acceleration y"
-    :param omega: the natural frequency ω of the SDOF system
-    :param damp: the damping coefficient ζ of the SDOF system
-    :return: the absolute acceleration x" of the SDOF system
+    :param accel: the absolute acceleration `y"`
+    :param omega: the natural frequency `ω` of the SDOF system
+    :param damp: the damping coefficient `ζ` of the SDOF system
+    :return: the absolute acceleration `x"` of the SDOF system
 
     .. seealso::
 
@@ -414,10 +414,10 @@ def shock_spectrum(
     """
     Calculate the shock spectrum of an acceleration signal.
 
-    :param accel: the absolute acceleration y"
+    :param accel: the absolute acceleration `y"`
     :param freqs: the natural frequencies across which to calculate the spectrum
-    :param damp: the damping coefficient ζ, related to the Q-factor by ζ = 1/(2Q);
-        defaults to 0
+    :param damp: the damping coefficient `ζ`, related to the Q-factor by
+        `ζ = 1/(2Q)`; defaults to 0
     :param mode: the type of spectrum to calculate:
 
         - `'srs'` (default) specifies the Shock Response Spectrum (SRS)
@@ -509,7 +509,7 @@ def shock_spectrum(
 @dataclass
 class HalfSineWavePulse:
     """
-    The output data type for ``enveloping_half_sine``.
+    The output data type for :py:func:`enveloping_half_sine`.
 
     The significant data members are `amplitude` and `duration`, which can
     simply be unpacked as if from a plain tuple:

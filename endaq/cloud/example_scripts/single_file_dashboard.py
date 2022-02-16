@@ -24,7 +24,7 @@ def single_file_analysis_script(files: list,
     # Set the aesthetic theme of the figures (defaults to enDAQ dark theme)
     set_theme()
 
-    # Gets the IDE data as an idelib.dataset.Dataset object
+    # Gets the IDE data as an `idelib.dataset.Dataset` object
     doc = get_doc(file_download_url)
 
     # A dictionary mapping channel names to pandas dataframes of that channels data

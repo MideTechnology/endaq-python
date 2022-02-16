@@ -38,7 +38,7 @@ def produce_dashboard_plots(dashboard_script_fn: FunctionType, api_key: str, max
                             environment: str = 'production', display_plots: bool = True) -> list:
     """
     A function used to simulate a run of a desired enDAQ Cloud custom report script without needing to use
-    cloud.endaq.com
+    ``cloud.endaq.com``.
 
     :param dashboard_script_fn: A function accepting the parameters `files` and `file_download_url`, which has all
      the exact code that would be put into a enDAQ Cloud custom report script, followed by one final line:

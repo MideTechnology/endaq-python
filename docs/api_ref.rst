@@ -10,5 +10,3 @@ enDAQ API Reference
    endaq/cloud
    endaq/plot
    endaq/batch
-
-   endaq/cloud_API_wrapper

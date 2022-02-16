@@ -1,4 +1,22 @@
+import codecs
+import os.path
 import setuptools
+
+
+def read(rel_path):
+    here = os.path.abspath(os.path.dirname(__file__))
+    with codecs.open(os.path.join(here, rel_path), 'r') as fp:
+        return fp.read()
+
+
+def get_version(rel_path):
+    for line in read(rel_path).splitlines():
+        if line.startswith('__version__'):
+            delim = '"' if '"' in line else "'"
+            return line.split(delim)[1]
+    else:
+        raise RuntimeError("Unable to find version string.")
+
 
 with open('README.md', 'r', encoding='utf-8') as fh:
     long_description = fh.read()
@@ -28,6 +46,7 @@ DOCS_REQUIRES = [
     "sphinx",
     "pydata-sphinx-theme",
     "sphinx-plotly-directive",
+    "sphinxcontrib-spelling",
     ]
 
 EXAMPLE_REQUIRES = [
@@ -35,7 +54,7 @@ EXAMPLE_REQUIRES = [
 
 setuptools.setup(
         name='endaq',
-        version='1.3.0',
+        version=get_version('endaq/__init__.py'),
         author='Mide Technology',
         author_email='help@mide.com',
         description='A comprehensive, user-centric Python API for working with enDAQ data and devices',
