@@ -398,3 +398,19 @@ def enveloping_half_sine(
         amplitude=2 * np.pi * max_f_pvss,
         duration=max_pvss / (4 * amp_factor(damp) * max_f_pvss),
     )
+
+
+def shock_thresholding(df, threshold=5.0, pre_pad=1.0, post_pad=1.0):
+    rms = (df**2).sum(1)**0.5
+    fs = 1/(np.diff(df.index).mean())
+    padded = rms.rolling(int(fs*post_pad), 1).max()[::-1].rolling(int(fs*pre_pad), 1).max()[::-1] > threshold
+    padded_diff = np.diff(np.concatenate([[False], padded, [False]])*1)
+    starts = np.argwhere(padded_diff == 1) - 1
+    ends = np.argwhere(padded_diff == -1) - 1
+
+    return [df.iloc[a[0]:b[0]] for a, b in zip(starts, ends)]
+
+
+
+
+
