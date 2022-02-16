@@ -103,8 +103,8 @@ def get_tsne_plot(df: pd.DataFrame,
      will be used to update its position in the visualization.
     :param random_seed: Integer value to set the seed value for the random
     :param num_iterations: The number of iterations to train for
-    :param learning_rate: The rate at which to update teh values in the model
-    :param color_col: The column name in the given dataframe (as merged_df) that is used to color
+    :param learning_rate: The rate at which to update the values in the model
+    :param color_col: The column name in the given dataframe (as ``merged_df``) that is used to color
      data points with.   This is used in combination with the color_discrete_map parameter
     :param color_discrete_map: A dictionary which maps the values given to color data points based on (see the
      color_col parameter description) to the colors that these data points should be

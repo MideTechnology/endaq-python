@@ -108,14 +108,12 @@ def welch(
     else:
         nfft = kwargs["nfft"]
 
-    freqs, psd = scipy.signal.welch(
-        df.values, fs=fs, nperseg=nperseg, **kwargs, axis=0
-    )
+    freqs, psd = scipy.signal.welch(df.values, fs=fs, nperseg=nperseg, **kwargs, axis=0)
     if scaling == "parseval":
         psd = psd * freqs[1]
     elif scaling == "unit":
-        psd *= 2*freqs[1]
-        psd *= nfft/nperseg
+        psd *= 2 * freqs[1]
+        psd *= nfft / nperseg
         psd **= 0.5
 
     return pd.DataFrame(
@@ -129,7 +127,7 @@ def differentiate(df: pd.DataFrame, n: float = 1.0) -> pd.DataFrame:
 
     :param df: a periodogram
     :param n: the time derivative order; negative orders represent integration
-    :return: a periodogram of the time-derivated data
+    :return: a periodogram of the time-differentiated data
     """
     # Involves a division by zero for n < 0
     with warnings.catch_warnings():
@@ -152,7 +150,7 @@ def to_jagged(
     """
     Calculate a periodogram over non-uniformly spaced frequency bins.
 
-    :param df: the returned values from ``endaq.calc.psd.welch``
+    :param df: the returned values from :py:func:`endaq.calc.psd.welch`
     :param freq_splits: the boundaries of the frequency bins; must be strictly
         increasing
     :param agg: the method for aggregating values into bins; `'mean'` preserves
@@ -211,11 +209,11 @@ def to_octave(
     """
     Calculate a periodogram over log-spaced frequency bins.
 
-    :param df: the returned values from ``endaq.calc.psd.welch``
+    :param df: the returned values from :py:func:`endaq.calc.psd.welch`
     :param fstart: the first frequency bin, in Hz; defaults to 1 Hz
     :param octave_bins: the number of frequency bins in each octave; defaults
         to 12
-    :param kwargs: other parameters to pass directly to ``to_jagged``
+    :param kwargs: other parameters to pass directly to :py:func:`to_jagged`
     :return: a periodogram with the given logarithmic frequency spacing
     """
     max_f = df.index.max()
@@ -238,11 +236,57 @@ def to_octave(
     return result
 
 
+def _aligned_bin_width(fstart: float = 1.0, octave_bins: float = 12.0) -> float:
+    """
+    Calculate a "good" linearly-spaced bin width, from a PSD of which an
+    octave-spaced PSD can be accurately calculated.
+
+    When computing the octave-spaced PSD, linear bins are mapped to octave bins
+    and the linear bin values are then summed together within each octave bin.
+    However, this calculation can produce an octave-spaced PSD that is an
+    *inaccurate* representation of the original linearly-spaced PSD, if the
+    mapping from linear to octave bins is *poorly aligned*; e.g., if a
+    significant linear bin is halfway between two adjacent octave bins.
+
+    Thus, the main criterion for a "good" linear spacing is how well the bin
+    borders in the linearly-spaced PSD align with those of the octave-spaced
+    PSD. This is mostly only significant at the lower frequencies, where the
+    octave-spaced bins comprise only a handful of linearly-spaced bins.
+
+    :param fstart: the starting frequency of the octave-spaced PSD
+    :param octave_bins: the number of bins per octave in the octave-spaced PSD
+    :return: a bin-width for a linearly-spaced PSD that aligns well with an
+        octave-spaced PSD defined by the given spacing parameters
+
+    .. todo::
+        allow user to adjust output resolution:
+        - add "good"-ness as a parameter to adjust resolution of result?
+        - iterate over solutions with increasing resolutions -> user just picks
+          the most appropriate one?
+    """
+    # To get a good alignment with an octave-spaced frequency bin, the linear
+    # bin width should:
+    # - be a *"half" divisor* of the octave bin's lower and upper bounds:
+    #       f_oct_lower = f_lin * (n1 + 1/2)
+    #       f_oct_upper = f_lin * (n2 + 1/2)
+    #   for integers n1, n2
+    # -> be a divisor of the octave bin's breadth:
+    #       f_oct_upper - f_oct_lower = f_lin * (n2 - n1) = f_lin * m
+    lbound_factor = 2 ** (-1 / (2 * octave_bins))
+    ubound_factor = 2 ** (1 / (2 * octave_bins))
+    breadth_factor = ubound_factor - lbound_factor
+
+    # TODO find another way to calculate a linear bin width that better fits
+    # the above description
+    arb_odd_int = 5  # any odd integer; 5 provides some resolution w/o too many segments
+    return fstart / int(arb_odd_int / breadth_factor)
+
+
 def vc_curves(
     accel_psd: pd.DataFrame, fstart: float = 1.0, octave_bins: float = 12.0
 ) -> pd.DataFrame:
     """
-    Calculate Vibration Criterion (VC) curves from an acceration periodogram.
+    Calculate Vibration Criterion (VC) curves from an acceleration periodogram.
 
     :param accel_psd: a periodogram of the input acceleration
     :param fstart: the first frequency bin

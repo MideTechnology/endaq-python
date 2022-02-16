@@ -43,7 +43,7 @@ def fft(
         optimize: bool = True,
     ) -> pd.DataFrame:
     """
-    Perform the FFT of the data in ``df``, using Scipy's FFT method from :py:func:`scipy.fft.fft`.  If the in ``df`` is all real,
+    Perform the FFT of the data in ``df``, using SciPy's FFT method from :py:func:`scipy.fft.fft`.  If the in ``df`` is all real,
     then the output will be symmetrical between positive and negative frequencies, and it is instead recommended that
     you use the :py:func:`endaq.calc.fft.fft` method.
 
@@ -55,12 +55,12 @@ def fft(
                  input, the input is cropped. If it is larger, the input is padded with zeros. If n is not given, the
                  length of the input along the axis specified by axis is used.
     :param norm: Normalization mode. Default is "unit", meaning a normalization of 2/n is applied on the
-                 forward transform, and a normalization of 1/2 is applied on the ifft. The "unit" normalization means
+                 forward transform, and a normalization of 1/2 is applied on the ``ifft``. The "unit" normalization means
                  that the units of the FFT are the same as the units of the data put into it and that a sinusoid of
                  amplitude A will peak with amplitude A in the frequency domain.  “forward” instead applies a
-                 normalization of 1/n on the forward transforms and no normalization is applied on the ifft. “backward”
-                 applies no normalization on the forward tranform and 1/n on the backward. For norm="ortho", both
-                 directions are scaled by 1/sqrt(n).
+                 normalization of 1/n on the forward transforms and no normalization is applied on the ``ifft``. “backward”
+                 applies no normalization on the forward transform and 1/n on the backward. For ``norm="ortho"``, both
+                 directions are scaled by `1/sqrt(n)`.
     :param optimize: If optimize is set to True, the length of the FFT will automatically be padded to a
                      length which can be calculated more quickly.  Default is True.
     :param kwargs: Further keywords passed to :py:func:`scipy.fft.fft`.  Note that the nfft parameter of this function is passed
@@ -133,7 +133,7 @@ def rfft(
         optimize: bool = True,
     ) -> pd.DataFrame:
     """
-    Perform the real valued FFT of the data in ``df``, using Scipy's RFFT method from :py:func:`scipy.fft.rfft`.
+    Perform the real valued FFT of the data in ``df``, using SciPy's RFFT method from :py:func:`scipy.fft.rfft`.
 
     :param df: The input data
     :param output: The type of the output of the FFT. Default is "magnitude".  "magnitude" will return the
@@ -143,12 +143,12 @@ def rfft(
                  input, the input is cropped. If it is larger, the input is padded with zeros. If n is not given, the
                  length of the input along the axis specified by axis is used.
     :param norm: Normalization mode. Default is "unit", meaning a normalization of 2/n is applied on the
-                 forward transform, and a normalization of 1/2 is applied on the ifft. The "unit" normalization means
+                 forward transform, and a normalization of 1/2 is applied on the ``ifft``. The "unit" normalization means
                  that the units of the FFT are the same as the units of the data put into it and that a sinusoid of
                  amplitude A will peak with amplitude A in the frequency domain.  “forward” instead applies a
-                 normalization of 1/n on the forward transforms and no normalization is applied on the ifft. “backward”
-                 applies no normalization on the forward tranform and 1/n on the backward. For norm="ortho", both
-                 directions are scaled by 1/sqrt(n).
+                 normalization of 1/n on the forward transforms and no normalization is applied on the ``ifft``. “backward”
+                 applies no normalization on the forward transform and 1/n on the backward. For ``norm="ortho"``, both
+                 directions are scaled by `1/sqrt(n)`.
     :param optimize: If optimize is set to True, the length of the FFT will automatically be padded to a
                      length which can be calculated more quickly.  Default is True.
     :param kwargs: Further keywords passed to :py:func:`scipy.fft.rfft`.  Note that the nfft parameter of this function is passed
@@ -221,19 +221,19 @@ def dct(
         **kwargs,
     ) -> pd.DataFrame:
     """
-    Calculate the DCT of the data in ``df``, using Scipy's DCT method from :py:func:`scipy.fft.dct`.
+    Calculate the DCT of the data in ``df``, using SciPy's DCT method from :py:func:`scipy.fft.dct`.
 
     :param df: the input data
     :param nfft: Length of the transformed axis of the output. If nfft is smaller than the length of the
                  input, the input is cropped. If it is larger, the input is padded with zeros. If n is not given, the
                  length of the input along the axis specified by axis is used.
     :param norm: Normalization mode. Default is "unit", meaning a normalization of 2/n is applied on the
-                 forward transform, and a normalization of 1/2 is applied on the idct. The "unit" normalization means
+                 forward transform, and a normalization of 1/2 is applied on the ``idct``. The "unit" normalization means
                  that the units of the FFT are the same as the units of the data put into it and that a sinusoid of
                  amplitude A will peak with amplitude A in the frequency domain.  “forward” instead applies a
-                 normalization of 1/n on the forward transforms and no normalization is applied on the idct. “backward”
-                 applies no normalization on the forward tranform and 1/n on the backward. For norm="ortho", both
-                 directions are scaled by 1/sqrt(n).
+                 normalization of 1/n on the forward transforms and no normalization is applied on the ``idct``. “backward”
+                 applies no normalization on the forward transform and 1/n on the backward. For ``norm="ortho"``, both
+                 directions are scaled by `1/sqrt(n)`.
     :param kwargs: Further keywords passed to :py:func:`scipy.fft.dct`.  Note that the nfft parameter of this function
                    is passed to :py:func:`scipy.fft.dct` as ``n``.
     :return: The DCT of each channel in ``df``.
@@ -286,19 +286,19 @@ def dst(
         **kwargs,
     ) -> pd.DataFrame:
     """
-    Calculate the DST of the data in ``df``, using Scipy's DST method from :py:func:`scipy.fft.dst`.
+    Calculate the DST of the data in ``df``, using SciPy's DST method from :py:func:`scipy.fft.dst`.
 
     :param df: the input data
     :param nfft: Length of the transformed axis of the output. If nfft is smaller than the length of the
                  input, the input is cropped. If it is larger, the input is padded with zeros. If n is not given, the
                  length of the input along the axis specified by axis is used.
     :param norm: Normalization mode. Default is "unit", meaning a normalization of 2/n is applied on the
-                 forward transform, and a normalization of 1/2 is applied on the idst. The "unit" normalization means
+                 forward transform, and a normalization of 1/2 is applied on the ``idst``. The "unit" normalization means
                  that the units of the FFT are the same as the units of the data put into it and that a sinusoid of
                  amplitude A will peak with amplitude A in the frequency domain.  “forward” instead applies a
-                 normalization of 1/n on the forward transforms and no normalization is applied on the idst. “backward”
-                 applies no normalization on the forward tranform and 1/n on the backward. For norm="ortho", both
-                 directions are scaled by 1/sqrt(n).
+                 normalization of 1/n on the forward transforms and no normalization is applied on the ``idst``. “backward”
+                 applies no normalization on the forward transform and 1/n on the backward. For ``norm="ortho"``, both
+                 directions are scaled by `1/sqrt(n)`.
     :param kwargs: Further keywords passed to :py:func:`scipy.fft.dst`.  Note that the nfft parameter of this function is passed
                    to :py:func:`scipy.fft.dst` as ``n``.
     :return: The DST of each channel in ``df``.

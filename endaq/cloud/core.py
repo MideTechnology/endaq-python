@@ -11,12 +11,11 @@ import pandas as pd
 import requests
 import json
 import re
-import urllib.request
-import shutil
 import os
 import pathlib
 import warnings
 
+import endaq.ide.files
 
 __all__ = [
     'EndaqCloud',
@@ -44,7 +43,7 @@ class EndaqCloud:
         Constructor for an `EndaqCloud` object, which provides access to an
         enDAQ Cloud account.
 
-        :param api_key: The Endaq Cloud API associated with your cloud.endaq.com account.
+        :param api_key: The enDAQ Cloud API associated with your ``cloud.endaq.com`` account.
          If you do not have one created yet, they can be created on the following web page:
          https://cloud.endaq.com/account/api-keys
         :param env: The cloud environment to connect to, which can be production, staging, or development.
@@ -106,13 +105,13 @@ class EndaqCloud:
         Download the specified file to local_name if provided, use the file
         name from the cloud if no local name is provided.
         
-        .. todo:: This should be made to match `endaq.ide.get_doc()`
+        .. todo:: This should be made to match :py:func:`endaq.ide.get_doc()`
 
         :param file_id: The file's cloud ID.
         :param local_name: The downloaded file's destination pathname; defaults
             to the file's original basename & located in the directory in which
             the Python interpreter was launched
-        :return: The imported file, as an `idelib.Dataset`.
+        :return: The imported file, as an ``idelib.dataset.Dataset``.
         """
         file_url = self.domain + "/api/v1/files/download/" + file_id
         response = requests.get(file_url, headers={"x-api-key": self.api_key}).json()
@@ -120,12 +119,7 @@ class EndaqCloud:
         if local_name is None:
             local_name = response['file_name']
 
-        with urllib.request.urlopen(download_url) as response, open(local_name, 'wb') as out_file:
-            shutil.copyfileobj(response, out_file)
-
-        f = open(local_name, 'rb')
-
-        return Dataset(f)
+        return endaq.ide.files.get_doc(url=download_url, localfile=local_name)
 
     def download_all_ide_files(self,
                                output_directory: Union[str, pathlib.Path] = "",
@@ -316,11 +310,11 @@ class EndaqCloud:
 
 def count_tags(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Given the dataframe returned by ``EndaqCloud.get_file_table()``, provide
+    Given the dataframe returned by :py:func:`EndaqCloud.get_file_table()`, provide
     some info on the tags of the files in that account.
 
     :param df: A `DataFrame` of file information, as returned by
-        ``EndaqCloud.get_file_table()``.
+        :py:func:`EndaqCloud.get_file_table()`.
     :return: A `DataFrame` summarizing the tags in `df`.
     """
     # NOTE: Called `tags_count()` in Confluence docs. Function names should

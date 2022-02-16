@@ -4,8 +4,9 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
+import scipy.spatial.transform
 from plotly.subplots import make_subplots
-from scipy import signal
+from scipy import signal, spatial
 from typing import Optional
 from collections.abc import Container
 
@@ -24,6 +25,7 @@ __all__ = [
     'octave_psd_bar_plot',
     'rolling_min_max_envelope',
     'around_peak',
+    'animate_quaternion',
 ]
 
 DEFAULT_ATTRIBUTES_TO_PLOT_INDIVIDUALLY = np.array([
@@ -94,7 +96,7 @@ def general_get_correlation_figure(merged_df: pd.DataFrame,
     corresponding to the selected attributes from the drop-down menu.
 
     :param merged_df: A Pandas DataFrame of data to use for producing the plot
-    :param color_col: The column name in the given dataframe (as merged_df) that is used to color
+    :param color_col: The column name in the given dataframe (as ``merged_df``) that is used to color
      data points with.   This is used in combination with the color_discrete_map parameter
     :param color_discrete_map: A dictionary which maps the values given to color data points based on (see the
      color_col parameter description) to the colors that these data points should be
@@ -187,7 +189,7 @@ def get_pure_numpy_2d_pca(df: pd.DataFrame,
     which components are being used for the X and Y axis.
 
     :param df: The dataframe of points to compute the PCA with
-    :param color_col: The column name in the given dataframe (as merged_df) that is used to color
+    :param color_col: The column name in the given dataframe (as ``df``) that is used to color
      data points with.   This is used in combination with the color_discrete_map parameter
     :param color_discrete_map: A dictionary which maps the values given to color data points based on (see the
      color_col parameter description) to the colors that these data points should be
@@ -456,3 +458,83 @@ def around_peak(df: pd.DataFrame, num: int = 1000, leading_ratio: float = 0.5):
     window_end = min(len(df), max_i + int(num * (1-leading_ratio)))
 
     return px.line(df.iloc[window_start: window_end])
+
+
+def animate_quaternion(df, rate=6., scale=1.):
+    """
+    A function to animate orientation as a set of axis markers derived from quaternion data.
+
+    :param df: A dataframe of quaternion data indexed by seconds.
+               Columns must be 'X', 'Y', 'Z', and 'W'.  The order of the columns does not matter.
+    :param rate: The number of frames per second to animate.
+    :param scale: Time-scaling to adjust how quickly data is parsed.  Higher speeds will make the
+                  file run faster, lower speeds will make the file run slower.
+    :return: A Plotly figure containing the plot
+    """
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError(f"The `df` parmeter must be of type `pd.DataFrame` but was given type {type(df)} instead.")
+    elif len(df) == 0:
+        raise ValueError(f"The parameter `df` must have nonzero length, but has shape {df.shape} instead")
+
+    if not isinstance(rate, (int, float)):
+        raise TypeError(f"The `rate` parameter must be an `int` or `float` type, but was given {type(rate)}.")
+    elif rate <= 0:
+        raise ValueError(f"The `rate` parameter must be a positive number, but was {rate}")
+
+    if not isinstance(scale, (int, float)):
+        raise TypeError(f"The `scale` parameter must be an `int` or `float` type, but was given {type(scale)}.")
+    elif scale <= 0:
+        raise ValueError(f"The `scale` parameter must be a positive number, but was {scale}")
+
+    start = df.index[0]
+    end = df.index[-1]
+
+    fs = rate/scale
+
+    t = np.arange(np.ceil((end - start)*fs))/fs + start
+
+    r = spatial.transform.Rotation.from_quat(df[['X', 'Y', 'Z', 'W']])
+
+    r_resample = spatial.transform.Slerp(df.index, r)(t)
+
+    vals = []
+    for _t, x, y, z in zip(
+            t,
+            r_resample.apply(([1, 0, 0])),
+            r_resample.apply(([0, 1, 0])),
+            r_resample.apply(([0, 0, 1])),
+            ):
+
+        vals.append({'time': _t, 'x': 0,    'y': 0,    'z': 0,    'channel': 'X'})
+        vals.append({'time': _t, 'x': x[0], 'y': x[1], 'z': x[2], 'channel': 'X'})
+        vals.append({'time': _t, 'x': 0,    'y': 0,    'z': 0,    'channel': 'Y'})
+        vals.append({'time': _t, 'x': y[0], 'y': y[1], 'z': y[2], 'channel': 'Y'})
+        vals.append({'time': _t, 'x': 0,    'y': 0,    'z': 0,    'channel': 'Z'})
+        vals.append({'time': _t, 'x': z[0], 'y': z[1], 'z': z[2], 'channel': 'Z'})
+
+    df_axes = pd.DataFrame(vals)
+
+    fig = px.line_3d(
+            df_axes,
+            x='x',
+            y='y',
+            z='z',
+            color='channel',
+            animation_frame='time',
+            animation_group='channel',
+            ).update_layout(
+            font_size=16,
+            legend_title_text='',
+            title_text='Quaternion 3D Animation',
+            title_x=0.5,
+            title_font_size=24,
+            scene=dict(
+                    xaxis=dict(range=[-1.1, 1.1], nticks=5),
+                    yaxis=dict(range=[-1.1, 1.1], nticks=5),
+                    zaxis=dict(range=[-1.1, 1.1], nticks=5),
+                    aspectmode='cube',
+                    ),
+            )
+    fig.layout.updatemenus[0].buttons[0].args[1]['frame']['duration'] = int(1000//rate)
+
+    return fig
