@@ -237,10 +237,40 @@ def get_channel_table(dataset: typing.Union[idelib.dataset.Dataset, list],
 #
 # ============================================================================
 
+def get_utc_offset(dataset: idelib.dataset.Dataset) -> float:
+    """
+    Get a recorder's configured UTC time zone offset from an `idelib.Dataset`
+    (i.e., an imported IDE file). Note that this is a user-configured option,
+    and will be zero if the recorder did not have its UTC offset explicitly
+    set.
+
+    :param dataset: The IDE data from which to get the UTC offset.
+    :return: The UTC offset, in seconds.
+    """
+
+    def crawl(parent):
+        for el in parent:
+            if el.name == 'ChannelDataBlock':
+                return 0
+            elif el.name in ('RecorderConfiguration', 'SSXBasicRecorderConfiguration'):
+                return crawl(el)
+            elif el.name == 'RecorderConfigurationList':
+                for item in el:
+                    data = item.dump()
+                    if data.get('ConfigID') ==  0xBFF7F:
+                        return data.get('IntValue', 0)
+            elif el.name == 'UTCOffset':
+                return el.value
+
+        return 0
+
+    return crawl(dataset.ebmldoc)
+
 
 def to_pandas(
     channel: typing.Union[idelib.dataset.Channel, idelib.dataset.SubChannel],
-    time_mode: typing.Literal["seconds", "timedelta", "datetime"] = "datetime",
+    time_mode: typing.Literal["seconds", "timedelta", "datetime", "device", "local"] = "datetime",
+    tz: Optional[Union[float, int]] = None
 ) -> pd.DataFrame:
     """ Read IDE data into a pandas DataFrame.
 
@@ -252,25 +282,46 @@ def to_pandas(
 
             * `"seconds"` - a `pandas.Float64Index` of relative timestamps, in seconds
             * `"timedelta"` - a `pandas.TimeDeltaIndex` of relative timestamps
-            * `"datetime"` - a `pandas.DateTimeIndex` of absolute timestamps
+            * `"datetime"` - a `pandas.DateTimeIndex` of absolute timestamps (UTC)
+            * `"device"` - a `pandas.DateTimeIndex` of absolute timestamps, in the
+                time zone specified by the original recording device's configured
+                UTC offset.
+            * `"local"` - a `pandas.DateTimeIndex` of absolute timestamps, in the
+                current computer's local time zone (note: may not be the user's
+                actual time zone when used on enDAQ Cloud).
 
         :return: a `pandas.DataFrame` containing the channel's data
     """
+    time_mode = str(time_mode).casefold()
+    if time_mode not in ('seconds', 'timedelta', 'datetime', 'device', 'local'):
+        raise ValueError(f'invalid time mode {time_mode!r}')
+
     data = channel.getSession().arraySlice()
     t, data = data[0], data[1:].T
 
+    # default: timedelta
     t = (1e3*t).astype("timedelta64[ns]")
+
     if time_mode == "seconds":
         t = t / np.timedelta64(1, "s")
-    elif time_mode == "datetime":
-        t = t + np.datetime64(channel.dataset.lastUtcTime, "s")
     elif time_mode != "timedelta":
-        raise ValueError(f'invalid time mode "{time_mode}"')
+        # Absolute datetimes. Defaults to UTC.
+        t = t + np.datetime64(channel.dataset.lastUtcTime, "s")
+
+        if time_mode == "device":
+            t = t + np.timedelta64(get_utc_offset(channel.dataset))
+        elif time_mode == "local":
+            tz = datetime.datetime.now().astimezone()
+            t = t + np.timedelta64(tz.tzinfo.utcoffset(None), 's')
 
     if hasattr(channel, "subchannels"):
         columns = [sch.name for sch in channel.subchannels]
     else:
         columns = [channel.name]
+
+    # XXX: should probably explicitly create index as pandas.DatetimeIndex,
+    #  and apply the tzinfo explicitly (so the user can tell what timezone
+    #  the times are in)
 
     return pd.DataFrame(data, index=pd.Series(t, name="timestamp"), columns=columns)
 
