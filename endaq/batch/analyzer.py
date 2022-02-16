@@ -84,16 +84,23 @@ class CalcCache:
         """
         Instantiate a new `CalcCache` object from an IDE file.
         """
-        data = ide_utils.dict_chs_best(
-            (
-                (utype, ch_struct)
-                for (utype, ch_struct) in ide_utils.chs_by_utype(dataset)
-                if len(ch_struct.eventarray) > 0
-            ),
+        # Rotation and Quaternion data should be grouped together
+        utype_mapping = dict(
+            Rotation="Rotation/Quaternion",
+            Quaternion="Rotation/Quaternion",
+        )
+
+        data_valid = (
+            (utype, ch_struct)
+            for (utype, ch_struct) in ide_utils.chs_by_utype(dataset)
+            if len(ch_struct.eventarray) > 0
+        )
+        data_grouped_best = ide_utils.dict_chs_best(
+            (ide_utils.map_utypes(data_valid, utype_mapping)),
             max_key=lambda x: (x.channel.id in preferred_chs, len(x.eventarray)),
         )
 
-        return cls(data, params=params)
+        return cls(data_grouped_best, params=params)
 
     @dataclass
     class InputDataWrapper:
@@ -128,11 +135,17 @@ class CalcCache:
         """
         Instantiate a new `CalcCache` object from raw DataFrame / metadata pairs.
         """
-        data = {
-            ide_utils.UTYPE_GROUPS[units[0]]: cls.InputDataWrapper(data, units)
-            for (data, units) in data
-        }
-        return cls(data, params=params)
+        # Rotation and Quaternion data should be grouped together
+        utype_mapping = dict(
+            Rotation="Rotation/Quaternion",
+            Quaternion="Rotation/Quaternion",
+        )
+
+        data_formatted = (
+            (units[0], cls.InputDataWrapper(datum, units)) for (datum, units) in data
+        )
+        data_grouped = dict(ide_utils.map_utypes(data_formatted, utype_mapping))
+        return cls(data_grouped, params=params)
 
     # ==========================================================================
     # Data Processing, just to make init cleaner
@@ -141,7 +154,7 @@ class CalcCache:
     @cached_property
     def _accelerationData(self):
         """Populate the _acceleration* fields, including splitting and extending data."""
-        ch_struct = self._channels.get("acc", None)
+        ch_struct = self._channels.get("Acceleration", None)
         if ch_struct is None:
             warnings.warn(f"no acceleration channel in data")
             return pd.DataFrame(
@@ -190,7 +203,7 @@ class CalcCache:
     @cached_property
     def _microphoneData(self):
         """Populate the _microphone* fields, including splitting and extending data."""
-        ch_struct = self._channels.get("mic", None)
+        ch_struct = self._channels.get("Audio", None)
         if ch_struct is None:
             return pd.DataFrame(
                 np.empty((0, 1), dtype=float),
@@ -349,7 +362,7 @@ class CalcCache:
     @cached_property
     def _pressureData(self):
         """Populate the _pressure* fields, including splitting and extending data."""
-        ch_struct = self._channels.get("pre", None)
+        ch_struct = self._channels.get("Pressure", None)
         if ch_struct is None:
             return pd.DataFrame(
                 np.empty((0, 1), dtype=float),
@@ -372,7 +385,7 @@ class CalcCache:
     @cached_property
     def _temperatureData(self):
         """Populate the _temperature* fields, including splitting and extending data."""
-        ch_struct = self._channels.get("tmp", None)
+        ch_struct = self._channels.get("Temperature", None)
         if ch_struct is None:
             return pd.DataFrame(
                 np.empty((0, 1), dtype=float),
@@ -397,7 +410,7 @@ class CalcCache:
     @cached_property
     def _humidityData(self):
         """Populates the _humidity* fields, including splitting and extending data"""
-        ch_struct = self._channels.get("hum", None)
+        ch_struct = self._channels.get("Relative Humidity", None)
         if ch_struct is None:
             return pd.DataFrame(
                 np.empty((0, 1), dtype=float),
@@ -414,7 +427,7 @@ class CalcCache:
     @cached_property
     def _gyroscopeData(self):
         """Populate the _gyro* fields, including splitting and extending data."""
-        ch_struct = self._channels.get("gyr", None)
+        ch_struct = self._channels.get("Rotation/Quaternion", None)
         if ch_struct is None:
             return pd.DataFrame(
                 np.empty((0, 3), dtype=float),
@@ -462,7 +475,7 @@ class CalcCache:
 
     @cached_property
     def _gpsPositionData(self):
-        ch_struct = self._channels.get("gps", None)
+        ch_struct = self._channels.get("Location", None)
         if ch_struct is None:
             return pd.DataFrame(
                 np.empty((0, 2), dtype=float),
@@ -479,7 +492,7 @@ class CalcCache:
 
     @cached_property
     def _gpsSpeedData(self):
-        ch_struct = self._channels.get("spd", None)
+        ch_struct = self._channels.get("GNSS Speed", None)
         if ch_struct is None:
             return pd.DataFrame(
                 np.empty((0, 1), dtype=float),
@@ -552,7 +565,7 @@ class CalcCache:
         max_pv_res = self._PVSSResultantData.max(axis="rows")
         max_pv["Resultant"] = max_pv_res.iloc[0]
         max_pv.name = "Peak Pseudo Velocity Shock Spectrum"
-        return MPS2_TO_G * max_pv
+        return MPS_TO_MMPS * max_pv
 
     @cached_property
     def gpsLocFull(self):

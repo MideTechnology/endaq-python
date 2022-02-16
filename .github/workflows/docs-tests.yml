@@ -48,6 +48,9 @@ jobs:
           path: ${{ steps.pip-cache.outputs.dir }}
           key: doctests-${{ runner.os }}-Python3.9-${{ steps.date.outputs.text }}-pip-${{ hashFiles('**/setup.py', './.github/workflows/unit-tests.yml') }}
 
+      - name: Install spellcheck library
+        run: sudo apt-get install libenchant-2-2
+
       - name: Install package & (test) dependencies
         run: python -m pip install --upgrade --upgrade-strategy=eager .[docs]
 
@@ -56,3 +59,6 @@ jobs:
 
       - name: Run docs tests
         run: sphinx-build -W -b doctest docs docs/_doctest
+
+      - name: Run docs spell checker
+        run: sphinx-build -b spelling docs docs/_spellcheck

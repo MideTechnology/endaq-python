@@ -143,8 +143,8 @@ def get_center_of_coordinates(lats: np.ndarray, lons: np.ndarray, as_list: bool 
     :param lats: An ndarray of latitude points
     :param lons: An ndarray of longitude points
     :param as_list: If True, return a length 2 list of the latitude and longitude coordinates.   If not return a
-     dictionary of format {"lon": lon_center, "lat": lat_center}
-    :param as_degrees: A boolean value representing if the 'lats' and 'lons' parameters are given in degrees (as opposed
+     dictionary of format ``{"lon": lon_center, "lat": lat_center}``
+    :param as_degrees: A boolean value representing if the ``lats`` and ``lons`` parameters are given in degrees (as opposed
      to radians).  These units will be used for the returned values as well.  
     :return: The latitude and longitude values as either a dictionary or a list, which is
      determined by the value of the `as_list` parameter (see the `as_list` docstring for details
@@ -193,7 +193,7 @@ def determine_plotly_map_zoom(
         margin: float = 1.2,
 ) -> float:
     """
-    Finds optimal zoom for a plotly mapbox. Must be passed (lons & lats) or lonlats.
+    Finds optimal zoom for a plotly mapbox. Must be passed (``lons`` & ``lats``) or ``lonlats``.
 
     Originally based on the following post:
     https://stackoverflow.com/questions/63787612/plotly-automatic-zooming-for-mapbox-maps
@@ -212,7 +212,7 @@ def determine_plotly_map_zoom(
     :return: The zoom scaling for the Plotly map
     
     .. note::
-      This implementation could be potentially problematic.  By simply averaging min/max coorindates
+      This implementation could be potentially problematic.  By simply averaging min/max coordinates
       you end up with situations such as the longitude lines -179.99 and 179.99 being
       almost right next to each other, but their center is calculated at 0, the other side of the earth.
     """

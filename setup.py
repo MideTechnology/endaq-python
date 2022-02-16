@@ -46,6 +46,7 @@ DOCS_REQUIRES = [
     "sphinx",
     "pydata-sphinx-theme",
     "sphinx-plotly-directive",
+    "sphinxcontrib-spelling",
     ]
 
 EXAMPLE_REQUIRES = [

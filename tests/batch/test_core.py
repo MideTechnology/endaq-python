@@ -47,7 +47,7 @@ def test_make_meta(filename, expt_result):
 )
 def test_make_peak_windows(filename):
     with idelib.importFile(filename) as ds:
-        accel_ch = ide_utils.get_ch_type_best(ds, "acc")
+        accel_ch = ide_utils.get_ch_type_best(ds, "Acceleration")
 
         data = accel_ch.to_pandas(time_mode="timedelta")
         utc_start_time = ds.lastUtcTime
@@ -92,19 +92,6 @@ def test_make_peak_windows(filename):
     assert np.all(calc_peak_times == expt_peak_times)
 
 
-@pytest.fixture
-def data_builder():
-    return (
-        endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1)
-        .add_psd(freq_bin_width=1)
-        .add_pvss(init_freq=1, bins_per_octave=12)
-        .add_pvss_halfsine_envelope()
-        .add_metrics()
-        .add_peaks(margin_len=1000)
-        .add_vc_curves(init_freq=1, bins_per_octave=3)
-    )
-
-
 @pytest.mark.parametrize(
     "filename",
     [
@@ -113,7 +100,8 @@ def data_builder():
         os.path.join("tests", "batch", "test3.IDE"),
         os.path.join("tests", "batch", "test5.IDE"),
         os.path.join("tests", "batch", "GPS-Chick-Fil-A_003.IDE"),
-        os.path.join("tests", "batch", "High-Drop.IDE"),
+        "https://info.endaq.com/hubfs/data/High-Drop.ide",
+        "https://info.endaq.com/hubfs/data/Punching-Bag.ide",
     ],
 )
 @pytest.mark.filterwarnings("ignore:empty frequency bins:RuntimeWarning")
@@ -135,7 +123,7 @@ def test_get_data(filename):
 def assert_output_is_valid(output: endaq.batch.core.OutputStruct):
     """Validate the contents & structure of an `OutputStruct` object."""
     assert isinstance(output, endaq.batch.core.OutputStruct)
-    assert isinstance(output.dataframes, dict)
+    assert isinstance(output.dataframes, list)
     assert {
         "meta",
         "psd",
@@ -144,92 +132,95 @@ def assert_output_is_valid(output: endaq.batch.core.OutputStruct):
         "metrics",
         "peaks",
         "vc_curves",
-    }.issuperset(output.dataframes)
+    }.issuperset({k for (k, v) in output.dataframes})
+    assert any(name == "meta" for (name, _) in output.dataframes)
 
-    assert output.dataframes["meta"].index.name == "filename"
-    assert output.dataframes["meta"].columns.to_list() == [
-        "serial number",
-        "start time",
-    ]
-
-    if "psd" in output.dataframes:
-        assert np.all(
-            output.dataframes["psd"].columns
-            == [
-                "filename",
-                "axis",
-                "frequency (Hz)",
-                "value",
+    for (name, df) in output.dataframes:
+        if name == "meta":
+            assert df.index.name == "filename"
+            assert df.columns.to_list() == [
                 "serial number",
                 "start time",
             ]
-        )
 
-    if "pvss" in output.dataframes:
-        assert np.all(
-            output.dataframes["pvss"].columns
-            == [
-                "filename",
-                "axis",
-                "frequency (Hz)",
-                "value",
-                "serial number",
-                "start time",
-            ]
-        )
+        if name == "psd":
+            assert np.all(
+                df.columns
+                == [
+                    "filename",
+                    "axis",
+                    "frequency (Hz)",
+                    "value",
+                    "serial number",
+                    "start time",
+                ]
+            )
 
-    if "halfsine" in output.dataframes:
-        assert np.all(
-            output.dataframes["halfsine"].columns
-            == [
-                "filename",
-                "axis",
-                "timestamp",
-                "value",
-                "serial number",
-                "start time",
-            ]
-        )
+        if name == "pvss":
+            assert np.all(
+                df.columns
+                == [
+                    "filename",
+                    "axis",
+                    "frequency (Hz)",
+                    "value",
+                    "serial number",
+                    "start time",
+                ]
+            )
 
-    if "metrics" in output.dataframes:
-        assert np.all(
-            output.dataframes["metrics"].columns
-            == [
-                "filename",
-                "calculation",
-                "axis",
-                "value",
-                "serial number",
-                "start time",
-            ]
-        )
+        if name == "halfsine":
+            assert np.all(
+                df.columns
+                == [
+                    "filename",
+                    "axis",
+                    "timestamp",
+                    "value",
+                    "serial number",
+                    "start time",
+                ]
+            )
 
-    if "peaks" in output.dataframes:
-        assert np.all(
-            output.dataframes["peaks"].columns
-            == [
-                "filename",
-                "axis",
-                "peak time",
-                "peak offset",
-                "value",
-                "serial number",
-                "start time",
-            ]
-        )
+        if name == "metrics":
+            assert np.all(
+                df.columns
+                == [
+                    "filename",
+                    "calculation",
+                    "axis",
+                    "value",
+                    "serial number",
+                    "start time",
+                ]
+            )
 
-    if "vc_curves" in output.dataframes:
-        assert np.all(
-            output.dataframes["vc_curves"].columns
-            == [
-                "filename",
-                "axis",
-                "frequency (Hz)",
-                "value",
-                "serial number",
-                "start time",
-            ]
-        )
+        if name == "peaks":
+            assert np.all(
+                df.columns
+                == [
+                    "filename",
+                    "axis",
+                    "peak time",
+                    "peak offset",
+                    "value",
+                    "serial number",
+                    "start time",
+                ]
+            )
+
+        if name == "vc_curves":
+            assert np.all(
+                df.columns
+                == [
+                    "filename",
+                    "axis",
+                    "frequency (Hz)",
+                    "value",
+                    "serial number",
+                    "start time",
+                ]
+            )
 
 
 @pytest.mark.parametrize(
@@ -314,14 +305,16 @@ def test_aggregate_data(getdata_builder):
 
     calc_result = getdata_builder.aggregate_data(filenames)
 
-    assert list(calc_result.dataframes)[1:] == list(getdata_builder._metrics_queue)
-    assert len(calc_result.dataframes["meta"]) == 3
+    assert [x[0] for x in calc_result.dataframes[1:]] == [
+        x[0] for x in getdata_builder._metrics_queue
+    ]
+    assert len(calc_result.dataframes[0][1]) == 3
     assert_output_is_valid(calc_result)
 
 
 @pytest.fixture
 def output_struct():
-    data = {}
+    data = []
 
     fieldname_mods = dict(
         frequency="frequency (Hz)",
@@ -339,21 +332,26 @@ def output_struct():
             "start_time",
         ],
     )
-    data["meta"] = pd.DataFrame.from_records(
-        [
-            RowStruct(
-                filename="stub1.ide",
-                serial_number=12345,
-                start_time=np.datetime64("2020-01-01 00:00:00"),
+    data.append(
+        (
+            "meta",
+            pd.DataFrame.from_records(
+                [
+                    RowStruct(
+                        filename="stub1.ide",
+                        serial_number=12345,
+                        start_time=np.datetime64("2020-01-01 00:00:00"),
+                    ),
+                    RowStruct(
+                        filename="stub2.ide",
+                        serial_number=67890,
+                        start_time=np.datetime64("2020-02-02 00:00:00"),
+                    ),
+                ],
+                index="filename",
+                columns=[fieldname_mods.get(i, i) for i in RowStruct._fields],
             ),
-            RowStruct(
-                filename="stub2.ide",
-                serial_number=67890,
-                start_time=np.datetime64("2020-02-02 00:00:00"),
-            ),
-        ],
-        index="filename",
-        columns=[fieldname_mods.get(i, i) for i in RowStruct._fields],
+        )
     )
 
     RowStruct = namedtuple(
@@ -367,42 +365,47 @@ def output_struct():
             "start_time",
         ],
     )
-    data["psd"] = pd.DataFrame.from_records(
-        [
-            RowStruct(
-                filename="stub1.ide",
-                axis="X",
-                frequency=1.0,
-                value=10,
-                serial_number=12345,
-                start_time=np.datetime64("2020-01-01 00:00:00"),
+    data.append(
+        (
+            "psd",
+            pd.DataFrame.from_records(
+                [
+                    RowStruct(
+                        filename="stub1.ide",
+                        axis="X",
+                        frequency=1.0,
+                        value=10,
+                        serial_number=12345,
+                        start_time=np.datetime64("2020-01-01 00:00:00"),
+                    ),
+                    RowStruct(
+                        filename="stub1.ide",
+                        axis="X",
+                        frequency=2.0,
+                        value=5,
+                        serial_number=12345,
+                        start_time=np.datetime64("2020-01-01 00:00:00"),
+                    ),
+                    RowStruct(
+                        filename="stub2.ide",
+                        axis="Y",
+                        frequency=1.0,
+                        value=8,
+                        serial_number=67890,
+                        start_time=np.datetime64("2020-02-02 00:00:00"),
+                    ),
+                    RowStruct(
+                        filename="stub2.ide",
+                        axis="Y",
+                        frequency=2.0,
+                        value=16,
+                        serial_number=67890,
+                        start_time=np.datetime64("2020-02-02 00:00:00"),
+                    ),
+                ],
+                columns=[fieldname_mods.get(i, i) for i in RowStruct._fields],
             ),
-            RowStruct(
-                filename="stub1.ide",
-                axis="X",
-                frequency=2.0,
-                value=5,
-                serial_number=12345,
-                start_time=np.datetime64("2020-01-01 00:00:00"),
-            ),
-            RowStruct(
-                filename="stub2.ide",
-                axis="Y",
-                frequency=1.0,
-                value=8,
-                serial_number=67890,
-                start_time=np.datetime64("2020-02-02 00:00:00"),
-            ),
-            RowStruct(
-                filename="stub2.ide",
-                axis="Y",
-                frequency=2.0,
-                value=16,
-                serial_number=67890,
-                start_time=np.datetime64("2020-02-02 00:00:00"),
-            ),
-        ],
-        columns=[fieldname_mods.get(i, i) for i in RowStruct._fields],
+        )
     )
 
     RowStruct = namedtuple(
@@ -416,42 +419,47 @@ def output_struct():
             "start_time",
         ],
     )
-    data["pvss"] = pd.DataFrame.from_records(
-        [
-            RowStruct(
-                filename="stub1.ide",
-                axis="X",
-                frequency=1.0,
-                value=100,
-                serial_number=12345,
-                start_time=np.datetime64("2020-01-01 00:00:00"),
+    data.append(
+        (
+            "pvss",
+            pd.DataFrame.from_records(
+                [
+                    RowStruct(
+                        filename="stub1.ide",
+                        axis="X",
+                        frequency=1.0,
+                        value=100,
+                        serial_number=12345,
+                        start_time=np.datetime64("2020-01-01 00:00:00"),
+                    ),
+                    RowStruct(
+                        filename="stub1.ide",
+                        axis="X",
+                        frequency=2.0,
+                        value=50,
+                        serial_number=12345,
+                        start_time=np.datetime64("2020-01-01 00:00:00"),
+                    ),
+                    RowStruct(
+                        filename="stub2.ide",
+                        axis="Y",
+                        frequency=1.0,
+                        value=80,
+                        serial_number=67890,
+                        start_time=np.datetime64("2020-02-02 00:00:00"),
+                    ),
+                    RowStruct(
+                        filename="stub2.ide",
+                        axis="Y",
+                        frequency=2.0,
+                        value=160,
+                        serial_number=67890,
+                        start_time=np.datetime64("2020-02-02 00:00:00"),
+                    ),
+                ],
+                columns=[fieldname_mods.get(i, i) for i in RowStruct._fields],
             ),
-            RowStruct(
-                filename="stub1.ide",
-                axis="X",
-                frequency=2.0,
-                value=50,
-                serial_number=12345,
-                start_time=np.datetime64("2020-01-01 00:00:00"),
-            ),
-            RowStruct(
-                filename="stub2.ide",
-                axis="Y",
-                frequency=1.0,
-                value=80,
-                serial_number=67890,
-                start_time=np.datetime64("2020-02-02 00:00:00"),
-            ),
-            RowStruct(
-                filename="stub2.ide",
-                axis="Y",
-                frequency=2.0,
-                value=160,
-                serial_number=67890,
-                start_time=np.datetime64("2020-02-02 00:00:00"),
-            ),
-        ],
-        columns=[fieldname_mods.get(i, i) for i in RowStruct._fields],
+        )
     )
 
     RowStruct = namedtuple(
@@ -465,26 +473,31 @@ def output_struct():
             "start_time",
         ],
     )
-    data["metrics"] = pd.DataFrame.from_records(
-        [
-            RowStruct(
-                filename="stub1.ide",
-                calculation="RMS Acceleration",
-                axis="X",
-                value=0.2,
-                serial_number=12345,
-                start_time=np.datetime64("2020-01-01 00:00:00"),
+    data.append(
+        (
+            "metrics",
+            pd.DataFrame.from_records(
+                [
+                    RowStruct(
+                        filename="stub1.ide",
+                        calculation="RMS Acceleration",
+                        axis="X",
+                        value=0.2,
+                        serial_number=12345,
+                        start_time=np.datetime64("2020-01-01 00:00:00"),
+                    ),
+                    RowStruct(
+                        filename="stub2.ide",
+                        calculation="RMS Acceleration",
+                        axis="Y",
+                        value=0.1,
+                        serial_number=67890,
+                        start_time=np.datetime64("2020-02-02 00:00:00"),
+                    ),
+                ],
+                columns=[fieldname_mods.get(i, i) for i in RowStruct._fields],
             ),
-            RowStruct(
-                filename="stub2.ide",
-                calculation="RMS Acceleration",
-                axis="Y",
-                value=0.1,
-                serial_number=67890,
-                start_time=np.datetime64("2020-02-02 00:00:00"),
-            ),
-        ],
-        columns=[fieldname_mods.get(i, i) for i in RowStruct._fields],
+        )
     )
 
     RowStruct = namedtuple(
@@ -499,64 +512,69 @@ def output_struct():
             "start_time",
         ],
     )
-    data["peaks"] = pd.DataFrame.from_records(
-        [
-            RowStruct(
-                filename="stub1.ide",
-                axis="X",
-                peak_time=np.timedelta64(3, "s"),
-                peak_offset=np.timedelta64(-100, "us"),
-                value=0.7,
-                serial_number=12345,
-                start_time=np.datetime64("2020-01-01 00:00:00"),
+    data.append(
+        (
+            "peaks",
+            pd.DataFrame.from_records(
+                [
+                    RowStruct(
+                        filename="stub1.ide",
+                        axis="X",
+                        peak_time=np.timedelta64(3, "s"),
+                        peak_offset=np.timedelta64(-100, "us"),
+                        value=0.7,
+                        serial_number=12345,
+                        start_time=np.datetime64("2020-01-01 00:00:00"),
+                    ),
+                    RowStruct(
+                        filename="stub1.ide",
+                        axis="X",
+                        peak_time=np.timedelta64(3, "s"),
+                        peak_offset=np.timedelta64(0, "us"),
+                        value=1.1,
+                        serial_number=12345,
+                        start_time=np.datetime64("2020-01-01 00:00:00"),
+                    ),
+                    RowStruct(
+                        filename="stub1.ide",
+                        axis="X",
+                        peak_time=np.timedelta64(3, "s"),
+                        peak_offset=np.timedelta64(100, "us"),
+                        value=0.4,
+                        serial_number=12345,
+                        start_time=np.datetime64("2020-01-01 00:00:00"),
+                    ),
+                    RowStruct(
+                        filename="stub2.ide",
+                        axis="Y",
+                        peak_time=np.timedelta64(5, "s"),
+                        peak_offset=np.timedelta64(-100, "us"),
+                        value=-1.2,
+                        serial_number=67890,
+                        start_time=np.datetime64("2020-02-02 00:00:00"),
+                    ),
+                    RowStruct(
+                        filename="stub2.ide",
+                        axis="Y",
+                        peak_time=np.timedelta64(5, "s"),
+                        peak_offset=np.timedelta64(0, "us"),
+                        value=-1.5,
+                        serial_number=67890,
+                        start_time=np.datetime64("2020-02-02 00:00:00"),
+                    ),
+                    RowStruct(
+                        filename="stub2.ide",
+                        axis="Y",
+                        peak_time=np.timedelta64(5, "s"),
+                        peak_offset=np.timedelta64(100, "us"),
+                        value=-0.9,
+                        serial_number=67890,
+                        start_time=np.datetime64("2020-02-02 00:00:00"),
+                    ),
+                ],
+                columns=[fieldname_mods.get(i, i) for i in RowStruct._fields],
             ),
-            RowStruct(
-                filename="stub1.ide",
-                axis="X",
-                peak_time=np.timedelta64(3, "s"),
-                peak_offset=np.timedelta64(0, "us"),
-                value=1.1,
-                serial_number=12345,
-                start_time=np.datetime64("2020-01-01 00:00:00"),
-            ),
-            RowStruct(
-                filename="stub1.ide",
-                axis="X",
-                peak_time=np.timedelta64(3, "s"),
-                peak_offset=np.timedelta64(100, "us"),
-                value=0.4,
-                serial_number=12345,
-                start_time=np.datetime64("2020-01-01 00:00:00"),
-            ),
-            RowStruct(
-                filename="stub2.ide",
-                axis="Y",
-                peak_time=np.timedelta64(5, "s"),
-                peak_offset=np.timedelta64(-100, "us"),
-                value=-1.2,
-                serial_number=67890,
-                start_time=np.datetime64("2020-02-02 00:00:00"),
-            ),
-            RowStruct(
-                filename="stub2.ide",
-                axis="Y",
-                peak_time=np.timedelta64(5, "s"),
-                peak_offset=np.timedelta64(0, "us"),
-                value=-1.5,
-                serial_number=67890,
-                start_time=np.datetime64("2020-02-02 00:00:00"),
-            ),
-            RowStruct(
-                filename="stub2.ide",
-                axis="Y",
-                peak_time=np.timedelta64(5, "s"),
-                peak_offset=np.timedelta64(100, "us"),
-                value=-0.9,
-                serial_number=67890,
-                start_time=np.datetime64("2020-02-02 00:00:00"),
-            ),
-        ],
-        columns=[fieldname_mods.get(i, i) for i in RowStruct._fields],
+        )
     )
 
     RowStruct = namedtuple(
@@ -570,42 +588,47 @@ def output_struct():
             "start_time",
         ],
     )
-    data["vc_curves"] = pd.DataFrame.from_records(
-        [
-            RowStruct(
-                filename="stub1.ide",
-                axis="X",
-                frequency=1.0,
-                value=1000,
-                serial_number=12345,
-                start_time=np.datetime64("2020-01-01 00:00:00"),
+    data.append(
+        (
+            "vc_curves",
+            pd.DataFrame.from_records(
+                [
+                    RowStruct(
+                        filename="stub1.ide",
+                        axis="X",
+                        frequency=1.0,
+                        value=1000,
+                        serial_number=12345,
+                        start_time=np.datetime64("2020-01-01 00:00:00"),
+                    ),
+                    RowStruct(
+                        filename="stub1.ide",
+                        axis="X",
+                        frequency=2.0,
+                        value=500,
+                        serial_number=12345,
+                        start_time=np.datetime64("2020-01-01 00:00:00"),
+                    ),
+                    RowStruct(
+                        filename="stub2.ide",
+                        axis="Y",
+                        frequency=1.0,
+                        value=800,
+                        serial_number=67890,
+                        start_time=np.datetime64("2020-02-02 00:00:00"),
+                    ),
+                    RowStruct(
+                        filename="stub2.ide",
+                        axis="Y",
+                        frequency=2.0,
+                        value=1600,
+                        serial_number=67890,
+                        start_time=np.datetime64("2020-02-02 00:00:00"),
+                    ),
+                ],
+                columns=[fieldname_mods.get(i, i) for i in RowStruct._fields],
             ),
-            RowStruct(
-                filename="stub1.ide",
-                axis="X",
-                frequency=2.0,
-                value=500,
-                serial_number=12345,
-                start_time=np.datetime64("2020-01-01 00:00:00"),
-            ),
-            RowStruct(
-                filename="stub2.ide",
-                axis="Y",
-                frequency=1.0,
-                value=800,
-                serial_number=67890,
-                start_time=np.datetime64("2020-02-02 00:00:00"),
-            ),
-            RowStruct(
-                filename="stub2.ide",
-                axis="Y",
-                frequency=2.0,
-                value=1600,
-                serial_number=67890,
-                start_time=np.datetime64("2020-02-02 00:00:00"),
-            ),
-        ],
-        columns=[fieldname_mods.get(i, i) for i in RowStruct._fields],
+        )
     )
 
     result = endaq.batch.core.OutputStruct(data)
@@ -618,15 +641,15 @@ def test_output_to_csv_folder(output_struct):
     with tempfile.TemporaryDirectory() as dirpath:
         output_struct.to_csv_folder(dirpath)
 
-        for k, v in output_struct.dataframes.items():
-            filepath = os.path.join(dirpath, k + ".csv")
+        for name, df in output_struct.dataframes:
+            filepath = os.path.join(dirpath, name + ".csv")
             assert os.path.isfile(filepath)
 
             read_result = pd.read_csv(
                 filepath,
-                **(dict(index_col="filename") if k == "meta" else {}),
+                **(dict(index_col="filename") if name == "meta" else {}),
             )
-            assert v.astype(str).compare(read_result.astype(str)).size == 0
+            assert df.astype(str).compare(read_result.astype(str)).size == 0
 
 
 @pytest.mark.filterwarnings(
@@ -634,35 +657,54 @@ def test_output_to_csv_folder(output_struct):
 )
 def test_output_to_html_plots(output_struct):
     with tempfile.TemporaryDirectory() as dirpath:
-        output_struct.to_html_plots(folder_path=dirpath, show=False)
+        output_struct.to_html_plots(folder_path=dirpath, show=False, theme="endaq")
 
-        for k in output_struct.dataframes:
+        for name, _df in output_struct.dataframes:
             # Not all dataframes get plotted
-            if k in ("meta", "metrics"):
+            if name in ("meta", "metrics"):
                 continue
 
-            filepath = os.path.join(dirpath, k + ".html")
+            filepath = os.path.join(dirpath, name + ".html")
             assert os.path.isfile(filepath)
 
             # can't do much else for validation...
 
 
+@pytest.mark.parametrize(
+    "filenames",
+    [
+        [
+            os.path.join("tests", "batch", "SSX70065.IDE"),
+            os.path.join("tests", "batch", "test1.IDE"),
+            os.path.join("tests", "batch", "test3.IDE"),
+            os.path.join("tests", "batch", "test5.IDE"),
+            os.path.join("tests", "batch", "GPS-Chick-Fil-A_003.IDE"),
+            "https://info.endaq.com/hubfs/data/High-Drop.ide",
+            "https://info.endaq.com/hubfs/data/Punching-Bag.ide",
+        ],
+        [
+            os.path.join("tests", "batch", "SSX70065.IDE"),
+        ],
+        [
+            "https://info.endaq.com/hubfs/data/High-Drop.ide",
+        ],
+        [
+            os.path.join("tests", "batch", "SSX70065.IDE"),
+            "https://info.endaq.com/hubfs/data/High-Drop.ide",
+        ],
+        [],
+    ],
+)
 @pytest.mark.filterwarnings("ignore:empty frequency bins:RuntimeWarning")
 @pytest.mark.filterwarnings("ignore:no acceleration channel in:UserWarning")
 @pytest.mark.filterwarnings(
     "ignore:HTML plot for metrics not currently implemented:UserWarning"
 )
-def test_integration():
-    filenames = [
-        os.path.join("tests", "batch", "SSX70065.IDE"),
-        os.path.join("tests", "batch", "test1.IDE"),
-        os.path.join("tests", "batch", "test3.IDE"),
-        os.path.join("tests", "batch", "test5.IDE"),
-        os.path.join("tests", "batch", "GPS-Chick-Fil-A_003.IDE"),
-    ]
+def test_integration(filenames):
     output_struct = (
         endaq.batch.core.GetDataBuilder(accel_highpass_cutoff=1)
         .add_psd(freq_bin_width=1)
+        .add_psd(freq_start_octave=2, bins_per_octave=12)
         .add_pvss(init_freq=1, bins_per_octave=12)
         .add_pvss_halfsine_envelope()
         .add_metrics()
@@ -670,6 +712,9 @@ def test_integration():
         .add_vc_curves(init_freq=1, bins_per_octave=3)
         .aggregate_data(filenames)
     )
+    if len(filenames) == 0:
+        assert output_struct is None
+        return
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         output_struct.to_csv_folder(tmp_dir)

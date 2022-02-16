@@ -681,5 +681,5 @@ Here are a number of example IDE files, which may be used with
                  'https://info.endaq.com/hubfs/data/Mining-Data.ide',
                  'https://info.endaq.com/hubfs/data/Mide-Airport-Drive-Lexus-Hybrid-Dash-W8.ide']
 
-These can be directly read from endaq.com using :py:func:`endaq.ide.get_doc()`,
+These can be directly read from ``endaq.com`` using :py:func:`endaq.ide.get_doc()`,
 as previously described.

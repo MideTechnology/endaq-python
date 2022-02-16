@@ -356,7 +356,7 @@ Vibration Criterion (VC) Curves
 
 Shock Analysis
 ~~~~~~~~~~~~~~
-This presents some data from a motorcylce crash test that is explained in more detail in our `blog on shock response spectrums <https://blog.endaq.com/shock-analysis-response-spectrum-srs-pseudo-velocity-severity>`_.
+This presents some data from a motorcycle crash test that is explained in more detail in our `blog on shock response spectrums <https://blog.endaq.com/shock-analysis-response-spectrum-srs-pseudo-velocity-severity>`_.
 
 .. code:: python
 
