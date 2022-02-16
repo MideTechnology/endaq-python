@@ -123,6 +123,10 @@ html_style = "https://info.endaq.com/hubfs/docs/css/endaq-docs-style.css"
 #
 # html_sidebars = {}
 
+html_js_files = [
+    'https://raw.githubusercontent.com/requirejs/requirejs/master/require.js',
+]
+
 
 # -- Options for HTMLHelp output ---------------------------------------------
 
