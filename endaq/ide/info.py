@@ -6,6 +6,7 @@ import typing
 
 from collections import defaultdict
 import datetime
+import dateutil.tz
 import warnings
 
 import numpy as np
@@ -269,8 +270,9 @@ def get_utc_offset(dataset: idelib.dataset.Dataset) -> float:
 
 def to_pandas(
     channel: typing.Union[idelib.dataset.Channel, idelib.dataset.SubChannel],
-    time_mode: typing.Literal["seconds", "timedelta", "datetime", "device", "local"] = "datetime",
-    tz: Optional[Union[float, int]] = None
+    time_mode: typing.Literal["seconds", "timedelta", "datetime"] = "datetime",
+    tz: typing.Union[pytz.timezone, dateutil.tz.tzfile, datetime.tzinfo,
+                     typing.Literal["device", "local", "utc"]] = "utc"
 ) -> pd.DataFrame:
     """ Read IDE data into a pandas DataFrame.
 
@@ -282,48 +284,53 @@ def to_pandas(
 
             * `"seconds"` - a `pandas.Float64Index` of relative timestamps, in seconds
             * `"timedelta"` - a `pandas.TimeDeltaIndex` of relative timestamps
-            * `"datetime"` - a `pandas.DateTimeIndex` of absolute timestamps (UTC)
-            * `"device"` - a `pandas.DateTimeIndex` of absolute timestamps, in the
-                time zone specified by the original recording device's configured
-                UTC offset.
-            * `"local"` - a `pandas.DateTimeIndex` of absolute timestamps, in the
-                current computer's local time zone (note: may not be the user's
-                actual time zone when used on enDAQ Cloud).
+            * `"datetime"` - a `pandas.DateTimeIndex` of absolute timestamps
+
+        :param tz: Optional time zone information for displaying the `"datetime"` time
+            mode. It can be a standard time zone object (`pytz.timezone`,
+            `dateutil.tz.tzfile`, `datetime.tzinfo`) or one of three special strings:
+
+            * `"utc"` - standard UTC time (default).
+            * `"local"` - the  current computer's local time zone (note: may not be the
+                user's actual time zone when used on enDAQ Cloud).
+            * `"device"` - the time zone specified by the original recording device's
+                configured UTC offset.
 
         :return: a `pandas.DataFrame` containing the channel's data
     """
     time_mode = str(time_mode).casefold()
-    if time_mode not in ('seconds', 'timedelta', 'datetime', 'device', 'local'):
+    if time_mode not in ('seconds', 'timedelta', 'datetime'):
         raise ValueError(f'invalid time mode {time_mode!r}')
 
     data = channel.getSession().arraySlice()
     t, data = data[0], data[1:].T
-
-    # default: timedelta
     t = (1e3*t).astype("timedelta64[ns]")
 
-    if time_mode == "seconds":
-        t = t / np.timedelta64(1, "s")
-    elif time_mode != "timedelta":
-        # Absolute datetimes. Defaults to UTC.
-        t = t + np.datetime64(channel.dataset.lastUtcTime, "s")
+    if time_mode == "datetime":
+        index = pd.to_datetime(t + np.datetime64(channel.dataset.lastUtcTime, "s"), utc=True)
+        index.name = "timestamp"
 
-        if time_mode == "device":
-            t = t + np.timedelta64(get_utc_offset(channel.dataset))
-        elif time_mode == "local":
-            tz = datetime.datetime.now().astimezone()
-            t = t + np.timedelta64(tz.tzinfo.utcoffset(None), 's')
+        tz = tz.casefold() if isinstance(tz, str) else tz
+        if tz != "utc":
+            if tz == "device":
+                tz = dateutil.tz.tzoffset('device', get_utc_offset(channel.dataset))
+            elif tz == "local":
+                tz = datetime.datetime.now().astimezone().tzinfo
+
+            index = index.tz_convert(tz)
+            
+    else:
+        if time_mode == "seconds":
+            t = t / np.timedelta64(1, "s")
+
+        index = pd.Series(t, name="timestamp")
 
     if hasattr(channel, "subchannels"):
         columns = [sch.name for sch in channel.subchannels]
     else:
         columns = [channel.name]
 
-    # XXX: should probably explicitly create index as pandas.DatetimeIndex,
-    #  and apply the tzinfo explicitly (so the user can tell what timezone
-    #  the times are in)
-
-    return pd.DataFrame(data, index=pd.Series(t, name="timestamp"), columns=columns)
+    return pd.DataFrame(data, index=index, columns=columns)
 
 # ============================================================================
 #
