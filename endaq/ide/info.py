@@ -343,6 +343,8 @@ def get_primary_sensor_data(
     measurement_type: typing.Union[str, MeasurementType] = ANY,
     criteria: typing.Literal["samples", "rate", "duration"] = "samples",
     time_mode: typing.Literal["seconds", "timedelta", "datetime"] = "datetime",
+    tz: typing.Union[pytz.timezone, dateutil.tz.tzfile, datetime.tzinfo,
+                     typing.Literal["device", "local", "utc"]] = "utc",
     least: bool = False,
     force_data_return: bool = False
 ) -> pd.DataFrame:
@@ -369,6 +371,15 @@ def get_primary_sensor_data(
             * `"seconds"` - a `pandas.Float64Index` of relative timestamps, in seconds
             * `"timedelta"` - a `pandas.TimeDeltaIndex` of relative timestamps
             * `"datetime"` - a `pandas.DateTimeIndex` of absolute timestamps
+        :param tz: Optional time zone information for displaying the `"datetime"` time
+            mode. It can be a standard time zone object (`pytz.timezone`,
+            `dateutil.tz.tzfile`, `datetime.tzinfo`) or one of three special strings:
+
+            * `"utc"` - standard UTC time (default).
+            * `"local"` - the  current computer's local time zone (note: may not be the
+                user's actual time zone when used on enDAQ Cloud).
+            * `"device"` - the time zone specified by the original recording device's
+                configured UTC offset.
         :param least: If set to `True` it will return the channels ranked lowest by
             the given criteria.
         :param force_data_return: If set to `True` and the specified `measurement_type`
@@ -418,7 +429,7 @@ def get_primary_sensor_data(
     parent = channels.iloc[0].channel.parent
     
     #Get parent channel data
-    data = to_pandas(parent, time_mode=time_mode)
+    data = to_pandas(parent, time_mode=time_mode, tz=tz)
     
     #Return only the subchannels with right units
     return data[channels.name]    
