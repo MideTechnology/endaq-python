@@ -212,3 +212,4 @@ spelling_lang = "en_US"
 spelling_ignore_pypi_package_names = True
 
 nbsphinx_requirejs_path = "https://raw.githubusercontent.com/requirejs/requirejs/master/require.js"
+nbsphinx_requirejs_options = {'crossorigin': 'anonymous'}
