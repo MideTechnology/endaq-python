@@ -45,6 +45,7 @@ extensions = [
     'sphinx.ext.githubpages',
     'sphinx_plotly_directive',
     'nbsphinx',
+    'sphinx_rtd_theme',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -85,7 +86,7 @@ autodoc_typehints_description_target = "documented"
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'pydata_sphinx_theme'
+html_theme = 'sphinx_rtd_theme'
 
 html_logo = '_static/endaq-logo-300x121.svg'
 
@@ -122,10 +123,6 @@ html_style = "https://info.endaq.com/hubfs/docs/css/endaq-docs-style.css"
 # 'searchbox.html']``.
 #
 # html_sidebars = {}
-
-html_js_files = [
-    'https://raw.githubusercontent.com/requirejs/requirejs/master/require.js',
-]
 
 
 # -- Options for HTMLHelp output ---------------------------------------------
