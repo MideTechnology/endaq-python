@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import typing
-from typing import Any, Dict, List, Callable, Optional
+from typing import Any, Dict, List, Callable, Optional, Iterable
 
 from dataclasses import dataclass
 from functools import partial
@@ -88,7 +88,11 @@ def _make_halfsine_pvss_envelope(ch_data_cache, *args, **kwargs):
     )
 
 
-def _make_metrics(ch_data_cache: analyzer.CalcCache):
+def _make_metrics(
+    ch_data_cache: analyzer.CalcCache,
+    include: Iterable[str] = [],
+    exclude: Iterable[str] = [],
+):
     """
     Format the channel metrics of a recording into a pandas object.
 
@@ -103,21 +107,51 @@ def _make_metrics(ch_data_cache: analyzer.CalcCache):
     - temperature - degrees Celsius
     - pressure - kiloPascals
     """
+    if include and exclude:
+        raise ValueError("parameters `include` and `exclude` are mutually-exclusive")
+
+    VALID_METRICS = {
+        k.casefold(): v
+        for (k, v) in [
+            ("RMS Acceleration", "accRMSFull"),
+            ("RMS Velocity", "velRMSFull"),
+            ("RMS Displacement", "disRMSFull"),
+            ("Peak Absolute Acceleration", "accPeakFull"),
+            ("Peak Pseudo Velocity Shock Spectrum", "pseudoVelPeakFull"),
+            ("GPS Position", "gpsLocFull"),
+            ("GPS Speed", "gpsSpeedFull"),
+            ("RMS Angular Velocity", "gyroRMSFull"),
+            ("RMS Microphone", "micRMSFull"),
+            ("Average Temperature", "tempFull"),
+            ("Average Pressure", "pressFull"),
+            ("Average Relative Humidity", "humidFull"),
+        ]
+    }
+    assert sorted(VALID_METRICS.values()) == sorted(
+        attr
+        for attr in dir(analyzer.CalcCache)
+        if not attr.startswith("_") and attr.endswith("Full")
+    )
+
+    include = [x.casefold() for x in include]
+    exclude = [x.casefold() for x in exclude]
+
+    invalid_metrics = set(include or exclude) - set(VALID_METRICS)
+    if invalid_metrics:
+        raise ValueError(f"invalid metrics {list(invalid_metrics)}")
+
+    metric_names: Iterable[str]
+    if include:
+        metric_names = include
+    elif exclude:
+        exclude = set(exclude)
+        metric_names = (x for x in VALID_METRICS if x not in exclude)
+    else:
+        metric_names = VALID_METRICS
+    metric_attrs = [VALID_METRICS[name] for name in metric_names]
+
     df = pd.concat(
-        [
-            ch_data_cache.accRMSFull,
-            ch_data_cache.velRMSFull,
-            ch_data_cache.disRMSFull,
-            ch_data_cache.accPeakFull,
-            ch_data_cache.pseudoVelPeakFull,
-            ch_data_cache.gpsLocFull,
-            ch_data_cache.gpsSpeedFull,
-            ch_data_cache.gyroRMSFull,
-            ch_data_cache.micRMSFull,
-            ch_data_cache.tempFull,
-            ch_data_cache.pressFull,
-            ch_data_cache.humidFull,
-        ],
+        [getattr(ch_data_cache, attr) for attr in metric_attrs],
         axis="columns",
     )
 
@@ -418,7 +452,7 @@ class GetDataBuilder:
 
         return self
 
-    def add_metrics(self):
+    def add_metrics(self, include: List[str] = [], exclude: List[str] = []):
         """
         Add broad channel metrics to the calculation queue.
 
@@ -443,7 +477,9 @@ class GetDataBuilder:
         \\approx 9.80665 \\frac{ \\text{m} }{ \\text{sec}^2 } \\right)`
 
         """
-        self._metrics_queue.append(("metrics", _make_metrics))
+        self._metrics_queue.append(
+            ("metrics", partial(_make_metrics, include=include, exclude=exclude))
+        )
 
         # no PSD metrics -> no need to provide PSD params
 
