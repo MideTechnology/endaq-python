@@ -7,6 +7,7 @@ The ``endaq`` package is a comprehensive, user-centric Python API for working wi
    :caption: Contents:
 
    api_ref
+   example_notebooks
 
 
 Installation
