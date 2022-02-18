@@ -5,7 +5,9 @@ import unittest
 import pytest
 import numpy as np
 from idelib.importer import importFile
-from endaq.ide import info
+import pandas as pd
+
+from endaq.ide import files, info
 
 
 IDE_FILENAME = os.path.join(os.path.dirname(__file__), "test.ide")
@@ -129,6 +131,37 @@ class ChannelTableTests(unittest.TestCase):
         self.assertListEqual(list(ct3.data['end']), list(ct2.data['end']))
 
 
+class PrimarySensorTest(unittest.TestCase):
+    """
+    Tests for the `get_primary_sensor_data()` function.
+    """
+
+    def test_get_primary_sensor_data(self):
+        doc = files.get_doc(url='https://info.endaq.com/hubfs/data/All-Channels.ide')
+        data = info.get_primary_sensor_data(doc=doc)
+        self.assertEqual(data.shape, (944990, 4))
+        self.assertTrue(isinstance(data.axes[0][0], pd.Timestamp),
+                        msg="Incorrect time mode ({!r}, not Timestamp)".format(type(data.axes[0][0])))
+
+        data2 = info.get_primary_sensor_data(doc=doc, measurement_type='accel', time_mode='seconds')
+        self.assertTrue(isinstance(data2.axes[0][0], float),
+                        msg="Incorrect time mode ({!r}, not float seconds)".format(type(data.axes[0][0])))
+        self.assertAlmostEqual(data2.axes[0][0], 0.338775, 5,
+                               msg="Incorrect time value")
+
+        data3 = info.get_primary_sensor_data(doc=doc, measurement_type='accel', time_mode='seconds', criteria='duration')
+        self.assertAlmostEqual(data3.axes[0][0], 0.341217, 5,
+                               msg="Incorrect time value after sorting")
+
+        data4 = info.get_primary_sensor_data(doc=doc, measurement_type='temp')
+        self.assertEqual(data4.axes[1][0], 'Control Pad Temperature',
+                         msg="Wrong measurement type")
+
+        data5 = info.get_primary_sensor_data(doc=doc, least=True)
+        self.assertNotEqual(data.axes[0][0], data5.axes[0][0],
+                            msg="Primary sensor data returned as least sensor data")
+
+
 @pytest.mark.parametrize("time_mode, subchannel", [
     ("seconds", False),
     ("timedelta", False),
@@ -155,6 +188,9 @@ def test_to_pandas(test_IDE, time_mode, subchannel):
         dict(seconds=np.float64, timedelta=np.timedelta64, datetime=np.datetime64)[time_mode],
     )
     assert np.all(result.to_numpy() == eventarray.arrayValues().T)
+
+
+
 
 
 if __name__ == '__main__':

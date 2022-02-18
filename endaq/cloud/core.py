@@ -11,12 +11,11 @@ import pandas as pd
 import requests
 import json
 import re
-import urllib.request
-import shutil
 import os
 import pathlib
 import warnings
 
+import endaq.ide.files
 
 __all__ = [
     'EndaqCloud',
@@ -120,12 +119,7 @@ class EndaqCloud:
         if local_name is None:
             local_name = response['file_name']
 
-        with urllib.request.urlopen(download_url) as response, open(local_name, 'wb') as out_file:
-            shutil.copyfileobj(response, out_file)
-
-        f = open(local_name, 'rb')
-
-        return Dataset(f)
+        return endaq.ide.files.get_doc(url=download_url, localfile=local_name)
 
     def download_all_ide_files(self,
                                output_directory: Union[str, pathlib.Path] = "",

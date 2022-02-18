@@ -6,21 +6,68 @@ files.py: IDE file access functions.
 # TODO: Exception subclasses for `get_doc()` failures, to separate the function's
 #  own errors from `ValueError` exceptions raised by things the function calls?
 
+from __future__ import annotations
+
+import typing
+from typing import Union, Tuple
+
 from datetime import datetime
 import os
 from pathlib import Path
 import tempfile
-from urllib.parse import urlparse
+from urllib.parse import urlparse, ParseResult
 
 from idelib.importer import openFile, readData
 from idelib.util import extractTime
 import requests
 
 from .gdrive import gdrive_download
-from .info import parse_time
-from .util import validate
+from .util import parse_time, validate
 
-__all__ = ['get_doc', 'extract_time']
+__all__ = ["get_doc", "extract_time"]
+
+# ============================================================================
+#
+# ============================================================================
+
+
+def normalized_path(
+    filepath: str, mode: typing.Literal[None, "local", "url"] = None
+) -> Union[
+    Tuple[str, typing.Literal["local"]],
+    Tuple[ParseResult, typing.Literal["url"]],
+]:
+    """
+    Format a file path as either a URL, or a local file path.
+
+    Local file paths are made into absolute paths via `os.path.abspath` and
+    `os.path.expanduser`. URL paths are returned as a `urllib.parse.ParseResult`
+    object.
+
+    :param filepath: some file path
+    :return: a tuple of 1) the formatted file path, and 2) the type of path
+    """
+    if mode not in (None, "local", "url"):
+        raise ValueError(f"invalid mode {mode}; expected one of (None, 'local', 'url')")
+    if mode is None:
+        mode = "local" if os.path.isfile(filepath) else "url"
+
+    if mode == "url":
+        parsed_url = urlparse(filepath.replace("\\", "/"))
+        if parsed_url.scheme == "file":
+            filepath = parsed_url.path
+            mode = "local"
+        elif parsed_url.netloc:
+            filepath = parsed_url
+            mode = "url"
+        else:
+            mode = "local"
+
+    if mode == "local":
+        filepath = os.path.abspath(os.path.expanduser(filepath))
+
+    return filepath, mode
+
 
 # ============================================================================
 #
@@ -152,37 +199,26 @@ def get_doc(name=None, filename=None, url=None, parsed=True, start=0, end=None,
 
     original = name or filename or url  # For error reporting
     stream = None
-    parsed_url = None
 
     if name:
-        # Infer filename vs. URL
-        name = name.strip()
-        if os.path.isfile(name):
-            filename = name
-        else:
-            parsed_url = urlparse(name.replace('\\', '/'))
-            if parsed_url.scheme == 'file':
-                filename = parsed_url.path
-            elif parsed_url.netloc:
-                url = name
-            else:
-                filename = name
+        path_formatted, mode = normalized_path(name)
+    elif url:
+        kwargs.setdefault("name", url)
+        path_formatted, mode = normalized_path(url, "url")
+    elif filename:
+        path_formatted, mode = normalized_path(filename, "local")
+    # else not possible; one of name, url & filename is already guaranteed to be valid
 
-    if url:
-        kwargs.setdefault('name', url)
-        parsed_url = parsed_url or urlparse(url)
-        if parsed_url.scheme == 'file':
-            filename = parsed_url.path
-        elif parsed_url.scheme.startswith('http'):
-            stream, _total = _get_url(url, localfile=localfile, headers=headers,
+    if mode == "url":
+        parsed_url = path_formatted
+        if parsed_url.scheme.startswith('http'):
+            stream, _total = _get_url(parsed_url.geturl(), localfile=localfile, headers=headers,
                                       params=params, cookies=cookies)
         else:
             # future: more fetching schemes before this `else` (ftp, etc.)?
             raise ValueError(f"Unsupported transfer scheme: {parsed_url.scheme}")
-
-    if filename:
-        filename = os.path.abspath(os.path.expanduser(filename))
-        stream = open(filename, 'rb')
+    else:  # mode == "local":
+        stream = open(path_formatted, 'rb')
 
     if stream:
         if not validate(stream):
@@ -269,4 +305,3 @@ def extract_time(doc, out, start=0, end=None, channels=None, **kwargs):
     kwargs['channels'] = channels
 
     return extractTime(doc, out, **kwargs)
-
