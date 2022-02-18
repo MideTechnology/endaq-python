@@ -190,7 +190,16 @@ def test_to_pandas(test_IDE, time_mode, subchannel):
     assert np.all(result.to_numpy() == eventarray.arrayValues().T)
 
 
+def test_to_pandas_tz(test_IDE):
+    """ Minimal test of time zones in `to_pandas()`. Mostly a sanity check. """
+    channel = test_IDE.channels[32]
+    
+    result_utc = info.to_pandas(channel, tz="utc")
+    result_local = info.to_pandas(channel, tz="local")
+    result_device = info.to_pandas(channel, tz="device")
 
+    assert "UTC" in str(result_utc.index.dtype)
+    assert "device" in str(result_device.index.dtype)
 
 
 if __name__ == '__main__':
