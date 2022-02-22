@@ -43,6 +43,8 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.ifconfig',
     'sphinx.ext.githubpages',
+    'sphinx_plotly_directive',
+    'nbsphinx',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -203,3 +205,11 @@ epub_exclude_files = ['search.html']
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'python': ('https://docs.python.org/2', None)}
+
+# -- Options for spellchecker ------------------------------------------------
+
+spelling_lang = "en_US"
+spelling_ignore_pypi_package_names = True
+
+nbsphinx_requirejs_path = "https://raw.githubusercontent.com/requirejs/requirejs/master/require.js"
+nbsphinx_requirejs_options = {'crossorigin': 'anonymous'}

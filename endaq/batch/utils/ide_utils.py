@@ -4,23 +4,6 @@ import warnings
 from endaq.ide import to_pandas
 
 
-# Constant Channel definitions
-UTYPE_GROUPS = {
-    "Acceleration": "acc",  # acceleration
-    "Rotation": "gyr",
-    "Quaternion": "gyr",
-    "Audio": "mic",  # microphone audio
-    "Light": "lit",  # light (visible, UV)
-    "Pressure": "pre",  # pressures
-    "Temperature": "tmp",  # temperature
-    "Relative Humidity": "hum",  # Humidity
-    # Gyroscope; several channel unit types map to this
-    "Location": "gps",  # GPS
-    "GNSS Speed": "spd",  # GPS Ground Speed
-    "GNSS Epoch Time": "epo",  # GPS Epoch Time
-}
-
-
 class NoChannelException(Exception):
     pass
 
@@ -54,20 +37,16 @@ def chs_by_utype(dataset):
         # Group subchannel id's by unit type
         sch_ids_by_utype = defaultdict(list)
         for sch_id, subchannel in enumerate(channel.subchannels):
-            try:
-                utype_group = UTYPE_GROUPS[subchannel.units[0]]
-            except KeyError:
-                warnings.warn(
-                    f"skipped recording channel {ch_id}.{sch_id}"
-                    f' of unlisted unit type "{subchannel.units[0]}"',
-                    RuntimeWarning,
-                )
-            else:
-                sch_ids_by_utype[utype_group].append(sch_id)
+            sch_ids_by_utype[subchannel.units[0]].append(sch_id)
 
         # Separate each channel into subchannels of like-unit-type
         for utype, sch_ids in sch_ids_by_utype.items():
             yield utype, ChannelStruct(channel, sch_ids)
+
+
+def map_utypes(iterable, utypes_map):
+    """Re-label utype-schs pairs with new utypes."""
+    return ((utypes_map.get(utype, utype), ch_struct) for utype, ch_struct in iterable)
 
 
 def dict_groups(iterable):

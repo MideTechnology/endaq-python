@@ -128,19 +128,6 @@ def rolling_enveloped_dashboard(
     for channel_data in channel_df_dict.values():
         window = int(np.around((channel_data.shape[0]-1) / desired_num_points, decimals=0))
 
-        # If a window size of 1 is determined, it sets the stride to 1 so we don't get an error as a result of the
-        # 0 length stride
-        stride = 1 if window == 1 else window - 1
-
-        rolling_n = channel_data.rolling(window)
-        min_max_tuple = (rolling_n.min()[::stride], rolling_n.max()[::stride])
-        min_max_equal = min_max_tuple[0] == min_max_tuple[1]
-
-        is_nan_min_max_mask = np.logical_not(
-            np.logical_and(
-                pd.isnull(min_max_tuple[0]),
-                pd.isnull(min_max_tuple[1])))
-
         # If it's going to be plotted as bars, force its time stamps to be uniformly spaced
         # so that the bars don't have any discontinuities in the X-axis
         if len(channel_data) >= desired_num_points and plot_as_bars:
@@ -157,7 +144,23 @@ def rolling_enveloped_dashboard(
                     num=len(channel_data),
                 )
 
-            channel_data.set_index(new_index)
+            channel_data.set_index(new_index, inplace=True)
+
+
+        # If a window size of 1 is determined, it sets the stride to 1 so we don't get an error as a result of the
+        # 0 length stride
+        stride = 1 if window == 1 else window - 1
+
+        rolling_n = channel_data.rolling(window)
+        min_max_tuple = (rolling_n.min()[::stride], rolling_n.max()[::stride])
+        min_max_equal = min_max_tuple[0] == min_max_tuple[1]
+
+        is_nan_min_max_mask = np.logical_not(
+            np.logical_and(
+                pd.isnull(min_max_tuple[0]),
+                pd.isnull(min_max_tuple[1])))
+
+
 
         # Loop through each of the sub-channels, and their respective '0-height rectangle mask'
         for subchannel_name, cur_min_max_equal in min_max_equal[channel_data.columns].iteritems():
@@ -304,7 +307,7 @@ def rolling_metric_dashboard(channel_df_dict: dict, desired_num_points: int = 25
      the `num_rows` parameter for more details on this parameter, and how the two interact.  This also follows the same
      approach to handling `None` when given
     :param rolling_metrics_to_plot: A tuple of strings which indicate what rolling metrics to plot for each subchannel.
-     The options are ['mean', 'std', 'absolute max', 'rms'] which correspond to the mean, standard deviation, maximum of
+     The options are ``['mean', 'std', 'absolute max', 'rms']`` which correspond to the mean, standard deviation, maximum of
      the absolute value, and root-mean-square.
     :param metric_colors: An "array-like" object of strings containing colors to be cycled through for the metrics.
      If `None` is given (which is the default), then the `colorway` variable in Plotly's current theme/template will

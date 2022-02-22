@@ -14,7 +14,7 @@ import scipy.signal
 def sample_spacing(
     data: Union[np.ndarray, pd.DataFrame],
     convert: typing.Literal[None, "to_seconds"] = "to_seconds",
-) -> Union[float, np.timedelta64]:
+) -> Union[None, float, np.timedelta64]:
     """
     Calculate the average spacing between individual samples.
 
@@ -27,6 +27,8 @@ def sample_spacing(
     """
     if isinstance(data, (pd.DataFrame, pd.Series)):
         data = data.index
+    if len(data) <= 1:
+        return None
 
     dt = (data[-1] - data[0]) / (len(data) - 1)
     if convert == "to_seconds" and isinstance(dt, (np.timedelta64, pd.Timedelta)):
@@ -73,12 +75,12 @@ def to_dB(data: np.ndarray, reference: float, squared: bool = False) -> np.ndarr
     Decibels are a log-scaled ratio of some value against a reference;
     typically this is expressed as follows:
 
-    .. math:: dB = 10 \\log10\\left( \\frac{x}{x_{\\text{ref}}} \\right)
+    .. math:: dB = 10 \\log_{10}\\left( \\frac{x}{x_{\\text{ref}}} \\right)
 
     By convention, "decibel" units tend to operate on units of *power*. For
     units that are proportional to power *when squared* (e.g., volts, amps,
     pressure, etc.), their "decibel" representation is typically doubled (i.e.,
-    :math:`dB = 20 \\log10(...)`). Users can specify which scaling to use
+    :math:`dB = 20 \\log_{10}(...)`). Users can specify which scaling to use
     with the `squared` parameter.
 
     .. note::
@@ -124,7 +126,7 @@ def resample(df: pd.DataFrame, sample_rate: Optional[float] = None) -> pd.DataFr
     :param df: The DataFrame to resample, indexed by time
     :param sample_rate: The desired sample rate to resample the given data to.
      If one is not supplied, then it will use the same as it currently does, but
-     make the time stamps uniformally spaced
+     make the time stamps uniformly spaced
     :return: The resampled data in a DataFrame
     """
     if sample_rate is None:
@@ -133,14 +135,17 @@ def resample(df: pd.DataFrame, sample_rate: Optional[float] = None) -> pd.DataFr
         dt = sample_spacing(df)
         num_samples_after_resampling = int(dt * len(df) * sample_rate)
 
+    original_dtype = df.index.dtype
+
     resampled_data, resampled_time = scipy.signal.resample(
         df,
         num_samples_after_resampling,
-        t=df.index.values.astype('datetime64[s]'),
+        t=df.index.values.astype(np.float64),
     )
+
     resampled_df = pd.DataFrame(
         resampled_data,
-        index=resampled_time,
+        index=resampled_time.astype(original_dtype),
         columns=df.columns,
     )
     return resampled_df
