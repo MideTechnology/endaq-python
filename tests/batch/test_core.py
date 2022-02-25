@@ -707,7 +707,7 @@ def test_integration(filenames):
         .add_psd(freq_start_octave=2, bins_per_octave=12)
         .add_pvss(init_freq=1, bins_per_octave=12)
         .add_pvss_halfsine_envelope()
-        .add_metrics(exclude=["RMS Velocity"])
+        .add_metrics(exclude=["RMS Velocity", "RMS Sound Pressure"])
         .add_peaks(margin_len=1000)
         .add_vc_curves(init_freq=1, bins_per_octave=3)
         .aggregate_data(filenames)
