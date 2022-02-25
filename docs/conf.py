@@ -45,7 +45,6 @@ extensions = [
     'sphinx.ext.githubpages',
     'sphinx_plotly_directive',
     'nbsphinx',
-    'IPython.sphinxext.ipython_console_highlighting',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
