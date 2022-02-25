@@ -44,6 +44,7 @@ extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.githubpages',
     'sphinx_plotly_directive',
+    'nbsphinx',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -209,3 +210,6 @@ intersphinx_mapping = {'python': ('https://docs.python.org/2', None)}
 
 spelling_lang = "en_US"
 spelling_ignore_pypi_package_names = True
+
+nbsphinx_requirejs_path = "https://raw.githubusercontent.com/requirejs/requirejs/master/require.js"
+nbsphinx_requirejs_options = {'crossorigin': 'anonymous'}
