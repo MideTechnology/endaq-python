@@ -6,6 +6,7 @@ import typing
 
 from collections import defaultdict
 import datetime
+import dateutil.tz
 import warnings
 
 import numpy as np
@@ -237,10 +238,41 @@ def get_channel_table(dataset: typing.Union[idelib.dataset.Dataset, list],
 #
 # ============================================================================
 
+def get_utc_offset(dataset: idelib.dataset.Dataset) -> float:
+    """
+    Get a recorder's configured UTC time zone offset from an `idelib.Dataset`
+    (i.e., an imported IDE file). Note that this is a user-configured option,
+    and will be zero if the recorder did not have its UTC offset explicitly
+    set.
+
+    :param dataset: The IDE data from which to get the UTC offset.
+    :return: The UTC offset, in seconds.
+    """
+
+    def crawl(parent):
+        for el in parent:
+            if el.name == 'ChannelDataBlock':
+                return 0
+            elif el.name in ('RecorderConfiguration', 'SSXBasicRecorderConfiguration'):
+                return crawl(el)
+            elif el.name == 'RecorderConfigurationList':
+                for item in el:
+                    data = item.dump()
+                    if data.get('ConfigID') ==  0xBFF7F:
+                        return data.get('IntValue', 0)
+            elif el.name == 'UTCOffset':
+                return el.value
+
+        return 0
+
+    return crawl(dataset.ebmldoc)
+
 
 def to_pandas(
     channel: typing.Union[idelib.dataset.Channel, idelib.dataset.SubChannel],
     time_mode: typing.Literal["seconds", "timedelta", "datetime"] = "datetime",
+    tz: typing.Union[pytz.timezone, dateutil.tz.tzfile, datetime.tzinfo,
+                     typing.Literal["device", "local", "utc"]] = "utc"
 ) -> pd.DataFrame:
     """ Read IDE data into a pandas DataFrame.
 
@@ -254,25 +286,51 @@ def to_pandas(
             * `"timedelta"` - a `pandas.TimeDeltaIndex` of relative timestamps
             * `"datetime"` - a `pandas.DateTimeIndex` of absolute timestamps
 
+        :param tz: Optional time zone information for displaying the `"datetime"` time
+            mode. It can be a standard time zone object (`pytz.timezone`,
+            `dateutil.tz.tzfile`, `datetime.tzinfo`) or one of three special strings:
+
+            * `"utc"` - standard UTC time (default).
+            * `"local"` - the  current computer's local time zone (note: may not be the
+                user's actual time zone when used on enDAQ Cloud).
+            * `"device"` - the time zone specified by the original recording device's
+                configured UTC offset.
+
         :return: a `pandas.DataFrame` containing the channel's data
     """
+    time_mode = str(time_mode).casefold()
+    if time_mode not in ('seconds', 'timedelta', 'datetime'):
+        raise ValueError(f'invalid time mode {time_mode!r}')
+
     data = channel.getSession().arraySlice()
     t, data = data[0], data[1:].T
-
     t = (1e3*t).astype("timedelta64[ns]")
-    if time_mode == "seconds":
-        t = t / np.timedelta64(1, "s")
-    elif time_mode == "datetime":
-        t = t + np.datetime64(channel.dataset.lastUtcTime, "s")
-    elif time_mode != "timedelta":
-        raise ValueError(f'invalid time mode "{time_mode}"')
+
+    if time_mode == "datetime":
+        index = pd.to_datetime(t + np.datetime64(channel.dataset.lastUtcTime, "s"), utc=True)
+        index.name = "timestamp"
+
+        tz = tz.casefold() if isinstance(tz, str) else tz
+        if tz != "utc":
+            if tz == "device":
+                tz = dateutil.tz.tzoffset('device', get_utc_offset(channel.dataset))
+            elif tz == "local":
+                tz = datetime.datetime.now().astimezone().tzinfo
+
+            index = index.tz_convert(tz)
+            
+    else:
+        if time_mode == "seconds":
+            t = t / np.timedelta64(1, "s")
+
+        index = pd.Series(t, name="timestamp")
 
     if hasattr(channel, "subchannels"):
         columns = [sch.name for sch in channel.subchannels]
     else:
         columns = [channel.name]
 
-    return pd.DataFrame(data, index=pd.Series(t, name="timestamp"), columns=columns)
+    return pd.DataFrame(data, index=index, columns=columns)
 
 # ============================================================================
 #
@@ -285,6 +343,8 @@ def get_primary_sensor_data(
     measurement_type: typing.Union[str, MeasurementType] = ANY,
     criteria: typing.Literal["samples", "rate", "duration"] = "samples",
     time_mode: typing.Literal["seconds", "timedelta", "datetime"] = "datetime",
+    tz: typing.Union[pytz.timezone, dateutil.tz.tzfile, datetime.tzinfo,
+                     typing.Literal["device", "local", "utc"]] = "utc",
     least: bool = False,
     force_data_return: bool = False
 ) -> pd.DataFrame:
@@ -311,6 +371,15 @@ def get_primary_sensor_data(
             * `"seconds"` - a `pandas.Float64Index` of relative timestamps, in seconds
             * `"timedelta"` - a `pandas.TimeDeltaIndex` of relative timestamps
             * `"datetime"` - a `pandas.DateTimeIndex` of absolute timestamps
+        :param tz: Optional time zone information for displaying the `"datetime"` time
+            mode. It can be a standard time zone object (`pytz.timezone`,
+            `dateutil.tz.tzfile`, `datetime.tzinfo`) or one of three special strings:
+
+            * `"utc"` - standard UTC time (default).
+            * `"local"` - the  current computer's local time zone (note: may not be the
+                user's actual time zone when used on enDAQ Cloud).
+            * `"device"` - the time zone specified by the original recording device's
+                configured UTC offset.
         :param least: If set to `True` it will return the channels ranked lowest by
             the given criteria.
         :param force_data_return: If set to `True` and the specified `measurement_type`
@@ -360,7 +429,7 @@ def get_primary_sensor_data(
     parent = channels.iloc[0].channel.parent
     
     #Get parent channel data
-    data = to_pandas(parent, time_mode=time_mode)
+    data = to_pandas(parent, time_mode=time_mode, tz=tz)
     
     #Return only the subchannels with right units
     return data[channels.name]    

@@ -11,6 +11,7 @@ import hypothesis.extra.numpy as hyp_np
 
 import endaq.batch.analyzer
 from endaq.calc.stats import rms, L2_norm
+from endaq.calc import to_dB
 
 
 np.random.seed(0)
@@ -249,11 +250,11 @@ class TestAnalyzer:
     def test_gyroRMSFull(self, analyzer_bulk):
         pass
 
-    def test_micRMSFull(self, analyzer_bulk):
-        calc_result = endaq.batch.analyzer.CalcCache.micRMSFull.func(analyzer_bulk)[
-            "Mic"
-        ]
-        expt_result = rms(analyzer_bulk._microphoneData)
+    def test_micDecibelsFull(self, analyzer_bulk):
+        calc_result = endaq.batch.analyzer.CalcCache.micDecibelsFull.func(
+            analyzer_bulk
+        )["Mic"]
+        expt_result = to_dB(rms(analyzer_bulk._microphoneData), reference="SPL")
 
         assert calc_result == pytest.approx(expt_result)
 
@@ -354,8 +355,12 @@ class TestAnalyzer:
         )
         audio_scale = 5.307530522779073
         np.testing.assert_allclose(
-            analyzer.micRMSFull,
-            audio_scale * rms(ds.channels[8].subchannels[3].getSession().arrayValues()),
+            analyzer.micDecibelsFull,
+            to_dB(
+                audio_scale
+                * rms(ds.channels[8].subchannels[3].getSession().arrayValues()),
+                reference="SPL",
+            ),
             rtol=1e-3,
         )
         np.testing.assert_allclose(
@@ -409,8 +414,11 @@ class TestAnalyzer:
         )
 
         np.testing.assert_allclose(
-            analyzer.micRMSFull,
-            rms(ds.channels[8].subchannels[3].getSession().arrayValues()),
+            analyzer.micDecibelsFull,
+            to_dB(
+                rms(ds.channels[8].subchannels[3].getSession().arrayValues()),
+                reference="SPL",
+            ),
             rtol=1e-3,
         )
 

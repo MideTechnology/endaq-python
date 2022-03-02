@@ -68,7 +68,11 @@ def logfreqs(
     )
 
 
-def to_dB(data: np.ndarray, reference: float, squared: bool = False) -> np.ndarray:
+def to_dB(
+    data: np.ndarray,
+    reference: Union[float, typing.Literal[tuple(dB_refs.keys())]],
+    squared: bool = False,
+) -> np.ndarray:
     """
     Scale data into units of decibels.
 
@@ -87,20 +91,26 @@ def to_dB(data: np.ndarray, reference: float, squared: bool = False) -> np.ndarr
         Decibels can **NOT** be calculated from negative values.
 
         For example, to calculate dB on arbitrary time-series data, typically
-        data is first aggregated via a total or a rolling RMS or PSD, and the
-        non-negative result is then scaled into decibels.
+        data is first aggregated via:
+
+        - a *total RMS* (like :py:func:`endaq.calc.stats.rms`),
+        - a *rolling RMS* (like :py:func:`endaq.calc.stats.rolling_rms`), or
+        - a *PSD* (like :py:func:`endaq.calc.psd.welch`),
+
+        and the non-negative result from the aggregation is then scaled into
+        decibels.
 
     :param data: the input data
     :param reference: the reference value corresponding to 0dB
     :param squared: whether the input data & reference value are pre-squared;
         defaults to `False`
-
-    .. seealso::
-        - ``endaq.calc.stats.rms``
-        - ``endaq.calc.stats.rolling_rms``
-        - ``endaq.calc.psd.welch``
     """
-    if reference <= 0:
+    if isinstance(reference, str):
+        try:
+            reference = dB_refs[reference]
+        except KeyError:
+            raise ValueError(f'unknown reference "{reference}"')
+    elif reference <= 0:
         raise ValueError("reference value must be strictly positive")
 
     data = np.asarray(data)
