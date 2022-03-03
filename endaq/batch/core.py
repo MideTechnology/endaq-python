@@ -18,7 +18,35 @@ from endaq.calc import psd as calc_psd
 from endaq.batch import analyzer
 
 
-def _make_meta(dataset):
+"""
+NOTE
+
+This module uses a custom format for annotating pandas object types for
+inputs and outputs. Specifically, this notation denotes what to expect in a
+`DataFrame`/`Series`' index and column data.
+
+This will be expressed as follows:
+- for `pd.Series`: "pd.Series[NAME, INDEX, OUTPUT_TYPE]"
+- INDEX = {LABEL: INDEX_TYPE,*}
+- INDEX_TYPE = TYPE or Literal[LITERAL_VALUE,*]
+- OUTPUT_TYPE = TYPE or {LITERAL_VALUE: TYPE,*}
+"""
+
+
+def _make_meta(
+    dataset,
+) -> (
+    """
+    pd.Series[
+        str,  # the file's path
+        # one un-named index level, two entries
+        {
+            None: Literal['serial number', 'start time']
+        },
+        {'serial number': int, 'start time': np.timedelta64[us]}
+    ]
+    """
+):
     """Generate a pandas object containing metadata for the given recording."""
     serial_no = dataset.recorderInfo["RecorderSerial"]
     start_time = np.datetime64(dataset.sessions[0].utcStartTime, "s") + np.timedelta64(
@@ -32,7 +60,20 @@ def _make_meta(dataset):
     )
 
 
-def _make_psd(ch_data_cache: analyzer.CalcCache, fstart=None, bins_per_octave=None):
+def _make_psd(
+    ch_data_cache: analyzer.CalcCache, fstart=None, bins_per_octave=None
+) -> (
+    """
+    pd.Series[
+        None,
+        {
+            'axis': Literal['X', 'Y', 'Z', 'Resultant']},
+            'frequency (Hz)': float,
+        },
+        np.float64
+    ]
+    """
+):
     """
     Format the PSD of the main accelerometer channel into a pandas object.
 
@@ -57,7 +98,21 @@ def _make_psd(ch_data_cache: analyzer.CalcCache, fstart=None, bins_per_octave=No
     return df_psd.stack(level="axis").reorder_levels(["axis", "frequency (Hz)"])
 
 
-def _make_pvss(ch_data_cache: analyzer.CalcCache):
+def _make_pvss(
+    ch_data_cache: analyzer.CalcCache,
+) -> (
+    """
+    pd.Series[
+        None,
+        {
+            'axis': Literal['X', 'Y', 'Z', 'Resultant']},
+            'frequency (Hz)': float,
+        },
+        np.float64
+    ]
+    """
+):
+
     """
     Format the PVSS of the main accelerometer channel into a pandas object.
 
@@ -73,7 +128,21 @@ def _make_pvss(ch_data_cache: analyzer.CalcCache):
     return df_pvss.stack(level="axis").reorder_levels(["axis", "frequency (Hz)"])
 
 
-def _make_halfsine_pvss_envelope(ch_data_cache, *args, **kwargs):
+def _make_halfsine_pvss_envelope(
+    ch_data_cache, *args, **kwargs
+) -> (
+    """
+    pd.Series[
+        None,
+        {
+            'axis': Literal['X', 'Y', 'Z', 'Resultant']},
+            'timestamp': float,
+        },
+        np.float64
+    ]
+    """
+):
+
     df_pvss = ch_data_cache._PVSSData.copy()
     df_pvss["Resultant"] = ch_data_cache._PVSSResultantData
     df_pvss = df_pvss * analyzer.MPS_TO_MMPS
@@ -92,7 +161,7 @@ def _make_metrics(
     ch_data_cache: analyzer.CalcCache,
     include: Iterable[str] = [],
     exclude: Iterable[str] = [],
-):
+) -> "pd.Series[None, {'calculation': str, 'axis': str}, np.float64]":
     """
     Format the channel metrics of a recording into a pandas object.
 
@@ -164,7 +233,20 @@ def _make_metrics(
     return series
 
 
-def _make_peak_windows(ch_data_cache: analyzer.CalcCache, margin_len):
+def _make_peak_windows(
+    ch_data_cache: analyzer.CalcCache, margin_len
+) -> (
+    """
+    pd.Series[
+        {
+            'axis': Literal['X', 'Y', 'Z', 'Resultant'],
+            'peak time': np.timedelta64[ns],
+            'peak offset': np.float64,
+        },
+        np.float64
+    ]
+    """
+):
     """
     Store windows of the main accelerometer channel about its peaks in a pandas
     object.
@@ -216,7 +298,20 @@ def _make_peak_windows(ch_data_cache: analyzer.CalcCache, margin_len):
     return result
 
 
-def _make_vc_curves(ch_data_cache: analyzer.CalcCache):
+def _make_vc_curves(
+    ch_data_cache: analyzer.CalcCache,
+) -> (
+    """
+    pd.Series[
+        {
+            'axis': Literal['X', 'Y', 'Z', 'Resultant']},
+            'frequency (Hz)': float,
+        },
+        np.float64
+    ]
+    """
+):
+
     """
     Format the VC curves of the main accelerometer channel into a pandas object.
     """
