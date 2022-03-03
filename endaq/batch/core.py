@@ -323,7 +323,14 @@ class GetDataBuilder:
                 "only one of `accel_end_time` and `accel_end_margin` may be set at once"
             )
 
-        self._metrics_queue: List[Tuple[str, Callable[[analyzer.CalcCache], Any]]] = []
+        self._metrics_queue: List[
+            Tuple[
+                typing.Literal[
+                    "psd", "pvss", "halfsine", "metrics", "peaks", "vc_curves"
+                ],
+                Callable[[analyzer.CalcCache], Any],
+            ]
+        ] = []
 
         self._ch_data_cache_kwargs = dict(
             accel_highpass_cutoff=accel_highpass_cutoff,
@@ -653,7 +660,17 @@ class OutputStruct:
     This class is not intended be instantiated manually.
     """
 
-    def __init__(self, data: List[Tuple[str, pd.DataFrame]]):
+    def __init__(
+        self,
+        data: List[
+            Tuple[
+                typing.Literal[
+                    "meta", "psd", "pvss", "halfsine", "metrics", "peaks", "vc_curves"
+                ],
+                pd.DataFrame,
+            ]
+        ],
+    ):
         self.dataframes = data
 
     def to_csv_folder(self, folder_path):
