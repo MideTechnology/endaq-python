@@ -86,6 +86,7 @@ jobs:
 
       - name: Build
         run: |
+          mkdir ./cmake-build-debug
           cmake --build ./cmake-build-debug --target pvss_test
 
       - name: run tests
