@@ -5,8 +5,8 @@ on: [push, pull_request, workflow_dispatch]
 
 
 jobs:
-  unit-tests:
-    name: Run Unit Tests
+  python-unit-tests:
+    name: Run Python Unit Tests
 
     strategy:
       fail-fast: false
@@ -73,3 +73,22 @@ jobs:
           files: ./coverage.xml
           name: ${{ matrix.os }} ${{ matrix.python-version }}
           verbose: true
+
+  c-unit-tests:
+    name: Run C/C++ Unit Tests
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build
+        run: |
+          cmake --build ./cmake-build-debug --target pvss_test
+
+      - name: run tests
+        run: |
+          pvss_test
+
