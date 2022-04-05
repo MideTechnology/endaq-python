@@ -7,6 +7,7 @@ from collections.abc import Sequence
 import numpy as np
 import pandas as pd
 from scipy import signal
+import plotly.graph_objects as go
 
 from endaq.plot import rolling_min_max_envelope
 from endaq.calc import filters, integrate, utils, shock
