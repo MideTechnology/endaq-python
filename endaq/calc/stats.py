@@ -7,7 +7,7 @@ from collections.abc import Sequence
 import numpy as np
 import pandas as pd
 
-from endaq.calc import filters, integrate, utils, shock
+from endaq.calc import filters, integrate, shock, sample_spacing, logfreqs
 from endaq.plot import rolling_min_max_envelope
 
 
@@ -118,7 +118,7 @@ def shock_vibe_metrics(
 
     #Optionally Calculate PVSS
     if include_pseudo_velocity:
-        freqs = utils.logfreqs(df, bins_per_octave=bins_per_octave, init_freq=init_freq)
+        freqs = logfreqs(df, bins_per_octave=bins_per_octave, init_freq=init_freq)
         pvss = shock.shock_spectrum(df, freqs=freqs, damp=damp, mode='pvss')*vel_disp_multiplier
         if include_resultant:
             pvss['Resultant'] = shock.shock_spectrum(df, freqs=freqs, damp=damp, mode='pvss', aggregate_axes=True)['resultant']*vel_disp_multiplier
@@ -190,7 +190,7 @@ def find_peaks(
     #Find Peak Indexes
     indexes = scipy.signal.find_peaks(
         peaks,
-        distance=int(time_distance/utils.sample_spacing(df)),
+        distance=int(time_distance/sample_spacing(df)),
         height=threshold,
     )[0]
 
@@ -228,7 +228,7 @@ def quantify_peaks(
     :return: a dataframe containing all the metrics, one computed per column of the input dataframe, and one per peak event
     """
     #Define number of points to step forward/back from each event
-    num = int(time_distance / utils.sample_spacing(df) / 2)
+    num = int(time_distance / sample_spacing(df) / 2)
     length = len(df)
 
     #Loop through and compute metrics
