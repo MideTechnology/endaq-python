@@ -6,6 +6,7 @@ from collections.abc import Sequence
 
 import numpy as np
 import pandas as pd
+from scipy import signal
 
 from endaq.plot import rolling_min_max_envelope
 from endaq.calc import filters, integrate, utils, shock
@@ -188,7 +189,7 @@ def find_peaks(
                 threshold = np.sum(rms**2)**0.5 * threshold_multiplier
 
     #Find Peak Indexes
-    indexes = scipy.signal.find_peaks(
+    indexes = signal.find_peaks(
         peaks,
         distance=int(time_distance/utils.sample_spacing(df)),
         height=threshold,
