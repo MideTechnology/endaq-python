@@ -10,8 +10,7 @@ from scipy import signal, spatial
 from typing import Optional
 from collections.abc import Container
 
-from endaq.calc import sample_spacing
-from endaq.calc.psd import to_octave, welch
+from endaq.calc import utils, psd
 
 from .utilities import determine_plotly_map_zoom, get_center_of_coordinates
 from .dashboards import rolling_enveloped_dashboard
@@ -296,7 +295,7 @@ def octave_spectrogram(df: pd.DataFrame, window: float, bins_per_octave: int = 3
 
     ary = df.values.squeeze()
 
-    fs = 1/sample_spacing(df)#(len(df) - 1) / (df.index[-1] - df.index[0])
+    fs = 1/utils.sample_spacing(df)#(len(df) - 1) / (df.index[-1] - df.index[0])
     N = int(fs * window) #Number of points in the fft
     w = signal.blackman(N, False)
     
@@ -304,7 +303,7 @@ def octave_spectrogram(df: pd.DataFrame, window: float, bins_per_octave: int = 3
 
     time_dfs = [pd.DataFrame({bins[j]: Pxx[:, j]}, index=freqs) for j in range(len(bins))]
 
-    octave_dfs = list(map(lambda x: to_octave(x, freq_start, octave_bins=bins_per_octave, agg='sum'), time_dfs))
+    octave_dfs = list(map(lambda x: psd.to_octave(x, freq_start, octave_bins=bins_per_octave, agg='sum'), time_dfs))
     
     combined_df = pd.concat(octave_dfs, axis=1)
     
@@ -347,9 +346,9 @@ def octave_psd_bar_plot(df: pd.DataFrame, bins_per_octave: int = 3, f_start: flo
     :param yaxis_title: The text to label the y-axis
     :param log_scale_y_axis: If the y-axis should be log scaled
     """
-    psd_df = welch(df, 1, scaling='spectrum')
+    psd_df = psd.welch(df, 1, scaling='spectrum')
 
-    octave_psd_df = to_octave(
+    octave_psd_df = psd.to_octave(
         psd_df,
         f_start, 
         bins_per_octave,
