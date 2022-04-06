@@ -145,8 +145,6 @@ def resample(df: pd.DataFrame, sample_rate: Optional[float] = None) -> pd.DataFr
         dt = sample_spacing(df)
         num_samples_after_resampling = int(dt * len(df) * sample_rate)
 
-    original_dtype = df.index.dtype
-
     resampled_data, resampled_time = scipy.signal.resample(
         df,
         num_samples_after_resampling,
@@ -155,7 +153,10 @@ def resample(df: pd.DataFrame, sample_rate: Optional[float] = None) -> pd.DataFr
 
     resampled_df = pd.DataFrame(
         resampled_data,
-        index=resampled_time.astype(original_dtype),
+        index=resampled_time.astype(df.index.dtype),
         columns=df.columns,
     )
+    
+    resampled_df.index.name = df.index.name
+    
     return resampled_df
