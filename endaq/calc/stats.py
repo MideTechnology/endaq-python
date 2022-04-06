@@ -174,7 +174,7 @@ def find_peaks(
         import plotly.graph_objects as go
 
         #Get Accel
-        accel = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/ford_f150.ide',measurement_type='accel',time_mode='seconds')
+        accel = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/ford_f150.ide',measurement_type='accel',time_mode='datetime')
 
         #Filter
         accel = endaq.calc.filters.butterworth(accel,low_cutoff=2)
@@ -304,11 +304,12 @@ def rolling_metrics(
         #Calculate for all Peak Event Indexes
         metrics = endaq.calc.stats.rolling_metrics(accel, indexes=indexes, slice_width=2.0)
 
-        #Calculate for 10 Equally Spaced & Sized Slices
-        metrics = rolling_metrics(accel, num_slices=10)
-
         #Calculate for 3 Specific Times
-        metrics = rolling_metrics(accel, index_values = pd.DatetimeIndex(['2020-03-13 23:40:13', '2020-03-13 23:45:00', '2020-03-13 23:50:00']), slice_width=5.0)
+        import pandas as pd
+        metrics = endaq.calc.stats.rolling_metrics(accel, index_values = pd.DatetimeIndex(['2020-03-13 23:40:13', '2020-03-13 23:45:00', '2020-03-13 23:50:00'],tz='UTC'), slice_width=5.0)
+    
+        #Calculate for 50 Equally Spaced & Sized Slices, Turning off Pseudo Velocity (Only Recommended for Smaller Time Slices)
+        metrics = endaq.calc.stats.rolling_metrics(accel, num_slices=50, vel_disp_multiplier = 386.09, highpass_cutoff = 2, tukey_percent = 0.0, include_pseudo_velocity = False)
     """
     length = len(df)
 
