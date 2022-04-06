@@ -161,11 +161,74 @@ def find_peaks(
         - `0.1` when using peak, to get all events greater than 10% of the overall peak
     :param use_abs: use the absolute value of the data to define peak events, default is True
     :param display_plots: display a plotly figure of the time series with the peak events plotted over it (default as False)
-    :return: a dataframe indexed by time containing only the peak events and their corresponding values
+    :return: an array of index locations
 
     .. seealso::
         - `SciPy find_peaks function <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.find_peaks.html>`_
           Documentation for the SciPy function used to identify the peak events.
+
+    Here's an example implementation using a 60M dataset that loads the data, finds the peaks, and plots in under 10 seconds
+    .. code:: python
+        import endaq
+        endaq.plot.utilities.set_theme()
+        import plotly.graph_objects as go
+
+        #Get Accel
+        accel = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/ford_f150.ide',measurement_type='accel',time_mode='seconds')
+
+        #Filter
+        accel = endaq.calc.filters.butterworth(accel,low_cutoff=2)
+
+        #Get Peak Indexes
+        indexes = endaq.calc.stats.find_peaks(accel, time_distance = 2)
+
+        #Generate a Dataframe with Just the Peak Events
+        df_peaks = accel.iloc[indexes]
+
+        #Generate Shaded Bar Plot of All Data
+        fig = endaq.plot.rolling_min_max_envelope(accel, plot_as_bars=True, opacity=0.7)
+
+        #Add Peaks & Display
+        fig.add_trace(
+            go.Scattergl(
+                x=df_peaks.index,
+                y=df_peaks.abs().max(axis=1).to_numpy(),
+                mode='markers', name='Peak Events', marker_symbol='x', marker_color='white'
+                )
+            )
+        fig.show()
+
+    .. plotly::
+       :fig-vars: fig
+
+        import endaq
+        endaq.plot.utilities.set_theme()
+        import plotly.graph_objects as go
+
+        #Get Accel
+        accel = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/ford_f150.ide',measurement_type='accel',time_mode='datetime')
+
+        #Filter
+        accel = endaq.calc.filters.butterworth(accel,low_cutoff=2)
+
+        #Get Peak Indexes
+        indexes = endaq.calc.stats.find_peaks(accel, time_distance = 2)
+
+        #Generate a Dataframe with Just the Peak Events
+        df_peaks = accel.iloc[indexes]
+
+        #Generate Shaded Bar Plot of All Data
+        fig = endaq.plot.rolling_min_max_envelope(accel, plot_as_bars=True, opacity=0.7)
+
+        #Add Peaks & Display
+        fig.add_trace(
+            go.Scattergl(
+                x=df_peaks.index,
+                y=df_peaks.abs().max(axis=1).to_numpy(),
+                mode='markers', name='Peak Events', marker_symbol='x', marker_color='white'
+                )
+            )
+        fig.show()
     """
     df_unmodified = df.copy()
 
@@ -212,26 +275,58 @@ def find_peaks(
     return indexes
 
 
-def quantify_peaks(
+def rolling_metrics(
         df: pd.DataFrame,
-        indexes: np.array,
-        peak_width: float = 1.0,
+        indexes: np.array = None,
+        index_values: np.array = None,
+        num_slices: int = 100,
+        slice_width: float = None,
         **kwargs,
 ) -> pd.DataFrame:
     """
-    Quantify the peak events of a given time series, defined by their indexes
+    Quantify a series of time slices of a given time series
     :param df: the input dataframe with an index defining the time in seconds or datetime
-    :param indexes: the index locations of each peak event to quantify
-    :param peak_width: the time in seconds to center about each peak index, default is 1.0
+    :param indexes: the index locations (not value) of each peak event to quantify
+            like what is returned by :py:func:`~endaq.calc.stats.find_peaks()`
+    :param index_values: the index values of each peak event to quantify (slower but more intuitive than using `indexes`)
+    :param num_slices: the number of slices to split the time series into, default is 100,
+        this is ignored if `indexes` or `index_values` are defined
+    :param slice_width: the time in seconds to center about each slice index,
+        if none is provided it will calculate one based upon the number of slices
     :param vel_disp_multiplier: applies a scale to the velocity and displacement metrics
         - 386.09 to convert from g to inches (in)
         - 9806.65 to convert from g to millimeters (mm)
-    :param kwargs: Other parameters to pass directly to :py:func:`shock_vibe_metrics`
+    :param kwargs: Other parameters to pass directly to :py:func:`~endaq.calc.stats.shock_vibe_metrics()`
     :return: a dataframe containing all the metrics, one computed per column of the input dataframe, and one per peak event
+
+    Here's a continuation of the example shown in :py:func:`~endaq.calc.stats.find_peaks()`
+    .. code:: python
+        #Calculate for all Peak Event Indexes
+        metrics = endaq.calc.stats.rolling_metrics(accel, indexes=indexes, slice_width=2.0)
+
+        #Calculate for 10 Equally Spaced & Sized Slices
+        metrics = rolling_metrics(accel, num_slices=10)
+
+        #Calculate for 3 Specific Times
+        metrics = rolling_metrics(accel, index_values = pd.DatetimeIndex(['2020-03-13 23:40:13', '2020-03-13 23:45:00', '2020-03-13 23:50:00']), slice_width=5.0)
     """
-    #Define number of points to step forward/back from each event
-    num = int(peak_width / utils.sample_spacing(df) / 2)
     length = len(df)
+
+    #Define center index locations of each slice if not provided
+    if indexes is None:
+        if index_values is not None:
+            indexes = np.zeros(len(index_values),int)
+            for i in range(len(indexes)):
+                indexes[i] = int((np.abs(df.index - index_values[i])).argmin())
+        else:
+            indexes = np.linspace(0, length, num_slices, endpoint = False, dtype=int)
+            indexes = indexes + int(indexes[1]/2)
+
+    #Calculate slice step size
+    spacing = utils.sample_spacing(df)
+    if slice_width is None:
+        slice_width = spacing * length / len(indexes)
+    num = int(slice_width / spacing / 2)
 
     #Loop through and compute metrics
     metrics = pd.DataFrame()
