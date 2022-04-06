@@ -215,14 +215,14 @@ def find_peaks(
 def quantify_peaks(
         df: pd.DataFrame,
         indexes: np.array,
-        time_distance: float = 1.0,
+        peak_width: float = 1.0,
         **kwargs,
 ) -> pd.DataFrame:
     """
     Quantify the peak events of a given time series, defined by their indexes
     :param df: the input dataframe with an index defining the time in seconds or datetime
     :param indexes: the index locations of each peak event to quantify
-    :param time_distance: the time in seconds to center about each peak index, default is 1.0
+    :param peak_width: the time in seconds to center about each peak index, default is 1.0
     :param vel_disp_multiplier: applies a scale to the velocity and displacement metrics
         - 386.09 to convert from g to inches (in)
         - 9806.65 to convert from g to millimeters (mm)
@@ -230,7 +230,7 @@ def quantify_peaks(
     :return: a dataframe containing all the metrics, one computed per column of the input dataframe, and one per peak event
     """
     #Define number of points to step forward/back from each event
-    num = int(time_distance / utils.sample_spacing(df) / 2)
+    num = int(peak_width / utils.sample_spacing(df) / 2)
     length = len(df)
 
     #Loop through and compute metrics
