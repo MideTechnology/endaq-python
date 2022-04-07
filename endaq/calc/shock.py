@@ -405,7 +405,9 @@ def relative_displacement_static(accel: pd.DataFrame, omega: float, damp: float 
 
 def shock_spectrum(
     accel: pd.DataFrame,
-    freqs: np.ndarray,
+    freqs: np.ndarray = None,
+    init_freq: float = 0.5,
+    bins_per_octave: float = 12.0,
     damp: float = 0.0,
     mode: typing.Literal["srs", "pvss"] = "srs",
     two_sided: bool = False,
@@ -413,13 +415,15 @@ def shock_spectrum(
 ) -> pd.DataFrame:
     """
     Calculate the shock spectrum of an acceleration signal.
-
     :param accel: the absolute acceleration `y"`
-    :param freqs: the natural frequencies across which to calculate the spectrum
+    :param freqs: the natural frequencies across which to calculate the spectrum,
+        if `None` (the default) it uses `init_freq` and `bins_per_octave` to define them
+    :param init_freq: the initial frequency in the sequence; if `None`,
+        use the frequency corresponding to the data's duration, default is 0.5 Hz
+    :param bins_per_octave: the number of frequencies per octave, default is 12    
     :param damp: the damping coefficient `ζ`, related to the Q-factor by
         `ζ = 1/(2Q)`; defaults to 0
     :param mode: the type of spectrum to calculate:
-
         - `'srs'` (default) specifies the Shock Response Spectrum (SRS)
         - `'pvss'` specifies the Pseudo-Velocity Shock Spectrum (PVSS)
     :param two_sided: whether to return for each frequency:
@@ -428,9 +432,7 @@ def shock_spectrum(
     :param aggregate_axes: whether to calculate the column-wise resultant (`True`)
         or calculate spectra along each column independently (`False`; default)
     :return: the shock spectrum
-
     .. seealso::
-
         - `Pseudo Velocity Shock Spectrum Rules For Analysis Of Mechanical Shock, Howard A. Gaberson <https://info.endaq.com/hubfs/pvsrs_rules.pdf>`_
         - `An Introduction To The Shock Response Spectrum, Tom Irvine, 9 July 2012 <http://www.vibrationdata.com/tutorials2/srs_intr.pdf>`_
         - `SciPy transfer functions <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.TransferFunction.html>`_
@@ -440,6 +442,8 @@ def shock_spectrum(
           Documentation for the biquad function used to implement the transfer
           function.
     """
+    if freqs is None:
+        freqs = utils.logfreqs(accel, init_freq = init_freq, bins_per_octave = bins_per_octave)
     if two_sided and aggregate_axes:
         raise ValueError("cannot enable both options `two_sided` and `aggregate_axes`")
     freqs = np.asarray(freqs)
@@ -504,6 +508,105 @@ def shock_spectrum(
             for r in results
         )
     )
+
+
+def rolling_shock_spectrum(
+        df: pd.DataFrame,
+        damp: float = 0.0,
+        mode: typing.Literal["srs", "pvss"] = "srs",
+        add_resultant: bool = True,
+        init_freq: float = 0.5,
+        bins_per_octave: float = 12.0,
+        num_slices: int = 100,
+        indexes: np.array = None,
+        index_values: np.array = None,
+        slice_width: float = None,
+        multiplier: float = 1.0,
+        disable_warnings: bool = True,
+) -> pd.DataFrame:
+    """
+    Compute Shock Response Spectrums for defined slices of a time series data set using :py:func:`~endaq.calc.shock.shock_spectrum()`
+    :param df: the input dataframe with an index defining the time in seconds or datetime
+    :param damp: the damping coefficient `ζ`, related to the Q-factor by
+        `ζ = 1/(2Q)`; defaults to 0
+    :param mode: the type of spectrum to calculate:
+        - `'srs'` (default) specifies the Shock Response Spectrum (SRS)
+        - `'pvss'` specifies the Pseudo-Velocity Shock Spectrum (PVSS)
+    :param add_resultant: if `True` (default) the column-wise resultant will
+        also be computed
+    :param aggregate_axes: whether to calculate the column-wise resultant (`True`)
+        or calculate spectra along each column independently (`False`; default)
+    :param init_freq: the initial frequency in the sequence; if `None`,
+        use the frequency corresponding to the data's duration, default is 0.5 Hz
+    :param bins_per_octave: the number of frequencies per octave, default is 12    
+    :param num_slices: the number of slices to split the time series into, default is 100,
+        this is ignored if `indexes` is defined
+    :param indexes: the center index locations (not value) of each slice to compute the shock spectrum
+    :param index_values: the index values of each peak event to quantify (slower but more intuitive than using `indexes`)
+    :param slice_width: the time in seconds to center about each slice index,
+        if none is provided it will calculate one based upon the number of slices
+    :param add_resultant: if `True` the root sum of squares of each shock spectrum column will
+        also be computed, default is `False`
+    :param multiplier: applies a scale to the output
+        - 386.09 to convert from g to inches (in)
+        - 9806.65 to convert from g to millimeters (mm)        
+    :param disable_warnings: if `True` (default) it disables the warnings on the initial frequency
+    :return: a dataframe containing all the shock spectrums, stacked on each other
+    
+    See example use cases and syntax at :py:func:`~endaq.plot.plots.spectrum_over_time()`
+    which visualizes the output of this function in Heatmaps, Waterfall plots, 
+    Surface plots, and Animations
+
+    """
+    if disable_warnings:
+        warnings.filterwarnings('ignore', '.*too short*', )
+
+    length = len(df)
+
+    #Define center index locations of each slice if not provided
+    if indexes is None:
+        if index_values is not None:
+            indexes = np.zeros(len(index_values),int)
+            for i in range(len(indexes)):
+                indexes[i] = int((np.abs(df.index - index_values[i])).argmin())
+        else:
+            indexes = np.linspace(0, length, num_slices, endpoint = False, dtype=int)
+            indexes = indexes + int(indexes[1]/2)
+
+    #Calculate slice step size
+    spacing = utils.sample_spacing(df)
+    if slice_width is None:
+        slice_width = spacing * length / len(indexes)
+    num = int(slice_width / spacing / 2)
+
+    #Loop through and compute shock spectrum
+    srs = pd.DataFrame()
+    for i in indexes:
+        window_start = max(0, i - num)
+        window_end = min(length, i + num)
+        slice_srs = shock_spectrum(
+            df.iloc[window_start:window_end] * multiplier,
+            mode = mode,
+            damp = damp,
+            init_freq = init_freq,
+            bins_per_octave = bins_per_octave,
+        )
+        if add_resultant:
+          slice_srs['Resultant'] = shock_spectrum(
+              df.iloc[window_start:window_end] * multiplier,
+              mode = mode,
+              damp = damp,
+              init_freq = init_freq,
+              bins_per_octave = bins_per_octave,
+              aggregate_axes=True
+          )['resultant']
+
+
+        slice_srs = slice_srs.reset_index().melt(id_vars=slice_srs.index.name)
+        slice_srs['timestamp'] = df.index[i]
+        srs = pd.concat([srs,slice_srs])
+
+    return srs
 
 
 @dataclass
