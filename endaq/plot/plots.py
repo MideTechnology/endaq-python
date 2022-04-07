@@ -293,7 +293,7 @@ def octave_spectrogram(df: pd.DataFrame, window: float, bins_per_octave: int = 3
     if len(df.columns) != 1:
         raise ValueError("The parameter 'df' must have only one column of data!")
     
-    num_slices = int(len(df)*utils.sample_spacing(df) / window)
+    num_slices = int(len(df)*sample_spacing(df) / window)
 
     df_psd = rolling_psd(df, num_slices=num_slices, octave_bins = bins_per_octave, 
                          fstart = freq_start)
