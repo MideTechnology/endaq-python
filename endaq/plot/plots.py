@@ -13,7 +13,7 @@ from collections.abc import Container
 import datetime
 
 from endaq.calc import sample_spacing
-from endaq.calc.psd import to_octave, welch
+from endaq.calc.psd import to_octave, welch, rolling_psd
 
 from .utilities import determine_plotly_map_zoom, get_center_of_coordinates
 from .dashboards import rolling_enveloped_dashboard
