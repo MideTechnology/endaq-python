@@ -415,6 +415,7 @@ def shock_spectrum(
 ) -> pd.DataFrame:
     """
     Calculate the shock spectrum of an acceleration signal.
+    
     :param accel: the absolute acceleration `y"`
     :param freqs: the natural frequencies across which to calculate the spectrum,
         if `None` (the default) it uses `init_freq` and `bins_per_octave` to define them
@@ -526,6 +527,7 @@ def rolling_shock_spectrum(
 ) -> pd.DataFrame:
     """
     Compute Shock Response Spectrums for defined slices of a time series data set using :py:func:`~endaq.calc.shock.shock_spectrum()`
+    
     :param df: the input dataframe with an index defining the time in seconds or datetime
     :param damp: the damping coefficient `ζ`, related to the Q-factor by
         `ζ = 1/(2Q)`; defaults to 0
