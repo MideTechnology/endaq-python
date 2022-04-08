@@ -50,7 +50,7 @@ def shock_vibe_metrics(
         - 386.09 to convert from g to inches (in)
         - 9806.65 to convert from g to millimeters (mm)
     :param include_integration: if `True`, include the calculations of velocity and displacement.  Defaults to `True`.
-    :param include_pseudo_velocity: include the more time consuming calculation of pseudo velocity, default behavior
+    :param include_pseudo_velocity: if `True`, include the more time consuming calculation of pseudo velocity.  Defaults to `True`.
     :param damp: the damping coefficient `ζ`, related to the Q-factor by
         `ζ = 1/(2Q)`; defaults to 0
     :param init_freq: the initial frequency in the sequence; if `None`,
