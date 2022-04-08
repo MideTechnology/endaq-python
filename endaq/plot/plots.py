@@ -521,7 +521,7 @@ def spectrum_over_time(
         round_time: bool = True,
         waterfall_line_sequence: bool = True,
         waterfall_line_color: str = '#EE7F27',
-) -> pd.DataFrame:
+) -> go.Figure:
     """
     Generate a 3D Plotly figure from a stacked spectrum to visualize how the frequency content changes over time
     
