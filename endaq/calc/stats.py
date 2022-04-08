@@ -171,6 +171,7 @@ def find_peaks(
           Documentation for the SciPy function used to identify the peak events.
 
     Here's an example implementation using a 60M dataset that loads the data, finds the peaks, and plots in under 10 seconds
+    
     .. code:: python
         import endaq
         endaq.plot.utilities.set_theme()
