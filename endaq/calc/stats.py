@@ -115,7 +115,8 @@ def shock_vibe_metrics(
                 'variable':['Resultant'],
                 'value':[np.sum(rms.value**2)**0.5]
             })])
-        rms['calculation'] = 'RMS ' + label
+        rms['calculation'] = f'RMS {label}'
+        rms['calculation'] = 'RMS {}'.format(label)
 
         #Add to Metrics
         metrics = pd.concat([metrics,peak,rms])
