@@ -99,7 +99,7 @@ def shock_vibe_metrics(
 
         #Calculate Absolute Peak
         peak = pd.DataFrame(data.abs().max()).reset_index()
-        peak.columns = ['variable','value']
+        peak.columns = ['variable', 'value']
         if include_resultant:
             peak = pd.concat([peak, pd.DataFrame({
                 'variable':['Resultant'],
