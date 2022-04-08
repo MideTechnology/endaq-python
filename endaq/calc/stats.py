@@ -85,7 +85,7 @@ def shock_vibe_metrics(
     metrics = pd.DataFrame()
     rms_start = int(tukey_percent/2*df.shape[0])
     rms_end = df.shape[0] - rms_start
-    for (label,data,scale) in zip(
+    for label, data, scale in zip(
             ['Acceleration','Velocity','Displacement'],
             data_list,
             [1,vel_disp_multiplier,vel_disp_multiplier]):
