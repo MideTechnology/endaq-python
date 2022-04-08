@@ -279,7 +279,8 @@ def octave_spectrogram(df: pd.DataFrame, window: float, bins_per_octave: int = 3
                        ) -> go.Figure:
     """
     Produces an octave spectrogram of the given data, this is a wrapper around 
-    :py:func:`~endaq.calc.psd.rolling_psd()` and :py:func:`~endaq.plot.plots.spectrum_over_time()`
+    :py:func:`~endaq.calc.psd.rolling_psd()` and :py:func:`~endaq.plot.spectrum_over_time()`
+    
     :param df: The dataframe of sensor data.  This must only have 1 column.
     :param window: The time window for each of the columns in the spectrogram
     :param bins_per_octave: The number of frequency bins per octave
