@@ -28,6 +28,7 @@ __all__ = [
     'rolling_min_max_envelope',
     'around_peak',
     'animate_quaternion',
+    'spectrum_over_time'
 ]
 
 DEFAULT_ATTRIBUTES_TO_PLOT_INDIVIDUALLY = np.array([
@@ -522,6 +523,7 @@ def spectrum_over_time(
 ) -> pd.DataFrame:
     """
     Generate a 3D Plotly figure from a stacked spectrum to visualize how the frequency content changes over time
+    
     :param df: the input dataframe with columns defining the frequency content, timestamps, values, and variables,
         see the following functions which provides outputs that would then be passed into this function as an input:
         - :py:func:`~endaq.calc.fft.rolling_fft()`
@@ -551,6 +553,7 @@ def spectrum_over_time(
 
     Here's a few examples from a dataset recorded with an enDAQ sensor on a motorcycle
     as it revved the engine which resulted in changing frequency content
+    
     .. code:: python
         import endaq
         endaq.plot.utilities.set_theme()
