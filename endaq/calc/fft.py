@@ -11,7 +11,7 @@ import scipy.fft
 from endaq.calc import psd, utils
 
 
-__all__ = ["aggregate_fft", "fft", "rfft", "dct", "dst"]
+__all__ = ["aggregate_fft", "rolling_fft", "fft", "rfft", "dct", "dst"]
 
 
 def aggregate_fft(df, **kwargs):
@@ -49,6 +49,7 @@ def rolling_fft(
 ) -> pd.DataFrame:
     """
     Compute FFTs for defined slices of a time series data set using :py:func:`~endaq.calc.fft.aggregate_fft()`
+    
     :param df: the input dataframe with an index defining the time in seconds or datetime
     :param bin_width: the bin width or resolution in Hz for the FFT
     :param num_slices: the number of slices to split the time series into, default is 100,
