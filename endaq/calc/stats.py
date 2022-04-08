@@ -62,12 +62,14 @@ def shock_vibe_metrics(
     """
 
     #Remove Offset
-    if zero is not None:
-        if zero == "start":
-            df = df - df.iloc[0]
-        elif zero in ("mean", "median"):
-            zero = dict(mean=np.mean, median=np.median)[zero]
-            df = df - df.apply(zero, axis="index", raw=True)
+    if zero == "start":
+        df -= df.iloc[0]
+    elif zero == "mean":
+        df -= df.mean(axis="index")
+    elif zero == "median":
+        df -= df.median(axis="index")
+    elif zero is not None:
+        raise ValueError(f'kwarg zero was {zero}, must be one of [None, "start", "mean", "median"]')
 
     #Apply Filters & Window
     df = filters.butterworth(df, low_cutoff=highpass_cutoff, tukey_percent=tukey_percent)
