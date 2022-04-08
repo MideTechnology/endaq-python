@@ -52,7 +52,7 @@ def shock_vibe_metrics(
     :param include_integration: if `True`, include the calculations of velocity and displacement.  Defaults to `True`.
     :param include_pseudo_velocity: if `True`, include the more time consuming calculation of pseudo velocity.  Defaults to `True`.
     :param damp: the damping coefficient `ζ`, related to the Q-factor by
-        `ζ = 1/(2Q)`; defaults to 0
+        `ζ = 1/(2Q)`; defaults to 0.05
     :param init_freq: the initial frequency in the sequence; if `None`,
         use the frequency corresponding to the data's duration, default is 1.0 Hz
     :param bins_per_octave: the number of frequencies per octave
