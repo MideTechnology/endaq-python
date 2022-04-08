@@ -383,7 +383,7 @@ def rolling_psd(
     :param kwargs: Other parameters to pass directly to :py:func:`psd.welch`
     :return: a dataframe containing all the PSDs, stacked on each other
 
-    See example use cases and syntax at :py:func:`~endaq.plot.plots.spectrum_over_time()`
+    See example use cases and syntax at :py:func:`~endaq.plot.spectrum_over_time()`
     which visualizes the output of this function in Heatmaps, Waterfall plots, 
     Surface plots, and Animations
 
