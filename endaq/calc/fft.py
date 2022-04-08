@@ -69,45 +69,36 @@ def rolling_fft(
     Surface plots, and Animations
 
     """
-    if disable_warnings:
-        warnings.filterwarnings('ignore', '.*greater than.*', )
 
-    length = len(df)
+    indexes, slice_width, num, length = utils._rolling_slice_definitions(
+        df,
+        indexes=indexes,
+        index_values=index_values,
+        num_slices=num_slices,
+        slice_width=slice_width
+    )
 
-    #Define center index locations of each slice if not provided
-    if indexes is None:
-        if index_values is not None:
-            indexes = np.zeros(len(index_values),int)
-            for i in range(len(indexes)):
-                indexes[i] = int((np.abs(df.index - index_values[i])).argmin())
-        else:
-            indexes = np.linspace(0, length, num_slices, endpoint = False, dtype=int)
-            indexes = indexes + int(indexes[1]/2)
-
-    #Calculate slice step size
-    spacing = utils.sample_spacing(df)
-    if slice_width is None:
-        slice_width = spacing * length / len(indexes)
-    num = int(slice_width / spacing / 2)
-
-    #Loop through and compute fft
-    fft = pd.DataFrame()
+    # Loop through and compute fft
+    fft_df = pd.DataFrame()
     for i in indexes:
         window_start = max(0, i - num)
         window_end = min(length, i + num)
-        slice_fft = aggregate_fft(
-            df.iloc[window_start:window_end],
-            bin_width = bin_width,
-            **kwargs
-        )
+        with warnings.catch_warnings():
+            if disable_warnings:
+                warnings.filterwarnings('ignore', '.*greater than.*')
+            slice_fft = aggregate_fft(
+                df.iloc[window_start:window_end],
+                bin_width=bin_width,
+                **kwargs
+            )
         if add_resultant:
             slice_fft['Resultant'] = slice_fft.pow(2).sum(axis=1).pow(0.5)
 
         slice_fft = slice_fft.reset_index().melt(id_vars=slice_fft.index.name)
         slice_fft['timestamp'] = df.index[i]
-        fft = pd.concat([fft,slice_fft])
+        fft_df = pd.concat([fft_df, slice_fft])
 
-    return fft
+    return fft_df
 
 
 def fft(

@@ -537,7 +537,7 @@ def rolling_shock_spectrum(
         - `'pvss'` specifies the Pseudo-Velocity Shock Spectrum (PVSS)
     :param add_resultant: if `True` (default) the column-wise resultant will
         also be computed
-    :param aggregate_axes: whether to calculate the column-wise resultant (`True`)
+    :param add_resultant: whether to calculate the column-wise resultant (`True`)
         or calculate spectra along each column independently (`False`; default)
     :param init_freq: the initial frequency in the sequence; if `None`,
         use the frequency corresponding to the data's duration, default is 0.5 Hz
@@ -562,53 +562,46 @@ def rolling_shock_spectrum(
     Surface plots, and Animations
 
     """
-    if disable_warnings:
-        warnings.filterwarnings('ignore', '.*too short*', )
 
-    length = len(df)
+    indexes, slice_width, num, length = utils._rolling_slice_definitions(
+        df,
+        indexes=indexes,
+        index_values=index_values,
+        num_slices=num_slices,
+        slice_width=slice_width
+    )
 
-    #Define center index locations of each slice if not provided
-    if indexes is None:
-        if index_values is not None:
-            indexes = np.zeros(len(index_values),int)
-            for i in range(len(indexes)):
-                indexes[i] = int((np.abs(df.index - index_values[i])).argmin())
-        else:
-            indexes = np.linspace(0, length, num_slices, endpoint = False, dtype=int)
-            indexes = indexes + int(indexes[1]/2)
-
-    #Calculate slice step size
-    spacing = utils.sample_spacing(df)
-    if slice_width is None:
-        slice_width = spacing * length / len(indexes)
-    num = int(slice_width / spacing / 2)
-
-    #Loop through and compute shock spectrum
+    # Loop through and compute shock spectrum
     srs = pd.DataFrame()
     for i in indexes:
         window_start = max(0, i - num)
         window_end = min(length, i + num)
-        slice_srs = shock_spectrum(
-            df.iloc[window_start:window_end] * multiplier,
-            mode = mode,
-            damp = damp,
-            init_freq = init_freq,
-            bins_per_octave = bins_per_octave,
-        )
+        with warnings.catch_warnings():
+            if disable_warnings:
+                warnings.filterwarnings('ignore', '.*too short*', )
+            slice_srs = shock_spectrum(
+                df.iloc[window_start:window_end] * multiplier,
+                mode=mode,
+                damp=damp,
+                init_freq=init_freq,
+                bins_per_octave=bins_per_octave,
+            )
         if add_resultant:
-          slice_srs['Resultant'] = shock_spectrum(
-              df.iloc[window_start:window_end] * multiplier,
-              mode = mode,
-              damp = damp,
-              init_freq = init_freq,
-              bins_per_octave = bins_per_octave,
-              aggregate_axes=True
-          )['resultant']
-
+            with warnings.catch_warnings():
+                if disable_warnings:
+                    warnings.filterwarnings('ignore', '.*too short*', )
+                slice_srs['Resultant'] = shock_spectrum(
+                    df.iloc[window_start:window_end] * multiplier,
+                    mode=mode,
+                    damp=damp,
+                    init_freq=init_freq,
+                    bins_per_octave=bins_per_octave,
+                    aggregate_axes=True
+                )['resultant']
 
         slice_srs = slice_srs.reset_index().melt(id_vars=slice_srs.index.name)
         slice_srs['timestamp'] = df.index[i]
-        srs = pd.concat([srs,slice_srs])
+        srs = pd.concat([srs, slice_srs])
 
     return srs
 

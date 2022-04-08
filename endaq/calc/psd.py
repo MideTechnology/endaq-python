@@ -388,51 +388,45 @@ def rolling_psd(
     Surface plots, and Animations
 
     """
-    if disable_warnings:
-        warnings.filterwarnings('ignore', '.*greater than.*', )
-        warnings.filterwarnings('ignore', '.*empty frequency*', )
 
-    length = len(df)
+    indexes, slice_width, num, length = utils._rolling_slice_definitions(
+        df,
+        indexes=indexes,
+        index_values=index_values,
+        num_slices=num_slices,
+        slice_width=slice_width
+    )
 
-    #Define center index locations of each slice if not provided
-    if indexes is None:
-        if index_values is not None:
-            indexes = np.zeros(len(index_values),int)
-            for i in range(len(indexes)):
-                indexes[i] = int((np.abs(df.index - index_values[i])).argmin())
-        else:
-            indexes = np.linspace(0, length, num_slices, endpoint = False, dtype=int)
-            indexes = indexes + int(indexes[1]/2)
-
-    #Calculate slice step size
-    spacing = utils.sample_spacing(df)
-    if slice_width is None:
-        slice_width = spacing * length / len(indexes)
-    num = int(slice_width / spacing / 2)
-
-    #Define bin_width if octave spacing
+    # Define bin_width if octave spacing
     if octave_bins is not None:
         bin_width = 1 / slice_width
-
-    #Loop through and compute PSD
+        
+    # Loop through and compute PSD
     psd = pd.DataFrame()
     for i in indexes:
         window_start = max(0, i - num)
         window_end = min(length, i + num)
-        slice_psd = welch(
-            df.iloc[window_start:window_end],
-            bin_width = bin_width,
-            scaling = scaling,
-            **kwargs
-        )
+        with warnings.catch_warnings():
+            if disable_warnings:
+                warnings.filterwarnings('ignore', '.*greater than.*', )
+            slice_psd = welch(
+                df.iloc[window_start:window_end],
+                bin_width=bin_width,
+                scaling=scaling,
+                **kwargs
+            )
+
         if octave_bins is not None:
-            slice_psd = to_octave(slice_psd, octave_bins=octave_bins, fstart = fstart, agg=agg)
+            with warnings.catch_warnings():
+                if disable_warnings:
+                    warnings.filterwarnings('ignore', '.*empty frequency.*')
+                slice_psd = to_octave(slice_psd, octave_bins=octave_bins, fstart=fstart, agg=agg)
 
         if add_resultant:
             slice_psd['Resultant'] = slice_psd.sum(axis=1)
 
         slice_psd = slice_psd.reset_index().melt(id_vars=slice_psd.index.name)
         slice_psd['timestamp'] = df.index[i]
-        psd = pd.concat([psd,slice_psd])
+        psd = pd.concat([psd, slice_psd])
 
     return psd
