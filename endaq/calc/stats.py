@@ -314,6 +314,7 @@ def rolling_metrics(
     :return: a dataframe containing all the metrics, one computed per column of the input dataframe, and one per peak event
 
     Here's a continuation of the example shown in :py:func:`~endaq.calc.stats.find_peaks()`
+    
     .. code:: python
         #Calculate for all Peak Event Indexes
         metrics = endaq.calc.stats.rolling_metrics(accel, indexes=indexes, slice_width=2.0)
