@@ -357,6 +357,7 @@ def rolling_psd(
 ) -> pd.DataFrame:
     """
     Compute PSDs for defined slices of a time series data set using :py:func:`~endaq.calc.psd.welch()`
+    
     :param df: the input dataframe with an index defining the time in seconds or datetime
     :param bin_width: the bin width or resolution in Hz for the PSD, defaults to 1,
         this is ignored if `octave_bins` is defined
