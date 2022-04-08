@@ -88,7 +88,7 @@ def shock_vibe_metrics(
     data_list = [df]
     if include_integration:
         [accel, vel, disp] = integrate.integrals(
-            df, n=2, tukey_percent=tukey_percent, highpass_cutoff=highpass_cutoff)
+            df, n=2, tukey_percent=tukey_percent, highpass_cutoff=highpass_cutoff, zero=zero)
         data_list = [df, vel, disp]
 
     #Calculate Peak & RMS
