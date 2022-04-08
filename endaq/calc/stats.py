@@ -17,7 +17,7 @@ def shock_vibe_metrics(
         df: pd.DataFrame,
         tukey_percent: float = 0.1,
         highpass_cutoff: float = None,
-        vel_disp_multiplier: float = 1.0,
+        unit_conversion: typing.Literal["g_to_in", "g_to_mm", None] = None,
         zero: typing.Literal["start", "mean", "median", None] = "median",
         include_integration: bool = True,
         include_pseudo_velocity: bool = True,
@@ -46,9 +46,10 @@ def shock_vibe_metrics(
         ``-np.median(output)``
     :param highpass_cutoff: the cutoff frequency of a preconditioning highpass
         filter; if None, no filter is applied. For shock events, it is recommended to set this to None (the default), but it is recommended for vibration.
-    :param vel_disp_multiplier: applies a scale to the velocity and displacement metrics
-        - 386.09 to convert from g to inches (in)
-        - 9806.65 to convert from g to millimeters (mm)
+    :param unit_conversion: applies a scale to the velocity and displacement metrics
+        - `"g_to_in"` multiplies the output by 386.09 to convert from g to inches (in)
+        - `"g_to_mm"` multiplies the output by 9806.65 to convert from g to millimeters (mm)
+        - `None` (the default) applies no scale to the output
     :param include_integration: if `True`, include the calculations of velocity and displacement.  Defaults to `True`.
     :param include_pseudo_velocity: if `True`, include the more time consuming calculation of pseudo velocity.  Defaults to `True`.
     :param damp: the damping coefficient `ζ`, related to the Q-factor by
@@ -61,6 +62,15 @@ def shock_vibe_metrics(
     :return: a dataframe containing all the metrics, one computed per column of the input dataframe
     """
 
+    #Apply Unit Conversion
+    vel_disp_multiplier = 1.0
+    if unit_conversion == "g_to_in":
+        vel_disp_multiplier = 386.09
+    elif unit_conversion == "g_to_mm":
+        vel_disp_multiplier = 9806.65
+    elif unit_conversion is not None:
+        raise ValueError(f'kwarg unit_conversion was {unit_conversion}, must be one of [None, "g_to_in", "g_to_mm"]')
+    
     #Remove Offset
     if zero == "start":
         df -= df.iloc[0]
