@@ -36,6 +36,7 @@ def shock_vibe_metrics(
         - Peak Absolute Displacement
         - RMS Displacement
         - Peak Pseudo Velocity
+        
     :param df: the input dataframe with an index defining the time in seconds or datetime
     :param tukey_percent: the portion of the time series to apply a Tukey window (a taper that forces beginning and end to 0), default is 0.1
         - Note that the RMS metrics will only be computed on the portion of time that isn't tapered
@@ -162,6 +163,7 @@ def find_peaks(
 ) -> pd.DataFrame:
     """
     Find the peak events of a given time series using the maximum across all input columns
+    
     :param df: the input dataframe with an index defining the time in seconds or datetime
     :param time_distance: the minimum time in seconds between events, default is 1.0
     :param add_resultant: add a resultant (root sum of the squares) to the time series prior to finding peaks, calculated from the other input dataframe columns
@@ -299,9 +301,9 @@ def rolling_metrics(
 ) -> pd.DataFrame:
     """
     Quantify a series of time slices of a given time series
+    
     :param df: the input dataframe with an index defining the time in seconds or datetime
-    :param indexes: the index locations (not value) of each peak event to quantify
-            like what is returned by :py:func:`~endaq.calc.stats.find_peaks()`
+    :param indexes: the index locations (not value) of each peak event to quantify like what is returned by :py:func:`~endaq.calc.stats.find_peaks()`
     :param index_values: the index values of each peak event to quantify (slower but more intuitive than using `indexes`)
     :param num_slices: the number of slices to split the time series into, default is 100,
         this is ignored if `indexes` or `index_values` are defined
@@ -313,9 +315,7 @@ def rolling_metrics(
     :param kwargs: Other parameters to pass directly to :py:func:`~endaq.calc.stats.shock_vibe_metrics()`
     :return: a dataframe containing all the metrics, one computed per column of the input dataframe, and one per peak event
 
-    Here's a continuation of the example shown in :py:func:`~endaq.calc.stats.find_peaks()`
-    
-    .. code:: python
+    Here's a continuation of the example shown in :py:func:`~endaq.calc.stats.find_peaks()`::
         #Calculate for all Peak Event Indexes
         metrics = endaq.calc.stats.rolling_metrics(accel, indexes=indexes, slice_width=2.0)
 
