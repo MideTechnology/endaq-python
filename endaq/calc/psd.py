@@ -342,6 +342,11 @@ def rolling_psd(
         bin_width: float = 1.0,
         octave_bins: float = None,
         fstart: float = 1.0,
+        scaling: typing.Literal[None, "density", "spectrum", "parseval", "unit"] = None,
+        agg: typing.Union[
+            typing.Literal["mean", "sum"],
+            typing.Callable[[np.ndarray, int], float],
+        ] = "mean",
         num_slices: int = 100,
         indexes: np.array = None,
         index_values: np.array = None,
@@ -357,6 +362,14 @@ def rolling_psd(
         this is ignored if `octave_bins` is defined
     :param octave_bins: the number of frequency bins in each octave, defaults to `None`
     :param fstart: the lowest frequency for an octave PSD, defaults to 1
+    :param scaling: the scaling of the output; `"density"` & `"spectrum"`
+        correspond to the same options in ``scipy.signal.welch``; `"parseval"`
+        will maintain the "energy" between the input & output, s.t.
+        ``welch(df, scaling="parseval").sum(axis="rows")`` is roughly equal to
+        ``df.abs().pow(2).sum(axis="rows")``;
+        `"unit"` will maintain the units and scale of the input data.
+    :param agg: the method for aggregating values into bins (only used if converting to octave); `'mean'` preserves
+        the PSD's area-under-the-curve, `'sum'` preserves the PSD's "energy"    
     :param num_slices: the number of slices to split the time series into, default is 100,
         this is ignored if `indexes` is defined
     :param indexes: the center index locations (not value) of each slice to compute the PSD
@@ -408,10 +421,11 @@ def rolling_psd(
         slice_psd = welch(
             df.iloc[window_start:window_end],
             bin_width = bin_width,
+            scaling = scaling,
             **kwargs
         )
         if octave_bins is not None:
-            slice_psd = to_octave(slice_psd, octave_bins=octave_bins, fstart = fstart)
+            slice_psd = to_octave(slice_psd, octave_bins=octave_bins, fstart = fstart, agg=agg)
 
         if add_resultant:
             slice_psd['Resultant'] = slice_psd.sum(axis=1)
