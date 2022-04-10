@@ -402,7 +402,7 @@ def rolling_psd(
         bin_width = 1 / slice_width
         
     # Loop through and compute PSD
-    psd = pd.DataFrame()
+    psd_df = pd.DataFrame()
     for i in indexes:
         window_start = max(0, i - num)
         window_end = min(length, i + num)
@@ -427,6 +427,6 @@ def rolling_psd(
 
         slice_psd = slice_psd.reset_index().melt(id_vars=slice_psd.index.name)
         slice_psd['timestamp'] = df.index[i]
-        psd = pd.concat([psd, slice_psd])
+        psd_df = pd.concat([psd_df, slice_psd])
 
-    return psd
+    return psd_df
