@@ -408,7 +408,7 @@ def shock_spectrum(
     freqs: np.ndarray = None,
     init_freq: float = 0.5,
     bins_per_octave: float = 12.0,
-    damp: float = 0.0,
+    damp: float = 0.05,
     mode: typing.Literal["srs", "pvss"] = "srs",
     two_sided: bool = False,
     aggregate_axes: bool = False,
@@ -423,7 +423,7 @@ def shock_spectrum(
         use the frequency corresponding to the data's duration, default is 0.5 Hz
     :param bins_per_octave: the number of frequencies per octave, default is 12    
     :param damp: the damping coefficient `ζ`, related to the Q-factor by
-        `ζ = 1/(2Q)`; defaults to 0
+        `ζ = 1/(2Q)`; defaults to 0.05
     :param mode: the type of spectrum to calculate:
         - `'srs'` (default) specifies the Shock Response Spectrum (SRS)
         - `'pvss'` specifies the Pseudo-Velocity Shock Spectrum (PVSS)
@@ -513,7 +513,7 @@ def shock_spectrum(
 
 def rolling_shock_spectrum(
         df: pd.DataFrame,
-        damp: float = 0.0,
+        damp: float = 0.05,
         mode: typing.Literal["srs", "pvss"] = "srs",
         add_resultant: bool = True,
         init_freq: float = 0.5,
@@ -530,7 +530,7 @@ def rolling_shock_spectrum(
     
     :param df: the input dataframe with an index defining the time in seconds or datetime
     :param damp: the damping coefficient `ζ`, related to the Q-factor by
-        `ζ = 1/(2Q)`; defaults to 0
+        `ζ = 1/(2Q)`; defaults to 0.05
     :param mode: the type of spectrum to calculate:
         * `'srs'` (default) specifies the Shock Response Spectrum (SRS)
         * `'pvss'` specifies the Pseudo-Velocity Shock Spectrum (PVSS)

@@ -342,11 +342,12 @@ def rolling_psd(
         bin_width: float = 1.0,
         octave_bins: float = None,
         fstart: float = 1.0,
-        scaling: typing.Literal[None, "density", "spectrum", "parseval", "unit"] = None,
+        scaling: typing.Literal[None, "density", "spectrum", "parseval", "unit", "rms"] = None,
         agg: typing.Union[
             typing.Literal["mean", "sum"],
             typing.Callable[[np.ndarray, int], float],
         ] = "mean",
+        freq_splits: np.array = None,
         num_slices: int = 100,
         indexes: np.array = None,
         index_values: np.array = None,
@@ -368,9 +369,11 @@ def rolling_psd(
         will maintain the "energy" between the input & output, s.t.
         ``welch(df, scaling="parseval").sum(axis="rows")`` is roughly equal to
         ``df.abs().pow(2).sum(axis="rows")``;
-        `"unit"` will maintain the units and scale of the input data.
-    :param agg: the method for aggregating values into bins (only used if converting to octave); `'mean'` preserves
-        the PSD's area-under-the-curve, `'sum'` preserves the PSD's "energy"    
+        `"unit"` will maintain the units and scale of the input data. `"rms"` will use `"parseval"` for the PSD
+        calculations and set `agg` to "sum", but then take the square root at the end
+    :param agg: the method for aggregating values into bins (only used if converting to octave or jagged); `'mean'` preserves
+        the PSD's area-under-the-curve, `'sum'` preserves the PSD's "energy"
+    :param freq_splits: the boundaries of the frequency bins to pass to :py:func:`~endaq.calc.psd.to_jagged()`
     :param num_slices: the number of slices to split the time series into, default is 100,
         this is ignored if `indexes` is defined
     :param indexes: the center index locations (not value) of each slice to compute the PSD
@@ -397,6 +400,13 @@ def rolling_psd(
         slice_width=slice_width
     )
 
+    # Allow for RMS calculations
+    exp = 1
+    if scaling == "rms":
+        scaling = "parseval"
+        exp = 0.5
+        agg = "sum"
+
     # Define bin_width if octave spacing
     if octave_bins is not None:
         bin_width = 1 / slice_width
@@ -416,16 +426,19 @@ def rolling_psd(
                 **kwargs
             )
 
-        if octave_bins is not None:
+        if octave_bins is not None or freq_splits is not None:
             with warnings.catch_warnings():
                 if disable_warnings:
                     warnings.filterwarnings('ignore', '.*empty frequency.*')
-                slice_psd = to_octave(slice_psd, octave_bins=octave_bins, fstart=fstart, agg=agg)
+                if freq_splits is None:
+                    slice_psd = to_octave(slice_psd, octave_bins=octave_bins, fstart=fstart, agg=agg)
+                else:
+                    slice_psd = to_jagged(slice_psd, freq_splits=freq_splits, agg=agg)
 
         if add_resultant:
             slice_psd['Resultant'] = slice_psd.sum(axis=1)
 
-        slice_psd = slice_psd.reset_index().melt(id_vars=slice_psd.index.name)
+        slice_psd = (slice_psd ** exp).reset_index().melt(id_vars=slice_psd.index.name)
         slice_psd['timestamp'] = df.index[i]
         psd_df = pd.concat([psd_df, slice_psd])
 

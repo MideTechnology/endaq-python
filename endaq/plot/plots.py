@@ -529,6 +529,7 @@ def spectrum_over_time(
         log_val: bool = False,
         round_time: bool = True,
         waterfall_line_sequence: bool = True,
+        zsmooth: str = "best",
         waterfall_line_color: str = '#EE7F27',
         min_median_max_line_color: str = '#6914F0',
 ) -> go.Figure:
@@ -537,18 +538,18 @@ def spectrum_over_time(
     
     :param df: the input dataframe with columns defining the frequency content, timestamps, values, and variables,
         see the following functions which provides outputs that would then be passed into this function as an input:
-        * :py:func:`~endaq.calc.fft.rolling_fft()`
-        * :py:func:`~endaq.calc.psd.rolling_psd()`
-        * :py:func:`~endaq.calc.shock.rolling_shock_spectrum()`
-        * :py:func:`~endaq.batch.GetDataBuilder.add_psd()`
-        * :py:func:`~endaq.batch.GetDataBuilder.add_pvss()`
+        *  :py:func:`~endaq.calc.fft.rolling_fft()`
+        *  :py:func:`~endaq.calc.psd.rolling_psd()`
+        *  :py:func:`~endaq.calc.shock.rolling_shock_spectrum()`
+        *  :py:func:`~endaq.batch.GetDataBuilder.add_psd()`
+        *  :py:func:`~endaq.batch.GetDataBuilder.add_pvss()`
     :param plot_type: the type of plot to display the spectrum, options are:
-        * `Heatmap`:  a 2D visualization with the color defining the z value (the default)
-        * `Surface`: similar to `Heatmap` but the z value is also projected "off the page"
-        * `Waterfall`: distinct lines are plotted per time slice in a 3D view
-        * `Animation`: a 2D display of the waterfall but the spectrum changes with animation frames
-        * `Peak`: per timestamp the peak frequency is determined and plotted against time
-        * `Lines`: the value in each frequency bin is plotted against time
+        *  `Heatmap`:  a 2D visualization with the color defining the z value (the default)
+        *  `Surface`: similar to `Heatmap` but the z value is also projected "off the page"
+        *  `Waterfall`: distinct lines are plotted per time slice in a 3D view
+        *  `Animation`: a 2D display of the waterfall but the spectrum changes with animation frames
+        *  `Peak`: per timestamp the peak frequency is determined and plotted against time
+        *  `Lines`: the value in each frequency bin is plotted against time
     :param var_column: the column name in the dataframe that defines the different variables, default is `"variable"`
     :param var_to_process: the variable value in the `var_column` to filter the input df down to,
         if none is provided (the default) this function will filter to the first value
@@ -565,6 +566,8 @@ def spectrum_over_time(
         hundredths of a second for floats
     :param waterfall_line_sequence: if `True` the waterfall line colors are defined with a color scale,
         if `False` all lines will have the same color, default is `True`
+    :param zsmooth: the Plotly smooth algorithm to use in the heatmap, default is `"best"` which looks ideal but
+        `"fast"` will be more responsive, or `False` will attempt no smoothing
     :param waterfall_line_color: the color to use for all lines in the Waterfall plot if `waterfall_line_sequence` is
         `False`
     :param min_median_max_line_color: the color to use for the min, max, and median lines in the Animation, if set to
@@ -577,86 +580,138 @@ def spectrum_over_time(
     
     .. code:: python
 
-        import endaq
-        endaq.plot.utilities.set_theme()
         import pandas as pd
+        import endaq
 
-        #Get the Data
-        df_vibe = pd.read_csv('https://info.endaq.com/hubfs/data/motorcycle-vibration-moving-frequency.csv',index_col=0)
-        df_vibe = df_vibe - df_vibe.median()
+        # Set Theme
+        endaq.plot.utilities.set_theme()
 
-        #Calculate a Rolling FFT
+        # Get Vibration Data
+        df_vibe = pd.read_csv('https://info.endaq.com/hubfs/data/motorcycle-vibration-moving-frequency.csv', index_col=0)
+
+        # Calculate a Rolling FFT
         fft = endaq.calc.fft.rolling_fft(df_vibe, num_slices=200, add_resultant=True)
 
-        #Visualize the Rolling FFT as a Heatmap
-        heatmap = endaq.plot.plots.spectrum_over_time(fft, plot_type = 'Heatmap', freq_max=200, var_to_process='Resultant')
+        # Visualize the Rolling FFT as a Heatmap
+        heatmap = endaq.plot.plots.spectrum_over_time(fft, plot_type='Heatmap', freq_max=200, var_to_process='Resultant')
         heatmap.show()
 
-        #Visualize as the peak frequency
-        peak = endaq.plot.plots.spectrum_over_time(fft, plot_type = 'Peak', freq_max=200, var_to_process='Resultant')
+        # Plot the Peak Frequency vs Time
+        peak = endaq.plot.plots.spectrum_over_time(fft, plot_type='Peak', freq_max=200, var_to_process='Resultant')
         peak.show()
 
-        #Visualize as a Surface Plot
-        surface = endaq.plot.plots.spectrum_over_time(fft, plot_type = 'Surface', freq_max=200, var_to_process='Resultant')
+        # Visualize as a Surface Plot
+        surface = endaq.plot.plots.spectrum_over_time(fft, plot_type='Surface', freq_max=200, var_to_process='Resultant')
         surface.show()
 
-        #Visualize as a Waterfall
-        waterfall = endaq.plot.plots.spectrum_over_time(fft, plot_type = 'Waterfall', freq_max=200, var_to_process='Resultant')
+        # Visualize as a Waterfall
+        waterfall = endaq.plot.plots.spectrum_over_time(fft, plot_type='Waterfall', freq_max=200, var_to_process='Resultant')
         waterfall.show()
 
-        #Visualize as an Animation
-        animation = endaq.plot.plots.spectrum_over_time(fft, plot_type = 'Animation', log_val=True, freq_max=200, var_to_process='Resultant')
+        # Get a Longer Dataset with DatetimeIndex
+        engine = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/data/Commute.ide', measurement_type='accel',
+                                                   time_mode='datetime')
+
+        # Compute PSD
+        psd = endaq.calc.psd.rolling_psd(engine, num_slices=500, add_resultant=True, octave_bins=12, fstart=4)
+
+        # Visualize as a Heatmap
+        heatmap2 = endaq.plot.plots.spectrum_over_time(psd, plot_type='Heatmap', var_to_process='Resultant', zsmooth='best',
+                                                       log_freq=True, log_val=True)
+        heatmap2.show()
+
+        # Visualize as an Animation
+        animation = endaq.plot.plots.spectrum_over_time(psd, plot_type='Animation', var_to_process='Resultant',
+                                                        log_freq=True, log_val=True)
         animation.show()
 
-        #Calculate a Rolling PSD with Units as RMS**2
-        psd = endaq.calc.psd.rolling_psd(df_vibe, num_slices=200, scaling='parseval', add_resultant=True, octave_bins=1, fstart=1, agg='sum')
-        psd['value'] = psd['value'] ** 0.5
+        # Use Rolling PSD to Calculate RMS in Certain Frequency Bins
+        rms = endaq.calc.psd.rolling_psd(engine, num_slices=500, scaling='rms', add_resultant=True,
+                                         freq_splits=[1, 20, 60, 300, 3000])
 
-        #Visualize the energy in each frequency bin
-        lines = endaq.plot.plots.spectrum_over_time(psd, plot_type = 'Lines',  log_val=False, var_to_process='Resultant')
+        # Plot the RMS per Frequency Bin Over Time
+        lines = endaq.plot.plots.spectrum_over_time(rms, plot_type='Lines', log_val=False, var_to_process='Resultant')
         lines.show()
+
+        # Compute Pseudo Velocity at Specific Times
+        pvss = endaq.calc.shock.rolling_shock_spectrum(engine, slice_width=2.0, add_resultant=True,
+                                                       mode='pvss', init_freq=4, damp=0.05,
+                                                       index_values=pd.DatetimeIndex(['2016-08-02 12:07:15',
+                                                                                      '2016-08-02 12:08:01',
+                                                                                      '2016-08-02 12:10:06'], tz='UTC'))
+
+        # Visualize as a Waterfall
+        waterfall2 = endaq.plot.plots.spectrum_over_time(pvss, plot_type='Waterfall', log_freq=True, log_val=True,
+                                                         var_to_process='Resultant', waterfall_line_sequence=False)
+        waterfall2.show()
 
     .. plotly::
-        :fig-vars: heatmap, peak, surface, waterfall, animation, lines
+        :fig-vars: heatmap, peak, surface, waterfall, heatmap2, animation, lines, waterfall2
 
-        import endaq
-        endaq.plot.utilities.set_theme()
         import pandas as pd
+        import endaq
 
-        #Get the Data
-        df_vibe = pd.read_csv('https://info.endaq.com/hubfs/data/motorcycle-vibration-moving-frequency.csv',index_col=0)
-        df_vibe = df_vibe - df_vibe.median()
+        # Set Theme
+        endaq.plot.utilities.set_theme()
 
-        #Calculate a Rolling FFT
+        # Get Vibration Data
+        df_vibe = pd.read_csv('https://info.endaq.com/hubfs/data/motorcycle-vibration-moving-frequency.csv', index_col=0)
+
+        # Calculate a Rolling FFT
         fft = endaq.calc.fft.rolling_fft(df_vibe, num_slices=200, add_resultant=True)
 
-        #Visualize the Rolling FFT as a Heatmap
-        heatmap = endaq.plot.plots.spectrum_over_time(fft, plot_type = 'Heatmap', freq_max=200, var_to_process='Resultant')
+        # Visualize the Rolling FFT as a Heatmap
+        heatmap = endaq.plot.plots.spectrum_over_time(fft, plot_type='Heatmap', freq_max=200, var_to_process='Resultant')
         heatmap.show()
 
-        #Visualize as the peak frequency
-        peak = endaq.plot.plots.spectrum_over_time(fft, plot_type = 'Peak', freq_max=200, var_to_process='Resultant')
+        # Plot the Peak Frequency vs Time
+        peak = endaq.plot.plots.spectrum_over_time(fft, plot_type='Peak', freq_max=200, var_to_process='Resultant')
         peak.show()
 
-        #Visualize as a Surface Plot
-        surface = endaq.plot.plots.spectrum_over_time(fft, plot_type = 'Surface', freq_max=200, var_to_process='Resultant')
+        # Visualize as a Surface Plot
+        surface = endaq.plot.plots.spectrum_over_time(fft, plot_type='Surface', freq_max=200, var_to_process='Resultant')
         surface.show()
 
-        #Visualize as a Waterfall
-        waterfall = endaq.plot.plots.spectrum_over_time(fft, plot_type = 'Waterfall', freq_max=200, var_to_process='Resultant')
+        # Visualize as a Waterfall
+        waterfall = endaq.plot.plots.spectrum_over_time(fft, plot_type='Waterfall', freq_max=200, var_to_process='Resultant')
         waterfall.show()
 
-        #Visualize as an Animation
-        animation = endaq.plot.plots.spectrum_over_time(fft, plot_type = 'Animation', log_val=True, freq_max=200, var_to_process='Resultant')
+        # Get a Longer Dataset with DatetimeIndex
+        engine = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/data/Commute.ide', measurement_type='accel',
+                                                   time_mode='datetime')
+
+        # Compute PSD
+        psd = endaq.calc.psd.rolling_psd(engine, num_slices=500, add_resultant=True, octave_bins=12, fstart=4)
+
+        # Visualize as a Heatmap
+        heatmap2 = endaq.plot.plots.spectrum_over_time(psd, plot_type='Heatmap', var_to_process='Resultant', zsmooth='best',
+                                                       log_freq=True, log_val=True)
+        heatmap2.show()
+
+        # Visualize as an Animation
+        animation = endaq.plot.plots.spectrum_over_time(psd, plot_type='Animation', var_to_process='Resultant',
+                                                        log_freq=True, log_val=True)
         animation.show()
 
-        #Calculate a Rolling PSD with Units as RMS**2
-        psd = endaq.calc.psd.rolling_psd(df_vibe, num_slices=200, scaling='parseval', add_resultant=True, octave_bins=1, fstart=1, agg='sum')
-        psd['value'] = psd['value'] ** 0.5
+        # Use Rolling PSD to Calculate RMS in Certain Frequency Bins
+        rms = endaq.calc.psd.rolling_psd(engine, num_slices=500, scaling='rms', add_resultant=True,
+                                         freq_splits=[1, 20, 60, 300, 3000])
 
-        #Visualize the energy in each frequency bin
-        lines = endaq.plot.plots.spectrum_over_time(psd, plot_type = 'Lines',  log_val=False, var_to_process='Resultant')
+        # Plot the RMS per Frequency Bin Over Time
+        lines = endaq.plot.plots.spectrum_over_time(rms, plot_type='Lines', log_val=False, var_to_process='Resultant')
         lines.show()
+
+        # Compute Pseudo Velocity at Specific Times
+        pvss = endaq.calc.shock.rolling_shock_spectrum(engine, slice_width=2.0, add_resultant=True,
+                                                       mode='pvss', init_freq=4, damp=0.05,
+                                                       index_values=pd.DatetimeIndex(['2016-08-02 12:07:15',
+                                                                                      '2016-08-02 12:08:01',
+                                                                                      '2016-08-02 12:10:06'], tz='UTC'))
+
+        # Visualize as a Waterfall
+        waterfall2 = endaq.plot.plots.spectrum_over_time(pvss, plot_type='Waterfall', log_freq=True, log_val=True,
+                                                         var_to_process='Resultant', waterfall_line_sequence=False)
+        waterfall2.show()
 
     """
     df = df.copy()
@@ -684,7 +739,7 @@ def spectrum_over_time(
     df = df.loc[df[val_column] > 0]
 
     # Check Length of Dataframe
-    if len(df) > 50000:
+    if len(df) > 100000:
         warnings.warn(
             "plot data is very large, may be unresponsive, suggest limiting frequency range and/or using less slices",
             RuntimeWarning,
@@ -721,7 +776,7 @@ def spectrum_over_time(
 
         # Generate Figures
         if plot_type == "Heatmap":
-            fig = go.Figure(data=go.Heatmap(data_dict, zsmooth='best')).update_layout(
+            fig = go.Figure(data=go.Heatmap(data_dict, zsmooth=zsmooth)).update_layout(
                 xaxis_title_text='Timestamp', yaxis_title_text='Frequency (Hz)')
             if log_freq:
                 fig.update_layout(yaxis_type='log')
@@ -786,7 +841,7 @@ def spectrum_over_time(
         if min_median_max_line_color is not None:
             # Add Max
             df_t = df_pivot.max(axis=1).dropna()
-            fig.add_trace(go.Scattergl(
+            fig.add_trace(go.Scatter(
                 x=df_t.index,
                 y=df_t,
                 mode='lines',
@@ -795,7 +850,7 @@ def spectrum_over_time(
 
             # Add Min
             df_t = df_pivot.min(axis=1).dropna()
-            fig.add_trace(go.Scattergl(
+            fig.add_trace(go.Scatter(
                 x=df_t.index,
                 y=df_t,
                 mode='lines',
@@ -804,7 +859,7 @@ def spectrum_over_time(
 
             # Add Median
             df_t = df_pivot.median(axis=1).dropna()
-            fig.add_trace(go.Scattergl(
+            fig.add_trace(go.Scatter(
                 x=df_t.index,
                 y=df_t,
                 mode='lines',
@@ -814,7 +869,7 @@ def spectrum_over_time(
 
     # Peak Frequencies
     elif plot_type == 'Peak':
-        fig = px.line(
+        fig = px.scatter(
             df_pivot.idxmax(),
             log_y=log_freq
         ).update_layout(
