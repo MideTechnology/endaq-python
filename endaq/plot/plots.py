@@ -538,12 +538,14 @@ def spectrum_over_time(
     
     :param df: the input dataframe with columns defining the frequency content, timestamps, values, and variables,
         see the following functions which provides outputs that would then be passed into this function as an input:
+
         *  :py:func:`~endaq.calc.fft.rolling_fft()`
         *  :py:func:`~endaq.calc.psd.rolling_psd()`
         *  :py:func:`~endaq.calc.shock.rolling_shock_spectrum()`
         *  :py:func:`~endaq.batch.GetDataBuilder.add_psd()`
         *  :py:func:`~endaq.batch.GetDataBuilder.add_pvss()`
     :param plot_type: the type of plot to display the spectrum, options are:
+
         *  `Heatmap`:  a 2D visualization with the color defining the z value (the default)
         *  `Surface`: similar to `Heatmap` but the z value is also projected "off the page"
         *  `Waterfall`: distinct lines are plotted per time slice in a 3D view
@@ -608,6 +610,47 @@ def spectrum_over_time(
         waterfall = endaq.plot.plots.spectrum_over_time(fft, plot_type='Waterfall', freq_max=200, var_to_process='Resultant')
         waterfall.show()
 
+    .. plotly::
+        :fig-vars: heatmap, peak, surface, waterfall
+
+        import pandas as pd
+        import endaq
+
+        # Set Theme
+        endaq.plot.utilities.set_theme()
+
+        # Get Vibration Data
+        df_vibe = pd.read_csv('https://info.endaq.com/hubfs/data/motorcycle-vibration-moving-frequency.csv', index_col=0)
+
+        # Calculate a Rolling FFT
+        fft = endaq.calc.fft.rolling_fft(df_vibe, num_slices=200, add_resultant=True)
+
+        # Visualize the Rolling FFT as a Heatmap
+        heatmap = endaq.plot.plots.spectrum_over_time(fft, plot_type='Heatmap', freq_max=200, var_to_process='Resultant')
+        heatmap.show()
+
+        # Plot the Peak Frequency vs Time
+        peak = endaq.plot.plots.spectrum_over_time(fft, plot_type='Peak', freq_max=200, var_to_process='Resultant')
+        peak.show()
+
+        # Visualize as a Surface Plot
+        surface = endaq.plot.plots.spectrum_over_time(fft, plot_type='Surface', freq_max=200, var_to_process='Resultant')
+        surface.show()
+
+        # Visualize as a Waterfall
+        waterfall = endaq.plot.plots.spectrum_over_time(fft, plot_type='Waterfall', freq_max=200, var_to_process='Resultant')
+        waterfall.show()
+
+    Here's another few examples with a longer dataset with DatetimeIndex of a car engine during a morning commute
+
+    .. code:: python
+
+        import pandas as pd
+        import endaq
+
+        # Set Theme
+        endaq.plot.utilities.set_theme()
+
         # Get a Longer Dataset with DatetimeIndex
         engine = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/data/Commute.ide', measurement_type='accel',
                                                    time_mode='datetime')
@@ -646,35 +689,13 @@ def spectrum_over_time(
         waterfall2.show()
 
     .. plotly::
-        :fig-vars: heatmap, peak, surface, waterfall, heatmap2, animation, lines, waterfall2
+        :fig-vars: heatmap2, animation, lines, waterfall2
 
         import pandas as pd
         import endaq
 
         # Set Theme
         endaq.plot.utilities.set_theme()
-
-        # Get Vibration Data
-        df_vibe = pd.read_csv('https://info.endaq.com/hubfs/data/motorcycle-vibration-moving-frequency.csv', index_col=0)
-
-        # Calculate a Rolling FFT
-        fft = endaq.calc.fft.rolling_fft(df_vibe, num_slices=200, add_resultant=True)
-
-        # Visualize the Rolling FFT as a Heatmap
-        heatmap = endaq.plot.plots.spectrum_over_time(fft, plot_type='Heatmap', freq_max=200, var_to_process='Resultant')
-        heatmap.show()
-
-        # Plot the Peak Frequency vs Time
-        peak = endaq.plot.plots.spectrum_over_time(fft, plot_type='Peak', freq_max=200, var_to_process='Resultant')
-        peak.show()
-
-        # Visualize as a Surface Plot
-        surface = endaq.plot.plots.spectrum_over_time(fft, plot_type='Surface', freq_max=200, var_to_process='Resultant')
-        surface.show()
-
-        # Visualize as a Waterfall
-        waterfall = endaq.plot.plots.spectrum_over_time(fft, plot_type='Waterfall', freq_max=200, var_to_process='Resultant')
-        waterfall.show()
 
         # Get a Longer Dataset with DatetimeIndex
         engine = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/data/Commute.ide', measurement_type='accel',
@@ -731,9 +752,9 @@ def spectrum_over_time(
     # Filter frequency
     df = df.loc[df[freq_column] > 0.0]
     if freq_max is not None:
-        df = df.loc[df[freq_column] < freq_max]
+        df = df.loc[df[freq_column] <= freq_max]
     if freq_min is not None:
-        df = df.loc[df[freq_column] > freq_min]
+        df = df.loc[df[freq_column] >= freq_min]
 
     # Remove 0s
     df = df.loc[df[val_column] > 0]
@@ -749,10 +770,10 @@ def spectrum_over_time(
     df_pivot = df.copy()
     first_step = df_pivot[freq_column].iloc[1] - df_pivot[freq_column].iloc[0]
     second_step = df_pivot[freq_column].iloc[2] - df_pivot[freq_column].iloc[1]
-    if first_step == second_step:
+    if np.isclose(first_step, second_step):
         round_freq = np.round(df_pivot[freq_column].min(), 0)
         df_pivot[freq_column] = np.round(df_pivot[freq_column].to_numpy() / round_freq, 0) * round_freq
-    df_pivot = df_pivot.pivot(columns=time_column, index=freq_column, values=val_column)
+    df_pivot = df_pivot.pivot_table(columns=time_column, index=freq_column, values=val_column)
 
     # Heatmap & Surface
     if plot_type in ["Heatmap", "Surface"]:

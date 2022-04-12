@@ -522,7 +522,6 @@ def rolling_shock_spectrum(
         indexes: np.array = None,
         index_values: np.array = None,
         slice_width: float = None,
-        multiplier: float = 1.0,
         disable_warnings: bool = True,
 ) -> pd.DataFrame:
     """
@@ -532,6 +531,7 @@ def rolling_shock_spectrum(
     :param damp: the damping coefficient `ζ`, related to the Q-factor by
         `ζ = 1/(2Q)`; defaults to 0.05
     :param mode: the type of spectrum to calculate:
+
         * `'srs'` (default) specifies the Shock Response Spectrum (SRS)
         * `'pvss'` specifies the Pseudo-Velocity Shock Spectrum (PVSS)
     :param add_resultant: if `True` (default) the column-wise resultant will
@@ -549,10 +549,6 @@ def rolling_shock_spectrum(
         if none is provided it will calculate one based upon the number of slices
     :param add_resultant: if `True` the root sum of squares of each shock spectrum column will
         also be computed, default is `False`
-    :param multiplier: applies a scale to the output
-    
-        - 386.09 to convert from g to inches (in)
-        - 9806.65 to convert from g to millimeters (mm)        
     :param disable_warnings: if `True` (default) it disables the warnings on the initial frequency
     :return: a dataframe containing all the shock spectrums, stacked on each other
     
@@ -579,7 +575,7 @@ def rolling_shock_spectrum(
             if disable_warnings:
                 warnings.filterwarnings('ignore', '.*too short*', )
             slice_srs = shock_spectrum(
-                df.iloc[window_start:window_end] * multiplier,
+                df.iloc[window_start:window_end],
                 mode=mode,
                 damp=damp,
                 init_freq=init_freq,
@@ -590,7 +586,7 @@ def rolling_shock_spectrum(
                 if disable_warnings:
                     warnings.filterwarnings('ignore', '.*too short*', )
                 slice_srs['Resultant'] = shock_spectrum(
-                    df.iloc[window_start:window_end] * multiplier,
+                    df.iloc[window_start:window_end],
                     mode=mode,
                     damp=damp,
                     init_freq=init_freq,
