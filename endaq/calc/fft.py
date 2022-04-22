@@ -69,6 +69,9 @@ def rolling_fft(
     Surface plots, and Animations
 
     """
+    use_spectrogram = True
+    if (indexes is not None) | (index_values is not None):
+        use_spectrogram = False
 
     indexes, slice_width, num, length = utils._rolling_slice_definitions(
         df,
@@ -78,25 +81,36 @@ def rolling_fft(
         slice_width=slice_width
     )
 
-    # Loop through and compute fft
-    fft_df = pd.DataFrame()
-    for i in indexes:
-        window_start = max(0, i - num)
-        window_end = min(length, i + num)
-        with warnings.catch_warnings():
-            if disable_warnings:
-                warnings.filterwarnings('ignore', '.*greater than.*')
-            slice_fft = aggregate_fft(
-                df.iloc[window_start:window_end],
-                bin_width=bin_width,
-                **kwargs
-            )
-        if add_resultant:
-            slice_fft['Resultant'] = slice_fft.pow(2).sum(axis=1).pow(0.5)
+    if use_spectrogram:
+        fft_df = psd.spectrogram(
+            df=df,
+            num_slices=num_slices,
+            bin_width=bin_width,
+            scaling='unit',
+            add_resultant=add_resultant,
+            disable_warnings=disable_warnings,
+            **kwargs
+        )
+    else:
+        # Loop through and compute fft
+        fft_df = pd.DataFrame()
+        for i in indexes:
+            window_start = max(0, i - num)
+            window_end = min(length, i + num)
+            with warnings.catch_warnings():
+                if disable_warnings:
+                    warnings.filterwarnings('ignore', '.*greater than.*')
+                slice_fft = aggregate_fft(
+                    df.iloc[window_start:window_end],
+                    bin_width=bin_width,
+                    **kwargs
+                )
+            if add_resultant:
+                slice_fft['Resultant'] = slice_fft.pow(2).sum(axis=1).pow(0.5)
 
-        slice_fft = slice_fft.reset_index().melt(id_vars=slice_fft.index.name)
-        slice_fft['timestamp'] = df.index[i]
-        fft_df = pd.concat([fft_df, slice_fft])
+            slice_fft = slice_fft.reset_index().melt(id_vars=slice_fft.index.name)
+            slice_fft['timestamp'] = df.index[i]
+            fft_df = pd.concat([fft_df, slice_fft])
 
     return fft_df
 
