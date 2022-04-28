@@ -405,6 +405,8 @@ def rolling_psd(
     )
 
     if use_spectrogram:
+        if "window" not in kwargs:
+            kwargs["window"] = "hann"
         psd_df = spectrogram(
             df=df,
             bin_width=bin_width,
@@ -529,7 +531,7 @@ def spectrogram(
     fs = 1 / utils.sample_spacing(df)
     nperseg = int(fs / bin_width)
     num_f = int(len(df) / fs / bin_width)
-    noverlap = nperseg - (nperseg * num_f / num_slices)
+    noverlap = nperseg - (nperseg * num_f // num_slices)
 
     # Loop Through and Compute Spectrogram
     spec_df = pd.DataFrame()

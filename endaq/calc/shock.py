@@ -444,7 +444,7 @@ def shock_spectrum(
           function.
     """
     if freqs is None:
-        freqs = utils.logfreqs(accel, init_freq = init_freq, bins_per_octave = bins_per_octave)
+        freqs = utils.logfreqs(accel, init_freq=init_freq, bins_per_octave=bins_per_octave)
     if two_sided and aggregate_axes:
         raise ValueError("cannot enable both options `two_sided` and `aggregate_axes`")
     freqs = np.asarray(freqs)
