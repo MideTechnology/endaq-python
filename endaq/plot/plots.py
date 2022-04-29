@@ -1,17 +1,21 @@
 from __future__ import annotations
 
+from collections.abc import Container
+import datetime
+import typing
+from typing import Optional
+import warnings
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
-import scipy.spatial.transform
+from plotly import colors
 from plotly.subplots import make_subplots
-from scipy import signal, spatial
-from typing import Optional
-from collections.abc import Container
+import scipy.spatial.transform
+from scipy import spatial
 
 from endaq.calc import utils, psd
-
 from .utilities import determine_plotly_map_zoom, get_center_of_coordinates
 from .dashboards import rolling_enveloped_dashboard
 
@@ -25,6 +29,7 @@ __all__ = [
     'rolling_min_max_envelope',
     'around_peak',
     'animate_quaternion',
+    'spectrum_over_time'
 ]
 
 DEFAULT_ATTRIBUTES_TO_PLOT_INDIVIDUALLY = np.array([
@@ -272,10 +277,11 @@ def gen_map(df_map: pd.DataFrame, mapbox_access_token: str, filter_points_by_pos
 
 def octave_spectrogram(df: pd.DataFrame, window: float, bins_per_octave: int = 3, freq_start: float = 20.0,
                        max_freq: float = float('inf'), db_scale: bool = True, log_scale_y_axis: bool = True
-                       ) -> go.Figure:
+                       ) -> tuple[pd.DataFrame, go.Figure]:
     """
-    Produces an octave spectrogram of the given data.
-
+    Produces an octave spectrogram of the given data, this is a wrapper around 
+    :py:func:`~endaq.calc.psd.rolling_psd()` and :py:func:`~endaq.plot.spectrum_over_time()`
+    
     :param df: The dataframe of sensor data.  This must only have 1 column.
     :param window: The time window for each of the columns in the spectrogram
     :param bins_per_octave: The number of frequency bins per octave
@@ -284,55 +290,18 @@ def octave_spectrogram(df: pd.DataFrame, window: float, bins_per_octave: int = 3
     :param db_scale: If the spectrogram should be log-scaled for visibility (with 10*log10(x))
     :param log_scale_y_axis: If the y-axis of the plot should be log scaled
     :return: a tuple containing:
-
-        - the frequency bins
-        - the time bins
-        - the spectrogram data
+        - dataframe of the spectrogram data
         - the corresponding plotly figure
     """
     if len(df.columns) != 1:
         raise ValueError("The parameter 'df' must have only one column of data!")
 
-    ary = df.values.squeeze()
+    num_slices = int(len(df) * utils.sample_spacing(df) / window)
 
-    fs = 1/utils.sample_spacing(df)#(len(df) - 1) / (df.index[-1] - df.index[0])
-    N = int(fs * window) #Number of points in the fft
-    w = signal.blackman(N, False)
-    
-    freqs, bins, Pxx = signal.spectrogram(ary, fs, window=w, nperseg=N, noverlap=0)
+    df_psd = psd.rolling_psd(df, num_slices=num_slices, octave_bins=bins_per_octave,
+                         fstart=freq_start)
 
-    time_dfs = [pd.DataFrame({bins[j]: Pxx[:, j]}, index=freqs) for j in range(len(bins))]
-
-    octave_dfs = list(map(lambda x: psd.to_octave(x, freq_start, octave_bins=bins_per_octave, agg='sum'), time_dfs))
-    
-    combined_df = pd.concat(octave_dfs, axis=1)
-    
-    freqs = combined_df.index.values
-    Pxx = combined_df.values
-    
-    include_freqs_mask = freqs <= max_freq
-    Pxx = Pxx[include_freqs_mask]
-    freqs = freqs[include_freqs_mask]
-
-    if db_scale:
-        Pxx = 10 * np.log10(Pxx)
-
-    trace = [go.Heatmap(x=bins, y=freqs, z=Pxx, colorscale='Jet')]
-    layout = go.Layout(
-        yaxis={'title': 'Frequency (Hz)'},
-        xaxis={'title': 'Time (s)'},
-    )
-
-    fig = go.Figure(data=trace, layout=layout)
-    
-    if log_scale_y_axis:
-        fig.update_yaxes(type="log")
-
-    fig.update_traces(showscale=False)
-
-    data_df = pd.DataFrame(Pxx, index=freqs, columns=bins)
-
-    return data_df, fig
+    return df_psd, spectrum_over_time(df_psd, freq_max=max_freq, log_val=db_scale, log_freq=log_scale_y_axis)
     
 
 def octave_psd_bar_plot(df: pd.DataFrame, bins_per_octave: int = 3, f_start: float = 20.0, yaxis_title: str = '',
@@ -535,5 +504,430 @@ def animate_quaternion(df, rate=6., scale=1.):
                     ),
             )
     fig.layout.updatemenus[0].buttons[0].args[1]['frame']['duration'] = int(1000//rate)
+
+    return fig
+
+
+def spectrum_over_time(
+        df: pd.DataFrame,
+        plot_type: typing.Literal["Heatmap",
+                                  "Surface",
+                                  "Waterfall",
+                                  "Animation",
+                                  "Peak",
+                                  "Lines"] = "Heatmap",
+        var_column: str = 'variable',
+        var_to_process: str = None,
+        time_column: str = 'timestamp',
+        freq_column: str = 'frequency (Hz)',
+        val_column: str = 'value',
+        freq_min: float = None,
+        freq_max: float = None,
+        log_freq: bool = False,
+        log_val: bool = False,
+        round_time: bool = True,
+        waterfall_line_sequence: bool = True,
+        zsmooth: str = "best",
+        waterfall_line_color: str = '#EE7F27',
+        min_median_max_line_color: str = '#6914F0',
+) -> go.Figure:
+    """
+    Generate a 3D Plotly figure from a stacked spectrum to visualize how the frequency content changes over time
+    
+    :param df: the input dataframe with columns defining the frequency content, timestamps, values, and variables,
+        see the following functions which provides outputs that would then be passed into this function as an input:
+
+        *  :py:func:`~endaq.calc.fft.rolling_fft()`
+        *  :py:func:`~endaq.calc.psd.rolling_psd()`
+        *  :py:func:`~endaq.calc.shock.rolling_shock_spectrum()`
+        *  :py:func:`~endaq.batch.GetDataBuilder.add_psd()`
+        *  :py:func:`~endaq.batch.GetDataBuilder.add_pvss()`
+    :param plot_type: the type of plot to display the spectrum, options are:
+
+        *  `Heatmap`:  a 2D visualization with the color defining the z value (the default)
+        *  `Surface`: similar to `Heatmap` but the z value is also projected "off the page"
+        *  `Waterfall`: distinct lines are plotted per time slice in a 3D view
+        *  `Animation`: a 2D display of the waterfall but the spectrum changes with animation frames
+        *  `Peak`: per timestamp the peak frequency is determined and plotted against time
+        *  `Lines`: the value in each frequency bin is plotted against time
+    :param var_column: the column name in the dataframe that defines the different variables, default is `"variable"`
+    :param var_to_process: the variable value in the `var_column` to filter the input df down to,
+        if none is provided (the default) this function will filter to the first value
+    :param time_column: the column name in the dataframe that defines the timestamps, default is `"timestamp"`
+    :param freq_column: the column name in the dataframe that defines the frequency, default is `"frequency (Hz)"`
+    :param val_column: the column name in the dataframe that defines the values, default is `"value"`
+    :param freq_min: the minimum of the y axis (frequency) to include in the figure,
+        default is None meaning it will display all content
+    :param freq_max: the maximum of the y axis (frequency) to include in the figure,
+        default is None meaning it will display all content
+    :param log_freq: if `True` the frequency will be in a log scale, default is `False`
+    :param log_val: if `True` the values will be in a log scale, default is `False`
+    :param round_time: if `True` (default) the time values will be rounded to the nearest second for datetimes and
+        hundredths of a second for floats
+    :param waterfall_line_sequence: if `True` the waterfall line colors are defined with a color scale,
+        if `False` all lines will have the same color, default is `True`
+    :param zsmooth: the Plotly smooth algorithm to use in the heatmap, default is `"best"` which looks ideal but
+        `"fast"` will be more responsive, or `False` will attempt no smoothing
+    :param waterfall_line_color: the color to use for all lines in the Waterfall plot if `waterfall_line_sequence` is
+        `False`
+    :param min_median_max_line_color: the color to use for the min, max, and median lines in the Animation, if set to
+        `None` these lines won't be added, default is `'#6914F0'`
+    :return: a Plotly figure visualizing the spectrum over time
+
+
+    Here's a few examples from a dataset recorded with an enDAQ sensor on a motorcycle
+    as it revved the engine which resulted in changing frequency content
+    
+    .. code:: python
+
+        import pandas as pd
+        import endaq
+
+        # Set Theme
+        endaq.plot.utilities.set_theme()
+
+        # Get Vibration Data
+        df_vibe = pd.read_csv('https://info.endaq.com/hubfs/data/motorcycle-vibration-moving-frequency.csv', index_col=0)
+
+        # Calculate a Rolling FFT
+        fft = endaq.calc.fft.rolling_fft(df_vibe, num_slices=200, add_resultant=True)
+
+        # Visualize the Rolling FFT as a Heatmap
+        heatmap = endaq.plot.plots.spectrum_over_time(fft, plot_type='Heatmap', freq_max=200, var_to_process='Resultant')
+        heatmap.show()
+
+        # Plot the Peak Frequency vs Time
+        peak = endaq.plot.plots.spectrum_over_time(fft, plot_type='Peak', freq_max=200, var_to_process='Resultant')
+        peak.show()
+
+        # Visualize as a Surface Plot
+        surface = endaq.plot.plots.spectrum_over_time(fft, plot_type='Surface', freq_max=200, var_to_process='Resultant')
+        surface.show()
+
+        # Visualize as a Waterfall
+        waterfall = endaq.plot.plots.spectrum_over_time(fft, plot_type='Waterfall', freq_max=200, var_to_process='Resultant')
+        waterfall.show()
+
+    .. plotly::
+        :fig-vars: heatmap, peak, surface, waterfall
+
+        import pandas as pd
+        import endaq
+
+        # Set Theme
+        endaq.plot.utilities.set_theme()
+
+        # Get Vibration Data
+        df_vibe = pd.read_csv('https://info.endaq.com/hubfs/data/motorcycle-vibration-moving-frequency.csv', index_col=0)
+
+        # Calculate a Rolling FFT
+        fft = endaq.calc.fft.rolling_fft(df_vibe, num_slices=200, add_resultant=True)
+
+        # Visualize the Rolling FFT as a Heatmap
+        heatmap = endaq.plot.plots.spectrum_over_time(fft, plot_type='Heatmap', freq_max=200, var_to_process='Resultant')
+        heatmap.show()
+
+        # Plot the Peak Frequency vs Time
+        peak = endaq.plot.plots.spectrum_over_time(fft, plot_type='Peak', freq_max=200, var_to_process='Resultant')
+        peak.show()
+
+        # Visualize as a Surface Plot
+        surface = endaq.plot.plots.spectrum_over_time(fft, plot_type='Surface', freq_max=200, var_to_process='Resultant')
+        surface.show()
+
+        # Visualize as a Waterfall
+        waterfall = endaq.plot.plots.spectrum_over_time(fft, plot_type='Waterfall', freq_max=200, var_to_process='Resultant')
+        waterfall.show()
+
+    Here's another few examples with a longer dataset with DatetimeIndex of a car engine during a morning commute
+
+    .. code:: python
+
+        import pandas as pd
+        import endaq
+
+        # Set Theme
+        endaq.plot.utilities.set_theme()
+
+        # Get a Longer Dataset with DatetimeIndex
+        engine = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/data/Commute.ide', measurement_type='accel',
+                                                   time_mode='datetime')
+
+        # Compute PSD
+        psd = endaq.calc.psd.rolling_psd(engine, num_slices=500, add_resultant=True, octave_bins=12, fstart=4)
+
+        # Visualize as a Heatmap
+        heatmap2 = endaq.plot.plots.spectrum_over_time(psd, plot_type='Heatmap', var_to_process='Resultant', zsmooth='best',
+                                                       log_freq=True, log_val=True)
+        heatmap2.show()
+
+        # Visualize as an Animation
+        animation = endaq.plot.plots.spectrum_over_time(psd, plot_type='Animation', var_to_process='Resultant',
+                                                        log_freq=True, log_val=True)
+        animation.show()
+
+        # Use Rolling PSD to Calculate RMS in Certain Frequency Bins
+        rms = endaq.calc.psd.rolling_psd(engine, num_slices=500, scaling='rms', add_resultant=True,
+                                         freq_splits=[1, 20, 60, 300, 3000])
+
+        # Plot the RMS per Frequency Bin Over Time
+        lines = endaq.plot.plots.spectrum_over_time(rms, plot_type='Lines', log_val=False, var_to_process='Resultant')
+        lines.show()
+
+        # Compute Pseudo Velocity at Specific Times
+        pvss = endaq.calc.shock.rolling_shock_spectrum(engine, slice_width=2.0, add_resultant=True,
+                                                       mode='pvss', init_freq=4, damp=0.05,
+                                                       index_values=pd.DatetimeIndex(['2016-08-02 12:07:15',
+                                                                                      '2016-08-02 12:08:01',
+                                                                                      '2016-08-02 12:10:06'], tz='UTC'))
+
+        # Visualize as a Waterfall
+        waterfall2 = endaq.plot.plots.spectrum_over_time(pvss, plot_type='Waterfall', log_freq=True, log_val=True,
+                                                         var_to_process='Resultant', waterfall_line_sequence=False)
+        waterfall2.show()
+
+    .. plotly::
+        :fig-vars: heatmap2, animation, lines, waterfall2
+
+        import pandas as pd
+        import endaq
+
+        # Set Theme
+        endaq.plot.utilities.set_theme()
+
+        # Get a Longer Dataset with DatetimeIndex
+        engine = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/data/Commute.ide', measurement_type='accel',
+                                                   time_mode='datetime')
+
+        # Compute PSD
+        psd = endaq.calc.psd.rolling_psd(engine, num_slices=500, add_resultant=True, octave_bins=12, fstart=4)
+
+        # Visualize as a Heatmap
+        heatmap2 = endaq.plot.plots.spectrum_over_time(psd, plot_type='Heatmap', var_to_process='Resultant', zsmooth='best',
+                                                       log_freq=True, log_val=True)
+        heatmap2.show()
+
+        # Visualize as an Animation
+        animation = endaq.plot.plots.spectrum_over_time(psd, plot_type='Animation', var_to_process='Resultant',
+                                                        log_freq=True, log_val=True)
+        animation.show()
+
+        # Use Rolling PSD to Calculate RMS in Certain Frequency Bins
+        rms = endaq.calc.psd.rolling_psd(engine, num_slices=500, scaling='rms', add_resultant=True,
+                                         freq_splits=[1, 20, 60, 300, 3000])
+
+        # Plot the RMS per Frequency Bin Over Time
+        lines = endaq.plot.plots.spectrum_over_time(rms, plot_type='Lines', log_val=False, var_to_process='Resultant')
+        lines.show()
+
+        # Compute Pseudo Velocity at Specific Times
+        pvss = endaq.calc.shock.rolling_shock_spectrum(engine, slice_width=2.0, add_resultant=True,
+                                                       mode='pvss', init_freq=4, damp=0.05,
+                                                       index_values=pd.DatetimeIndex(['2016-08-02 12:07:15',
+                                                                                      '2016-08-02 12:08:01',
+                                                                                      '2016-08-02 12:10:06'], tz='UTC'))
+
+        # Visualize as a Waterfall
+        waterfall2 = endaq.plot.plots.spectrum_over_time(pvss, plot_type='Waterfall', log_freq=True, log_val=True,
+                                                         var_to_process='Resultant', waterfall_line_sequence=False)
+        waterfall2.show()
+
+    """
+    df = df.copy()
+
+    # Filter to one variable
+    if var_to_process is None:
+        var_to_process = df[var_column].unique()[0]
+    df = df.loc[df[var_column] == var_to_process]
+
+    # Round time
+    if round_time:
+        if isinstance(df[time_column].iloc[0], datetime.datetime):
+            df[time_column] = df[time_column].round('s')
+        else:
+            df[time_column] = np.round(df[time_column].to_numpy(), 2)
+
+    # Filter frequency
+    df = df.loc[df[freq_column] > 0.0]
+    if freq_max is not None:
+        df = df.loc[df[freq_column] <= freq_max]
+    if freq_min is not None:
+        df = df.loc[df[freq_column] >= freq_min]
+
+    # Remove 0s
+    df = df.loc[df[val_column] > 0]
+
+    # Check Length of Dataframe
+    if len(df) > 100000:
+        warnings.warn(
+            "plot data is very large, may be unresponsive, suggest limiting frequency range and/or using less slices",
+            RuntimeWarning,
+        )
+
+    # Create pivot table
+    df_pivot = df.copy()
+    first_step = df_pivot[freq_column].iloc[1] - df_pivot[freq_column].iloc[0]
+    second_step = df_pivot[freq_column].iloc[2] - df_pivot[freq_column].iloc[1]
+    if np.isclose(first_step, second_step):
+        round_freq = np.round(df_pivot[freq_column].min(), 0)
+        df_pivot[freq_column] = np.round(df_pivot[freq_column].to_numpy() / round_freq, 0) * round_freq
+    df_pivot = df_pivot.pivot_table(columns=time_column, index=freq_column, values=val_column)
+
+    # Heatmap & Surface
+    if plot_type in ["Heatmap", "Surface"]:
+        # Deal with Datetime
+        x_type = float
+        if isinstance(df_pivot.columns[0], datetime.datetime):
+            if plot_type == "Surface":
+                df_pivot.columns = (df_pivot.columns - df_pivot.columns[0]).total_seconds()
+            else:
+                x_type = str
+
+        # Build Dictionary of Plot Data, Apply Log Scale If Needed
+        data_dict = {
+            'x': df_pivot.columns.astype(x_type),
+            'y': df_pivot.index.astype(float),
+            'z': df_pivot.to_numpy().astype(float),
+            'connectgaps': True
+        }
+        if log_val:
+            data_dict['z'] = np.log10(data_dict['z'])
+
+        # Generate Figures
+        if plot_type == "Heatmap":
+            fig = go.Figure(data=go.Heatmap(data_dict, zsmooth=zsmooth)).update_layout(
+                xaxis_title_text='Timestamp', yaxis_title_text='Frequency (Hz)')
+            if log_freq:
+                fig.update_layout(yaxis_type='log')
+        else:
+            fig = go.Figure(data=go.Surface(data_dict))
+        fig.update_traces(showscale=False)
+
+    # Waterfall
+    elif plot_type == 'Waterfall':
+        # Define Colors
+        if waterfall_line_sequence:
+            color_sequence = colors.sample_colorscale(
+                [[0.0, '#6914F0'],
+                 [0.2, '#3764FF'],
+                 [0.4, '#2DB473'],
+                 [0.6, '#FAC85F'],
+                 [0.8, '#EE7F27'],
+                 [1.0, '#D72D2D']], len(df[time_column].unique()))
+        else:
+            color_sequence = [waterfall_line_color]
+
+        # Deal with Datetime
+        df['label_column'] = df[time_column]
+        if isinstance(df[time_column].iloc[0], datetime.datetime):
+            df[time_column] = (df[time_column] - df[time_column].iloc[0]).dt.total_seconds()
+            df['label_column'] = df['label_column'].dt.tz_convert(None).astype(str)
+
+        # Generate Figure
+        fig = px.line_3d(
+            df,
+            x=time_column,
+            y=freq_column,
+            z=val_column,
+            color='label_column',
+            color_discrete_sequence=color_sequence).update_layout(
+            legend_orientation='v',
+            legend_y=1,
+            legend_title_text='Timestamps'
+        )
+
+    # Animation
+    elif plot_type == 'Animation':
+        # Deal with Datetime
+        if isinstance(df[time_column].iloc[0], datetime.datetime):
+            df[time_column] = df[time_column].dt.tz_convert(None).astype(str)
+
+        # Generate Figure
+        fig = px.line(
+            df,
+            animation_frame=time_column,
+            x=freq_column,
+            y=val_column,
+            log_y=log_val,
+            log_x=log_freq
+        ).update_layout(
+            showlegend=False,
+            yaxis_title_text='',
+            xaxis_title_text='Frequency (Hz)'
+        )
+
+        # Add min, max, median lines
+        if min_median_max_line_color is not None:
+            # Add Max
+            df_t = df_pivot.max(axis=1).dropna()
+            fig.add_trace(go.Scatter(
+                x=df_t.index,
+                y=df_t,
+                mode='lines',
+                line_color=min_median_max_line_color,
+            ))
+
+            # Add Min
+            df_t = df_pivot.min(axis=1).dropna()
+            fig.add_trace(go.Scatter(
+                x=df_t.index,
+                y=df_t,
+                mode='lines',
+                line_color=min_median_max_line_color,
+            ))
+
+            # Add Median
+            df_t = df_pivot.median(axis=1).dropna()
+            fig.add_trace(go.Scatter(
+                x=df_t.index,
+                y=df_t,
+                mode='lines',
+                line_color=min_median_max_line_color,
+                line_dash='dash',
+            ))
+
+    # Peak Frequencies
+    elif plot_type == 'Peak':
+        fig = px.scatter(
+            df_pivot.idxmax(),
+            log_y=log_freq
+        ).update_layout(
+            showlegend=False,
+            yaxis_title_text='Peak Frequency (Hz)',
+            xaxis_title_text='Timestamp'
+        )
+
+    # Lines per Frequency Bin
+    elif plot_type == 'Lines':
+        df_pivot.index = np.round(df_pivot.index, 2)
+        fig = px.line(
+            df_pivot.T,
+            log_y=log_val
+        ).update_layout(
+            legend_title_text='Frequency Bin (Hz)',
+            yaxis_title_text='',
+            xaxis_title_text='Timestamp',
+            legend_orientation='v',
+            legend_y=1,
+        )
+
+    else:
+        raise ValueError(f"invalid plot type {plot_type}")
+
+    # Add Labels to 3D plots
+    if plot_type in ["Surface", "Waterfall"]:
+        fig.update_scenes(
+            aspectratio_x=2.0,
+            aspectratio_y=1.0,
+            aspectratio_z=0.3,
+            xaxis_title_text='Timestamp',
+            yaxis_title_text='Frequency (Hz)',
+            zaxis_title_text=''
+        )
+        if log_freq:
+            fig.update_scenes(yaxis_type='log')
+        if log_val:
+            fig.update_scenes(zaxis_type='log')
+        fig.update_layout(scene_camera=dict(eye=dict(x=-1.5, y=-1.5, z=1)))
 
     return fig
