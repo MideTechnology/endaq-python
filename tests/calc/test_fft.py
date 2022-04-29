@@ -179,6 +179,7 @@ class TestRollingFFT:
             df_rolling_fft[df_rolling_fft.timestamp == times[1]].value.to_numpy(),
             fft.aggregate_fft(df_test[1.0:])['A'].to_numpy())
 
+    @pytest.mark.filterwarnings("ignore::UserWarning")
     def test_defined_slices(self, df_test):
         df_rolling_fft = fft.rolling_fft(
             df_test,

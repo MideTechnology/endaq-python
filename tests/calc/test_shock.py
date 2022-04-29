@@ -509,12 +509,13 @@ class TestRollingShockSpectrum:
         df_rolling_srs = shock.rolling_shock_spectrum(
             df_test,
             num_slices=2,
-            add_resultant=False
+            add_resultant=False,
+            init_freq=2
         )
 
         # Get the Individual SRS
-        first_srs = shock.shock_spectrum(df_test[:1.0])
-        second_srs = shock.shock_spectrum(df_test[1.0:])
+        first_srs = shock.shock_spectrum(df_test[:1.0], init_freq=2)
+        second_srs = shock.shock_spectrum(df_test[1.0:], init_freq=2)
 
         # Do Assertions
         npt.assert_almost_equal(
@@ -536,7 +537,8 @@ class TestRollingShockSpectrum:
             index_values=[1.0],
             bins_per_octave=6,
             slice_width=0.5,
-            mode='pvss'
+            mode='pvss',
+            init_freq=4
         )
 
         npt.assert_almost_equal(
@@ -545,7 +547,8 @@ class TestRollingShockSpectrum:
                 df_test[0.75:1.2499],
                 bins_per_octave=6,
                 mode='pvss',
-                aggregate_axes=True
+                aggregate_axes=True,
+                init_freq=4
             )['resultant'].to_numpy()
         )
 

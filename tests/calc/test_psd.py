@@ -193,6 +193,7 @@ class TestRollingPSD:
             df_rolling_psd[df_rolling_psd.timestamp == times[1]].value.to_numpy(),
             psd.welch(df_test[1.0:])['A'].to_numpy())
 
+    @pytest.mark.filterwarnings("ignore::UserWarning")
     def test_defined_slices(self, df_test):
         df_rolling_psd = psd.rolling_psd(
             df_test,
