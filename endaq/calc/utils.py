@@ -160,3 +160,49 @@ def resample(df: pd.DataFrame, sample_rate: Optional[float] = None) -> pd.DataFr
     resampled_df.index.name = df.index.name
     
     return resampled_df
+
+
+def _rolling_slice_definitions(
+        df: pd.DataFrame,
+        num_slices: int = 100,
+        indexes: np.array = None,
+        index_values: np.array = None,
+        slice_width: float = None,
+):
+    """
+    Compute parameters needed to define index locations and slice width for rolling computations
+
+    :param df: the input dataframe with an index defining the time in seconds or datetime
+    :param num_slices: the number of slices to split the time series into, default is 100,
+        this is ignored if `indexes` is defined
+    :param indexes: the center index locations (not value) of each slice to compute the FFT
+    :param index_values: the index values of each peak event to quantify (slower but more intuitive than using `indexes`)
+    :param slice_width: the time in seconds to center about each slice index,
+        if none is provided it will calculate one based upon the number of slices
+    :return: a tuple of `indexes`, `slice_width`, `num`, and `length`
+
+    See example use cases and syntax at :py:func:`~endaq.plot.spectrum_over_time()`
+    which visualizes the output of this function in Heatmaps, Waterfall plots,
+    Surface plots, and Animations
+
+    """
+
+    length = len(df)
+
+    # Define center index locations of each slice if not provided
+    if indexes is None:
+        if index_values is not None:
+            indexes = np.zeros(len(index_values), int)
+            for i in range(len(indexes)):
+                indexes[i] = int((np.abs(df.index - index_values[i])).argmin())
+        else:
+            indexes = np.linspace(0, length, num_slices, endpoint=False, dtype=int)
+            indexes = indexes + int(indexes[1] / 2)
+
+    # Calculate slice step size
+    spacing = sample_spacing(df)
+    if slice_width is None:
+        slice_width = spacing * length / len(indexes)
+    num = int(slice_width / spacing / 2)
+
+    return indexes, slice_width, num, length

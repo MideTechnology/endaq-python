@@ -67,3 +67,35 @@ def test_uniform_resample_is_uniform_for_datetime64ns():
     times = np.arange('2021-02', '2021-03', np.timedelta64(1, 's'), dtype='datetime64[ns]')
     df = pd.DataFrame(np.arange(len(times)), index=times)
     assert len(np.unique(np.diff(utils.resample(df).index))) == 1
+
+
+def test_rolling_slice_definitions():
+    # Build dataframe with 1 second of data
+    df = pd.DataFrame({
+        'time': np.arange(1000) / 1000,
+        'A': np.ones(1000)
+    }).set_index('time')
+
+    indexes, slice_width, num, length = utils._rolling_slice_definitions(
+        df=df,
+        num_slices=2
+    )
+    assert slice_width == 0.5
+
+    indexes, slice_width, num, length = utils._rolling_slice_definitions(
+        df=df,
+        index_values=[0.1, 0.9]
+    )
+    assert indexes[1] == 900
+
+    df.index = pd.to_datetime(df.index, unit='s')
+    indexes, slice_width, num, length = utils._rolling_slice_definitions(
+        df=df,
+    )
+    assert num == 5
+
+    indexes, slice_width, num, length = utils._rolling_slice_definitions(
+        df=df,
+        index_values=pd.DatetimeIndex(['1970-01-01 00:00:00.9951'])
+    )
+    assert indexes[0] == 995
