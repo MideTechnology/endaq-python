@@ -240,35 +240,43 @@ def get_pure_numpy_2d_pca(df: pd.DataFrame,
     return fig
 
 
-def gen_map(df_map: pd.DataFrame, mapbox_access_token: str, filter_points_by_positive_groud_speed: bool = True,
-            color_by_column: str = "GNSS Speed: Ground Speed") -> go.Figure:
+def gen_map(df_map: pd.DataFrame, mapbox_access_token: str, filter_positive_color_vals: bool = True,
+            lat: str = "Latitude",
+            lon: str = "Longitude",
+            color_by_column: str = "Ground Speed",
+            size_max: float = 15.0,
+            zoom_offset: float = -2.0
+            ) -> go.Figure:
     """
-    Plots GPS data on a map from a single recording, shading the points based some characteristic
+    Plots GPS data on a map from a single recording, shading the points based on some characteristic
     (defaults to ground speed).
     
     :param df_map: The pandas dataframe containing the recording data.
     :param mapbox_access_token: The access token (or API key) needed to be able to plot against
      a map.
-    :param filter_points_by_positive_groud_speed: A boolean variable, which will filter
-     which points are plotted by if they have corresponding positive ground speeds.  This helps
-     remove points which didn't actually have a GPS location found (was created by a bug in the hardware I believe).
+    :param lat: The dataframe column title to use for latitude
+    :param lon: The dataframe column title to use for longitude
     :param color_by_column: The dataframe column title to color the plotted points by.
+    :param filter_positive_color_vals: A boolean variable, which will filter
+     which points are plotted by if they have corresponding positive values
+    :param size_max: The size of the scatter points in the map, default 15
+    :param zoom_offset: The offset to apply to the zoom, default -2, this is influenced by the final figure size
     """
-    if filter_points_by_positive_groud_speed:
-        df_map = df_map[df_map["GNSS Speed: Ground Speed"] > 0]
+    if filter_positive_color_vals:
+        df_map = df_map[df_map[color_by_column] > 0]
     
-    zoom = determine_plotly_map_zoom(lats=df_map["Location: Latitude"], lons=df_map["Location: Longitude"])
-    center = get_center_of_coordinates(lats=df_map["Location: Latitude"], lons=df_map["Location: Longitude"])
+    zoom = determine_plotly_map_zoom(lats=df_map[lat], lons=df_map[lon])
+    center = get_center_of_coordinates(lats=df_map[lat], lons=df_map[lon])
     
     px.set_mapbox_access_token(mapbox_access_token)
     
     fig = px.scatter_mapbox(
         df_map,
-        lat="Location: Latitude",
-        lon="Location: Longitude",
+        lat=lat,
+        lon=lon,
         color=color_by_column,
-        size_max=15,
-        zoom=zoom - 1,
+        size_max=size_max,
+        zoom=zoom + zoom_offset,
         center=center,
     )
 

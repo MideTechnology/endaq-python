@@ -150,6 +150,10 @@ def get_center_of_coordinates(lats: np.ndarray, lons: np.ndarray, as_list: bool 
      determined by the value of the `as_list` parameter (see the `as_list` docstring for details
      on the formatting of this return value
     """
+    # Create Copy to Not Change Source Data
+    lats = np.copy(lats)
+    lons = np.copy(lons)
+
     # Convert coordinates to radians if given in degrees
     if as_degrees:
         lats *= np.pi / 180

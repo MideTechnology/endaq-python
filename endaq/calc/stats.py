@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from scipy import signal
 import plotly.graph_objects as go
+import plotly.express as px
 
 from endaq.plot import rolling_min_max_envelope
 from endaq.calc import filters, integrate, utils, shock
@@ -17,8 +18,8 @@ def shock_vibe_metrics(
         df: pd.DataFrame,
         tukey_percent: float = 0.1,
         highpass_cutoff: float = None,
-        unit_conversion: typing.Literal["g_to_in", "g_to_mm", None] = None,
-        zero: typing.Literal["start", "mean", "median", None] = "median",
+        detrend: typing.Literal["start", "mean", "median", None] = "median",
+        zero: typing.Literal["start", "mean", "median"] = "start",
         include_integration: bool = True,
         include_pseudo_velocity: bool = True,
         damp: float = 0.05,
@@ -38,116 +39,112 @@ def shock_vibe_metrics(
         - Peak Pseudo Velocity
         
     :param df: the input dataframe with an index defining the time in seconds or datetime
-    :param tukey_percent: the portion of the time series to apply a Tukey window (a taper that forces beginning and end to 0), default is 0.1
-        - Note that the RMS metrics will only be computed on the portion of time that isn't tapered
-    :param zero: the output quantity driven to zero prior to the calculations
-        `None` does nothing
-        `"start"` forces the first datapoint to 0,
-        `"mean"` chooses ``-np.mean(output)`` & `"median"` (default) chooses
-        ``-np.median(output)``
+    :param tukey_percent: the portion of the time series to apply a Tukey window (a taper that forces beginning and end
+        to 0), default is 0.1
+
+        *  Note that the RMS metrics will only be computed on the portion of time that isn't tapered
+    :param detrend: the output quantity driven to zero prior to the calculations
+
+        *  `None` does nothing
+        *  `"start"` forces the first datapoint to 0,
+        *  `"mean"` chooses ``-np.mean(output)``
+        *  `"median"` (default) chooses ``-np.median(output)``
+    :param zero: the output quantity driven to zero inside each integration call
+
+        *  `"start"` (default) forces the first datapoint to 0,
+        *  `"mean"` chooses ``-np.mean(output)``
+        *  `"median"` (default) chooses ``-np.median(output)``
     :param highpass_cutoff: the cutoff frequency of a preconditioning highpass
-        filter; if None, no filter is applied. For shock events, it is recommended to set this to None (the default), but it is recommended for vibration.
-    :param unit_conversion: applies a scale to the velocity and displacement metrics
-        - `"g_to_in"` multiplies the output by 386.09 to convert from g to inches (in)
-        - `"g_to_mm"` multiplies the output by 9806.65 to convert from g to millimeters (mm)
-        - `None` (the default) applies no scale to the output
+        filter; if None, no filter is applied. For shock events, it is recommended to set this to None (the default),
+        but it is recommended for vibration.
     :param include_integration: if `True`, include the calculations of velocity and displacement.  Defaults to `True`.
-    :param include_pseudo_velocity: if `True`, include the more time consuming calculation of pseudo velocity.  Defaults to `True`.
+    :param include_pseudo_velocity: if `True`, include the more time-consuming calculation of pseudo velocity.
+        Defaults to `True`.
     :param damp: the damping coefficient `ζ`, related to the Q-factor by
         `ζ = 1/(2Q)`; defaults to 0.05
     :param init_freq: the initial frequency in the sequence; if `None`,
         use the frequency corresponding to the data's duration, default is 1.0 Hz
     :param bins_per_octave: the number of frequencies per octave
-    :param include_resultant: add a resultant (root sum of the squares) for each metric, calculated from the other input dataframe columns
-    :param display_plots: display plotly figures of the min/max envelope of acceleration, velocity, displacement and PVSS (default as False)
+    :param include_resultant: add a resultant (root sum of the squares) for each metric,
+        calculated from the other input dataframe columns
+    :param display_plots: display plotly figures of the min/max envelope of acceleration, velocity, displacement and
+        PVSS (default as False)
     :return: a dataframe containing all the metrics, one computed per column of the input dataframe
     """
 
-    #Apply Unit Conversion
-    vel_disp_multiplier = 1.0
-    if unit_conversion == "g_to_in":
-        vel_disp_multiplier = 386.09
-    elif unit_conversion == "g_to_mm":
-        vel_disp_multiplier = 9806.65
-    elif unit_conversion is not None:
-        raise ValueError(f'kwarg unit_conversion was {unit_conversion}, must be one of [None, "g_to_in", "g_to_mm"]')
-    
-    #Remove Offset
-    if zero == "start":
+    # Remove Offset
+    if detrend == "start":
         df -= df.iloc[0]
-    elif zero == "mean":
+    elif detrend == "mean":
         df -= df.mean(axis="index")
-    elif zero == "median":
+    elif detrend == "median":
         df -= df.median(axis="index")
-    elif zero is not None:
-        raise ValueError(f'kwarg zero was {zero}, must be one of [None, "start", "mean", "median"]')
+    elif detrend is not None:
+        raise ValueError(f'kwarg detrend was {detrend}, must be one of [None, "start", "mean", "median"]')
 
-    #Apply Filters & Window
+    # Apply Filters & Window
     df = filters.butterworth(df, low_cutoff=highpass_cutoff, tukey_percent=tukey_percent)
 
-    #Integrate
+    # Integrate
     data_list = [df]
     if include_integration:
         [accel, vel, disp] = integrate.integrals(
-            df, n=2, tukey_percent=tukey_percent, highpass_cutoff=highpass_cutoff)
+            df, n=2, tukey_percent=tukey_percent, highpass_cutoff=highpass_cutoff, zero=zero)
         data_list = [df, vel, disp]
 
-    #Calculate Peak & RMS
+    # Calculate Peak & RMS
     metrics = pd.DataFrame()
-    rms_start = int(tukey_percent/2*df.shape[0])
+    rms_start = int(tukey_percent / 2 * df.shape[0])
     rms_end = df.shape[0] - rms_start
-    for label, data, scale in zip(
-            ['Acceleration','Velocity','Displacement'],
-            data_list,
-            [1,vel_disp_multiplier,vel_disp_multiplier]):
+    for label, data in zip(
+            ['Acceleration', 'Velocity', 'Displacement'],
+            data_list):
 
-        #Apply Scale
-        data = data * scale
-
-        #Display Plots
+        # Display Plots
         if display_plots:
-            rolling_min_max_envelope(data).update_layout(yaxis_title_text = label).show()
+            rolling_min_max_envelope(data, plot_as_bars=True).update_layout(yaxis_title_text=label).show()
 
-        #Calculate Absolute Peak
+        # Calculate Absolute Peak
         peak = pd.DataFrame(data.abs().max()).reset_index()
         peak.columns = ['variable', 'value']
         if include_resultant:
             peak = pd.concat([peak, pd.DataFrame({
-                'variable':['Resultant'],
-                'value':[np.sum(peak.value**2)**0.5]
+                'variable': ['Resultant'],
+                'value': [np.sum(peak.value ** 2) ** 0.5]
             })])
         peak['calculation'] = 'Peak Absolute ' + label
 
-        #Calculate RMS
-        rms = pd.DataFrame(data.iloc[rms_start:rms_end].pow(2).mean()**0.5).reset_index()
-        rms.columns = ['variable','value']
+        # Calculate RMS
+        rms = pd.DataFrame(data.iloc[rms_start:rms_end].pow(2).mean() ** 0.5).reset_index()
+        rms.columns = ['variable', 'value']
         if include_resultant:
             rms = pd.concat([rms, pd.DataFrame({
-                'variable':['Resultant'],
-                'value':[np.sum(rms.value**2)**0.5]
+                'variable': ['Resultant'],
+                'value': [np.sum(rms.value ** 2) ** 0.5]
             })])
         rms['calculation'] = f'RMS {label}'
-        rms['calculation'] = 'RMS {}'.format(label)
 
-        #Add to Metrics
-        metrics = pd.concat([metrics,peak,rms])
+        # Add to Metrics
+        metrics = pd.concat([metrics, peak, rms])
 
-    #Optionally Calculate PVSS
+    # Optionally Calculate PVSS
     if include_pseudo_velocity:
         freqs = utils.logfreqs(df, bins_per_octave=bins_per_octave, init_freq=init_freq)
-        pvss = shock.shock_spectrum(df, freqs=freqs, damp=damp, mode='pvss')*vel_disp_multiplier
+        pvss = shock.shock_spectrum(df, freqs=freqs, damp=damp, mode='pvss')
         if include_resultant:
-            pvss['Resultant'] = shock.shock_spectrum(df, freqs=freqs, damp=damp, mode='pvss', aggregate_axes=True)['resultant']*vel_disp_multiplier
+            pvss['Resultant'] = shock.shock_spectrum(df, freqs=freqs, damp=damp, mode='pvss', aggregate_axes=True)[
+                                    'resultant']
 
         if display_plots:
-            px.line(pvss,log_x=True,log_y=True).update_layout(yaxis_title_text = 'Pseudo Velocity',xaxis_title_text='Natural Frequency (Hz)').show()
+            px.line(pvss, log_x=True, log_y=True).update_layout(yaxis_title_text='Pseudo Velocity',
+                                                                xaxis_title_text='Natural Frequency (Hz)').show()
 
         pvss = pd.DataFrame(pvss.max()).reset_index()
-        pvss.columns = ['variable','value']
+        pvss.columns = ['variable', 'value']
         pvss['calculation'] = 'Peak Pseudo Velocity'
-        metrics = pd.concat([metrics,pvss])
+        metrics = pd.concat([metrics, pvss])
 
-    #Return Metrics
+    # Return Metrics
     return metrics
 
 
@@ -156,8 +153,8 @@ def find_peaks(
         time_distance: float = 1.0,
         add_resultant: bool = False,
         threshold: float = None,
-        threshold_reference: typing.Literal["rms", "peak"] = "rms",
-        threshold_multiplier: float = 4.0,
+        threshold_reference: typing.Literal["rms", "peak"] = "peak",
+        threshold_multiplier: float = 0.1,
         use_abs: bool = True,
         display_plots: bool = False,
 ) -> pd.DataFrame:
@@ -166,16 +163,21 @@ def find_peaks(
     
     :param df: the input dataframe with an index defining the time in seconds or datetime
     :param time_distance: the minimum time in seconds between events, default is 1.0
-    :param add_resultant: add a resultant (root sum of the squares) to the time series prior to finding peaks, calculated from the other input dataframe columns
-    :param threshold: if `None` (default) this is ignored, but if defined this value is passed as the minimum threshold to define a shock event
+    :param add_resultant: add a resultant (root sum of the squares) to the time series prior to finding peaks,
+        calculated from the other input dataframe columns
+    :param threshold: if `None` (default) this is ignored, but if defined this value is passed as the minimum threshold
+        to define a shock event
     :param threshold_reference: if the threshold isn't defined, calculate it from:
-        - `"rms"` (default) the RMS value of the time series
-        - `"peak"` the overall peak
-    :param threshold_multiplier: if the threshold isn't defined, multiply this by the `threshold_reference`, suggestions are:
-        - `4.0` (default) when using RMS, a typical Gaussian signal has a kurtosis of 3.0
-        - `0.1` when using peak, to get all events greater than 10% of the overall peak
+
+        *  `"peak"` (default) the overall peak
+        *  `"rms"` the RMS value of the time series
+    :param threshold_multiplier: if the threshold isn't defined, multiply this by the `threshold_reference`,
+        suggestions are:
+        *  `0.1` (default) when using peak, to get all events greater than 10% of the overall peak
+        *  `4.0` when using RMS, a typical Gaussian signal has a kurtosis of 3.0
     :param use_abs: use the absolute value of the data to define peak events, default is True
-    :param display_plots: display a plotly figure of the time series with the peak events plotted over it (default as False)
+    :param display_plots: display a plotly figure of the time series with the peak events plotted over it (default as
+        False)
     :return: an array of index locations
 
     .. seealso::
@@ -185,18 +187,22 @@ def find_peaks(
     Here's an example implementation using a 60M dataset that loads the data, finds the peaks, and plots in under 10 seconds
     
     .. code:: python
+
         import endaq
         endaq.plot.utilities.set_theme()
         import plotly.graph_objects as go
 
         #Get Accel
-        accel = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/ford_f150.ide',measurement_type='accel',time_mode='datetime')
+        accel = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/ford_f150.ide',measurement_type='accel',
+            time_mode='datetime')
 
         #Filter
         accel = endaq.calc.filters.butterworth(accel,low_cutoff=2)
 
         #Get Peak Indexes
-        indexes = endaq.calc.stats.find_peaks(accel, time_distance = 2)
+        indexes = endaq.calc.stats.find_peaks(
+            accel, time_distance=2,
+            threshold_reference="rms", threshold_multiplier=5.0)
 
         #Generate a Dataframe with Just the Peak Events
         df_peaks = accel.iloc[indexes]
@@ -222,13 +228,16 @@ def find_peaks(
         import plotly.graph_objects as go
 
         #Get Accel
-        accel = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/ford_f150.ide',measurement_type='accel',time_mode='datetime')
+        accel = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/ford_f150.ide',measurement_type='accel',
+            time_mode='datetime')
 
         #Filter
         accel = endaq.calc.filters.butterworth(accel,low_cutoff=2)
 
         #Get Peak Indexes
-        indexes = endaq.calc.stats.find_peaks(accel, time_distance = 2)
+        indexes = endaq.calc.stats.find_peaks(
+            accel, time_distance=2,
+            threshold_reference="rms", threshold_multiplier=5.0)
 
         #Generate a Dataframe with Just the Peak Events
         df_peaks = accel.iloc[indexes]
@@ -248,37 +257,37 @@ def find_peaks(
     """
     df_unmodified = df.copy()
 
-    #Add Resultant
+    # Add Resultant
     if add_resultant:
         df['Resultant'] = df.pow(2).sum(axis=1).pow(0.5)
 
-    #Reduce to Only Maximum Values Per Row
+    # Reduce to Only Maximum Values Per Row
     if use_abs:
         peaks = df.abs().max(axis=1).to_numpy()
     else:
         peaks = df.max(axis=1).to_numpy()
 
-    #Define Threshold
+    # Define Threshold
     if threshold is None:
-        if threshold_reference=='peak':
+        if threshold_reference == 'peak':
             threshold = np.max(peaks) * threshold_multiplier
-        elif threshold_reference=='rms':
-            rms = df_unmodified.pow(2).mean()**0.5
+        elif threshold_reference == 'rms':
+            rms = df_unmodified.pow(2).mean() ** 0.5
             threshold = np.max(rms) * threshold_multiplier
             if add_resultant:
-                threshold = np.sum(rms**2)**0.5 * threshold_multiplier
+                threshold = np.sum(rms ** 2) ** 0.5 * threshold_multiplier
 
-    #Find Peak Indexes
+    # Find Peak Indexes
     indexes = signal.find_peaks(
         peaks,
-        distance=int(time_distance/utils.sample_spacing(df)),
+        distance=int(time_distance / utils.sample_spacing(df)),
         height=threshold,
     )[0]
 
-    #Optionally Display Plot
+    # Optionally Display Plot
     if display_plots:
         df_peaks = df.iloc[indexes]
-        fig = rolling_min_max_envelope(df)
+        fig = rolling_min_max_envelope(df, plot_as_bars=True)
         fig.add_trace(go.Scattergl(
             x=df_peaks.index,
             y=df_peaks.abs().max(axis=1).to_numpy(),
@@ -287,7 +296,7 @@ def find_peaks(
         ))
         fig.show()
 
-    #Return Peak Times
+    # Return Peak Times
     return indexes
 
 
@@ -309,42 +318,37 @@ def rolling_metrics(
         this is ignored if `indexes` or `index_values` are defined
     :param slice_width: the time in seconds to center about each slice index,
         if none is provided it will calculate one based upon the number of slices
-    :param vel_disp_multiplier: applies a scale to the velocity and displacement metrics
-        - 386.09 to convert from g to inches (in)
-        - 9806.65 to convert from g to millimeters (mm)
     :param kwargs: Other parameters to pass directly to :py:func:`~endaq.calc.stats.shock_vibe_metrics()`
     :return: a dataframe containing all the metrics, one computed per column of the input dataframe, and one per peak event
 
     Here's a continuation of the example shown in :py:func:`~endaq.calc.stats.find_peaks()`::
+
+    .. code:: python
+
         #Calculate for all Peak Event Indexes
         metrics = endaq.calc.stats.rolling_metrics(accel, indexes=indexes, slice_width=2.0)
 
         #Calculate for 3 Specific Times
         import pandas as pd
-        metrics = endaq.calc.stats.rolling_metrics(accel, index_values = pd.DatetimeIndex(['2020-03-13 23:40:13', '2020-03-13 23:45:00', '2020-03-13 23:50:00'],tz='UTC'), slice_width=5.0)
+        metrics = endaq.calc.stats.rolling_metrics(
+            accel,
+            index_values = pd.DatetimeIndex(['2020-03-13 23:40:13', '2020-03-13 23:45:00', '2020-03-13 23:50:00'],tz='UTC'),
+            slice_width=5.0)
     
         #Calculate for 50 Equally Spaced & Sized Slices, Turning off Pseudo Velocity (Only Recommended for Smaller Time Slices)
-        metrics = endaq.calc.stats.rolling_metrics(accel, num_slices=50, vel_disp_multiplier = 386.09, highpass_cutoff = 2, tukey_percent = 0.0, include_pseudo_velocity = False)
+        metrics = endaq.calc.stats.rolling_metrics(
+            accel, num_slices=50, highpass_cutoff=2,
+            tukey_percent=0.0, include_pseudo_velocity=False)
     """
-    length = len(df)
+    indexes, slice_width, num, length = utils._rolling_slice_definitions(
+        df,
+        indexes=indexes,
+        index_values=index_values,
+        num_slices=num_slices,
+        slice_width=slice_width
+    )
 
-    #Define center index locations of each slice if not provided
-    if indexes is None:
-        if index_values is not None:
-            indexes = np.zeros(len(index_values),int)
-            for i in range(len(indexes)):
-                indexes[i] = int((np.abs(df.index - index_values[i])).argmin())
-        else:
-            indexes = np.linspace(0, length, num_slices, endpoint = False, dtype=int)
-            indexes = indexes + int(indexes[1]/2)
-
-    #Calculate slice step size
-    spacing = utils.sample_spacing(df)
-    if slice_width is None:
-        slice_width = spacing * length / len(indexes)
-    num = int(slice_width / spacing / 2)
-
-    #Loop through and compute metrics
+    # Loop through and compute metrics
     metrics = pd.DataFrame()
     for i in indexes:
         window_start = max(0, i - num)
@@ -354,7 +358,7 @@ def rolling_metrics(
             **kwargs
         )
         event_metrics['timestamp'] = df.index[i]
-        metrics = pd.concat([metrics,event_metrics])
+        metrics = pd.concat([metrics, event_metrics])
 
     return metrics
 
