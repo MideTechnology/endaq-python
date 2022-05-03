@@ -3,6 +3,7 @@ from __future__ import annotations
 import typing  # for `SupportsIndex`, which is Python3.8+ only
 from typing import Union
 from collections.abc import Sequence
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -11,17 +12,18 @@ import plotly.graph_objects as go
 import plotly.express as px
 
 from endaq.plot import rolling_min_max_envelope
-from endaq.calc import filters, integrate, utils, shock
+from endaq.calc import filters, integrate, utils, shock, psd
 
 
 def shock_vibe_metrics(
         df: pd.DataFrame,
         tukey_percent: float = 0.1,
         highpass_cutoff: float = None,
+        freq_splits: np.array = [0, 65, 300, 1500, None],
         detrend: typing.Literal["start", "mean", "median", None] = "median",
         zero: typing.Literal["start", "mean", "median"] = "start",
         include_integration: bool = True,
-        include_pseudo_velocity: bool = True,
+        include_pseudo_velocity: bool = False,
         damp: float = 0.05,
         init_freq: float = 1.0,
         bins_per_octave: float = 12,
@@ -32,11 +34,13 @@ def shock_vibe_metrics(
     Compute the following shock and vibration metrics for a given time series dataframe
         - Peak Absolute Acceleration
         - RMS Acceleration
+        - Peak Frequency
+        - RMS Acceleration in Defined Frequency Ranges with `freq_splits`
         - Peak Absolute Velocity
         - RMS Velocity
         - Peak Absolute Displacement
         - RMS Displacement
-        - Peak Pseudo Velocity
+        - Peak Pseudo Velocity & Corresponding Frequency
         
     :param df: the input dataframe with an index defining the time in seconds or datetime
     :param tukey_percent: the portion of the time series to apply a Tukey window (a taper that forces beginning and end
@@ -57,19 +61,71 @@ def shock_vibe_metrics(
     :param highpass_cutoff: the cutoff frequency of a preconditioning highpass
         filter; if None, no filter is applied. For shock events, it is recommended to set this to None (the default),
         but it is recommended for vibration.
+    :param freq_splits: the boundaries of the frequency bins for the RMS calculations; must be strictly increasing, if
+        `None` is given for the last value (the default) it will set this as the sampling rate
     :param include_integration: if `True`, include the calculations of velocity and displacement.  Defaults to `True`.
     :param include_pseudo_velocity: if `True`, include the more time-consuming calculation of pseudo velocity.
-        Defaults to `True`.
-    :param damp: the damping coefficient `ζ`, related to the Q-factor by
+        Defaults to `False`.
+    :param damp: the damping coefficient used in the shock response calculation `ζ`, related to the Q-factor by
         `ζ = 1/(2Q)`; defaults to 0.05
-    :param init_freq: the initial frequency in the sequence; if `None`,
+    :param init_freq: the initial frequency in the sequence for the shock response calculation; if `None`,
         use the frequency corresponding to the data's duration, default is 1.0 Hz
-    :param bins_per_octave: the number of frequencies per octave
+    :param bins_per_octave: the number of frequencies per octave for the shock response calculation
     :param include_resultant: add a resultant (root sum of the squares) for each metric,
         calculated from the other input dataframe columns
     :param display_plots: display plotly figures of the min/max envelope of acceleration, velocity, displacement and
         PVSS (default as False)
     :return: a dataframe containing all the metrics, one computed per column of the input dataframe
+
+    Here is an example calculating and displaying these metrics for the bearing dataset discussed in our blog
+        `Top 12 Vibration Metrics to Monitor & How to Calculate Them <https://blog.endaq.com/top-vibration-metrics-to-monitor-how-to-calculate-them>`_
+
+    .. code:: python
+
+        import endaq
+        endaq.plot.utilities.set_theme('endaq_light')
+        import pandas as pd
+        import plotly.express as px
+
+        # Get Acceleration Data
+        accel = pd.read_csv('https://info.endaq.com/hubfs/Plots/bearing_data.csv', index_col=0)
+
+        # Calculate Metrics
+        metrics = endaq.calc.stats.shock_vibe_metrics(accel, include_resultant=False, freq_splits=[0, 65, 300, None])
+
+        # Generate Figure with Bar Plots
+        fig = px.bar(
+            metrics,
+            x="variable", y="value", color='variable',
+            facet_col="calculation", facet_col_wrap=3)
+        fig.update_yaxes(matches=None, visible=False)
+        fig.update_xaxes(visible=False)
+        fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+        fig.show()
+
+    .. plotly::
+       :fig-vars: fig
+
+        import endaq
+        endaq.plot.utilities.set_theme('endaq_light')
+        import pandas as pd
+        import plotly.express as px
+
+        # Get Acceleration Data
+        accel = pd.read_csv('https://info.endaq.com/hubfs/Plots/bearing_data.csv', index_col=0)
+
+        # Calculate Metrics
+        metrics = endaq.calc.stats.shock_vibe_metrics(accel, include_resultant=False, freq_splits=[0, 65, 300, None])
+
+        # Generate Figure with Bar Plots
+        fig = px.bar(
+            metrics,
+            x="variable", y="value", color='variable',
+            facet_col="calculation", facet_col_wrap=3)
+        fig.update_yaxes(matches=None, visible=False)
+        fig.update_xaxes(visible=False)
+        fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+        fig.show()
     """
 
     # Remove Offset
@@ -102,7 +158,7 @@ def shock_vibe_metrics(
 
         # Display Plots
         if display_plots:
-            rolling_min_max_envelope(data, plot_as_bars=True).update_layout(yaxis_title_text=label).show()
+            rolling_min_max_envelope(data, plot_as_bars=True, opacity=0.7).update_layout(yaxis_title_text=label).show()
 
         # Calculate Absolute Peak
         peak = pd.DataFrame(data.abs().max()).reset_index()
@@ -110,22 +166,47 @@ def shock_vibe_metrics(
         if include_resultant:
             peak = pd.concat([peak, pd.DataFrame({
                 'variable': ['Resultant'],
-                'value': [np.sum(peak.value ** 2) ** 0.5]
+                'value': [data.pow(2).sum(axis=1).pow(0.5).abs().max()]
             })])
         peak['calculation'] = 'Peak Absolute ' + label
 
         # Calculate RMS
-        rms = pd.DataFrame(data.iloc[rms_start:rms_end].pow(2).mean() ** 0.5).reset_index()
-        rms.columns = ['variable', 'value']
+        rms_stats = pd.DataFrame(data.iloc[rms_start:rms_end].pow(2).mean() ** 0.5).reset_index()
+        rms_stats.columns = ['variable', 'value']
         if include_resultant:
-            rms = pd.concat([rms, pd.DataFrame({
+            rms_stats = pd.concat([rms_stats, pd.DataFrame({
                 'variable': ['Resultant'],
-                'value': [np.sum(rms.value ** 2) ** 0.5]
+                'value': [np.sum(rms_stats.value ** 2) ** 0.5]
             })])
-        rms['calculation'] = f'RMS {label}'
+        rms_stats['calculation'] = f'RMS {label}'
 
         # Add to Metrics
-        metrics = pd.concat([metrics, peak, rms])
+        metrics = pd.concat([metrics, peak, rms_stats])
+
+    # Peak Frequency
+    fs = 1 / utils.sample_spacing(df)
+    parseval = psd.welch(df, scaling='parseval', bin_width=fs / len(df))
+    peak = parseval.idxmax().reset_index()
+    peak.columns = ['variable', 'value']
+    peak['calculation'] = 'Peak Frequency'
+    metrics = pd.concat([metrics, peak])
+
+    # Create Labels for Frequency Range Splits
+    freq_splits = np.array(freq_splits)
+    if freq_splits[-1] is None:
+        freq_splits[-1] = int(np.floor(fs))
+    freq_splits = freq_splits[freq_splits <= fs]
+    labels = np.array(
+        ['RMS from ' + str(freq_splits[i]) + ' to ' + str(freq_splits[i + 1]) for i in range(len(freq_splits) - 1)])
+
+    # Calculate RMS in Defined Frequency Ranges
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', '.*empty.*')
+        rms_psd_breaks = psd.to_jagged(parseval, freq_splits, agg='sum') ** 0.5
+    rms_psd_breaks.index = pd.Series(labels, name='calculation')
+    if include_resultant:
+        rms_psd_breaks['Resultant'] = rms_psd_breaks.sum(axis=1)
+    metrics = pd.concat([metrics, rms_psd_breaks.reset_index().melt(id_vars='calculation')])
 
     # Optionally Calculate PVSS
     if include_pseudo_velocity:
@@ -139,10 +220,17 @@ def shock_vibe_metrics(
             px.line(pvss, log_x=True, log_y=True).update_layout(yaxis_title_text='Pseudo Velocity',
                                                                 xaxis_title_text='Natural Frequency (Hz)').show()
 
-        pvss = pd.DataFrame(pvss.max()).reset_index()
-        pvss.columns = ['variable', 'value']
-        pvss['calculation'] = 'Peak Pseudo Velocity'
-        metrics = pd.concat([metrics, pvss])
+        # Add Peak Value
+        pvss_stats = pd.DataFrame(pvss.max()).reset_index()
+        pvss_stats.columns = ['variable', 'value']
+        pvss_stats['calculation'] = 'Peak Pseudo Velocity'
+        metrics = pd.concat([metrics, pvss_stats])
+
+        # Add Peak Frequency
+        pvss_stats = pd.DataFrame(pvss.idxmax()).reset_index()
+        pvss_stats.columns = ['variable', 'value']
+        pvss_stats['calculation'] = 'Peak PVSS Frequency'
+        metrics = pd.concat([metrics, pvss_stats])
 
     # Return Metrics
     return metrics
@@ -184,7 +272,8 @@ def find_peaks(
         - `SciPy find_peaks function <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.find_peaks.html>`_
           Documentation for the SciPy function used to identify the peak events.
 
-    Here's an example implementation using a 60M dataset that loads the data, finds the peaks, and plots in under 10 seconds
+    Here's an example implementation using a 60M dataset that loads the data, finds the peaks, and plots with the peak
+        events identified all very quickly
     
     .. code:: python
 
@@ -272,10 +361,10 @@ def find_peaks(
         if threshold_reference == 'peak':
             threshold = np.max(peaks) * threshold_multiplier
         elif threshold_reference == 'rms':
-            rms = df_unmodified.pow(2).mean() ** 0.5
-            threshold = np.max(rms) * threshold_multiplier
+            rms_val = df_unmodified.pow(2).mean() ** 0.5
+            threshold = np.max(rms_val) * threshold_multiplier
             if add_resultant:
-                threshold = np.sum(rms ** 2) ** 0.5 * threshold_multiplier
+                threshold = np.sum(rms_val ** 2) ** 0.5 * threshold_multiplier
 
     # Find Peak Indexes
     indexes = signal.find_peaks(
@@ -287,7 +376,7 @@ def find_peaks(
     # Optionally Display Plot
     if display_plots:
         df_peaks = df.iloc[indexes]
-        fig = rolling_min_max_envelope(df, plot_as_bars=True)
+        fig = rolling_min_max_envelope(df, plot_as_bars=True, opacity=0.7)
         fig.add_trace(go.Scattergl(
             x=df_peaks.index,
             y=df_peaks.abs().max(axis=1).to_numpy(),
@@ -323,7 +412,7 @@ def rolling_metrics(
 
     Here's a continuation of the example shown in :py:func:`~endaq.calc.stats.find_peaks()`::
 
-    .. code:: python
+    .. code:: python3
 
         #Calculate for all Peak Event Indexes
         metrics = endaq.calc.stats.rolling_metrics(accel, indexes=indexes, slice_width=2.0)
