@@ -153,8 +153,8 @@ def general_get_correlation_figure(merged_df: pd.DataFrame,
                 label=cols[k]) for k in range(len(cols))
         ])
 
-    # Sets up various apsects of the Plotly figure that is currently being produced.  This ranges from
-    # aethetic things, to setting the dropdown menues as part of the figure
+    # Sets up various aspects of the Plotly figure that is currently being produced.  This ranges from
+    # aesthetic things, to setting the dropdown menus as part of the figure
     fig.update_layout(
         title_x=0.4,
         # width=800,
@@ -240,29 +240,78 @@ def get_pure_numpy_2d_pca(df: pd.DataFrame,
     return fig
 
 
-def gen_map(df_map: pd.DataFrame, mapbox_access_token: str, filter_positive_color_vals: bool = True,
+def gen_map(df_map: pd.DataFrame,
+            mapbox_access_token: str = None,
             lat: str = "Latitude",
             lon: str = "Longitude",
-            color_by_column: str = "Ground Speed",
+            color_by_column: str = None,
+            filter_positive_color_vals: bool = False,
+            hover_data: list[str] = [],
             size_max: float = 15.0,
             zoom_offset: float = -2.0
             ) -> go.Figure:
     """
-    Plots GPS data on a map from a single recording, shading the points based on some characteristic
-    (defaults to ground speed).
+    Plots GPS data on a map from a single recording, shading the points based on one of several characteristics
+        (defaults to ground speed).
     
     :param df_map: The pandas dataframe containing the recording data.
-    :param mapbox_access_token: The access token (or API key) needed to be able to plot against
-     a map.
+    :param mapbox_access_token: The access token (or API key) needed to be able to plot against a map using Mapbox,
+        `create a free account here <https://www.mapbox.com/pricing>`_
+
+        * If no access token is provided, a `"stamen-terrain"` tile will be used,
+            `see Plotly for more information <https://plotly.com/python/mapbox-layers/>`_
     :param lat: The dataframe column title to use for latitude
     :param lon: The dataframe column title to use for longitude
     :param color_by_column: The dataframe column title to color the plotted points by.
-    :param filter_positive_color_vals: A boolean variable, which will filter
-     which points are plotted by if they have corresponding positive values
+        If `None` is provided (the default), all the points will be the same color
+    :param filter_positive_color_vals: A boolean variable, which will filter which points are plotted by
+        if they have corresponding positive values, default is `False`
+    :param hover_data: The list of dataframe column titles with data to display when the mouse hovers over a datapoint
     :param size_max: The size of the scatter points in the map, default 15
     :param zoom_offset: The offset to apply to the zoom, default -2, this is influenced by the final figure size
+
+    Here is an example map of a drive from Boston Logan Airport to Mide Technology
+
+    .. code:: python
+
+        import endaq
+        endaq.plot.utilities.set_theme()
+        import pandas as pd
+
+        # Get GPS Data
+        gps = pd.read_csv('https://info.endaq.com/hubfs/data/mide-map-gps-data.csv')
+
+        # Generate & Show Map
+        fig = endaq.plot.gen_map(
+            gps,
+            lat="Latitude",
+            lon="Longitude",
+            color_by_column="Ground Speed",
+            hover_data=["Date"]
+        )
+        fig.show()
+
+    .. plotly::
+        :fig-vars: fig
+
+        import endaq
+        endaq.plot.utilities.set_theme()
+        import pandas as pd
+
+        # Get GPS Data
+        gps = pd.read_csv('https://info.endaq.com/hubfs/data/mide-map-gps-data.csv')
+
+        # Generate & Show Map
+        fig = endaq.plot.gen_map(
+            gps,
+            lat="Latitude",
+            lon="Longitude",
+            color_by_column="Ground Speed",
+            hover_data=["Date"]
+        )
+        fig.show()
     """
-    if filter_positive_color_vals:
+    if filter_positive_color_vals and color_by_column is not None:
         df_map = df_map[df_map[color_by_column] > 0]
     
     zoom = determine_plotly_map_zoom(lats=df_map[lat], lons=df_map[lon])
@@ -275,12 +324,16 @@ def gen_map(df_map: pd.DataFrame, mapbox_access_token: str, filter_positive_colo
         lat=lat,
         lon=lon,
         color=color_by_column,
+        hover_data=hover_data,
         size_max=size_max,
         zoom=zoom + zoom_offset,
         center=center,
     )
 
-    return fig
+    if mapbox_access_token is None:
+        fig.update_layout(mapbox_style="stamen-terrain")
+
+    return fig.update_layout(margin={"r": 20, "t": 20, "l": 20, "b": 0})
     
 
 def octave_spectrogram(df: pd.DataFrame, window: float, bins_per_octave: int = 3, freq_start: float = 20.0,

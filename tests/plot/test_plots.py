@@ -86,3 +86,15 @@ class TestRollingMinMaxEnvelope:
     def test_lines(self, generate_time_dataframe):
         fig = plot.rolling_min_max_envelope(generate_time_dataframe, plot_as_bars=True)
         assert fig['data'][0]['type'] == 'bar'
+
+
+def test_map():
+    gps = pd.read_csv('https://info.endaq.com/hubfs/data/mide-map-gps-data.csv')
+
+    fig = plot.gen_map(
+        gps,
+        lat="Latitude",
+        lon="Longitude",
+        color_by_column="Ground Speed"
+    )
+    assert fig['data'][0]['subplot'] == 'mapbox'
