@@ -1,4 +1,5 @@
 import pytest
+from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -50,14 +51,50 @@ class TestSpectrumOverTime:
         fig = plot.spectrum_over_time(generate_dataframe, 'Peak')
         assert fig['data'][0]['marker']['symbol'] == 'circle'
 
-
-def test_octave_spectrogram():
+@pytest.fixture(params=["float", "datetime"])
+def generate_time_dataframe(request):
     time = np.arange(1000) / 1000
     df_accel = pd.DataFrame({
         'time': np.concatenate((time, time + 1.0, time + 2.0)),
-        'A': np.random.random(3000)
+        'A': np.random.random(3000),
+        'B': np.random.random(3000)
     }).set_index('time')
 
-    df, fig = plot.octave_spectrogram(df_accel, window=0.1, max_freq=50)
+    if request.param == 'datetime':
+        start_date = datetime.strptime('2021-03-21 00:00', '%Y-%m-%d %H:%M')
+        df_accel.index = [start_date + timedelta(seconds=diff) for diff in df_accel.index]
+
+    return df_accel
+
+
+def test_octave_spectrogram(generate_time_dataframe):
+    df, fig = plot.octave_spectrogram(generate_time_dataframe[['A']], window=0.1, max_freq=50)
     assert fig['data'][0]['type'] == 'heatmap'
 
+
+def test_around_peak(generate_time_dataframe):
+    fig = plot.around_peak(generate_time_dataframe)
+    assert fig['data'][0]['type'] == 'scattergl'
+
+
+class TestRollingMinMaxEnvelope:
+
+    def test_lines(self, generate_time_dataframe):
+        fig = plot.rolling_min_max_envelope(generate_time_dataframe)
+        assert fig['data'][0]['type'] == 'scatter'
+
+    def test_lines(self, generate_time_dataframe):
+        fig = plot.rolling_min_max_envelope(generate_time_dataframe, plot_as_bars=True)
+        assert fig['data'][0]['type'] == 'bar'
+
+
+def test_map():
+    gps = pd.read_csv('https://info.endaq.com/hubfs/data/mide-map-gps-data.csv')
+
+    fig = plot.gen_map(
+        gps,
+        lat="Latitude",
+        lon="Longitude",
+        color_by_column="Ground Speed"
+    )
+    assert fig['data'][0]['subplot'] == 'mapbox'

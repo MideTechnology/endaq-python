@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Container
+import datetime
 import typing
+from typing import Optional
 import warnings
 
 import numpy as np
@@ -8,16 +11,11 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly import colors
-import scipy.spatial.transform
 from plotly.subplots import make_subplots
-from scipy import signal, spatial
-from typing import Optional
-from collections.abc import Container
-import datetime
+import scipy.spatial.transform
+from scipy import spatial
 
-from endaq.calc import sample_spacing
-from endaq.calc.psd import to_octave, welch, rolling_psd
-
+from endaq.calc import utils, psd
 from .utilities import determine_plotly_map_zoom, get_center_of_coordinates
 from .dashboards import rolling_enveloped_dashboard
 
@@ -155,8 +153,8 @@ def general_get_correlation_figure(merged_df: pd.DataFrame,
                 label=cols[k]) for k in range(len(cols))
         ])
 
-    # Sets up various apsects of the Plotly figure that is currently being produced.  This ranges from
-    # aethetic things, to setting the dropdown menues as part of the figure
+    # Sets up various aspects of the Plotly figure that is currently being produced.  This ranges from
+    # aesthetic things, to setting the dropdown menus as part of the figure
     fig.update_layout(
         title_x=0.4,
         # width=800,
@@ -242,39 +240,100 @@ def get_pure_numpy_2d_pca(df: pd.DataFrame,
     return fig
 
 
-def gen_map(df_map: pd.DataFrame, mapbox_access_token: str, filter_points_by_positive_groud_speed: bool = True,
-            color_by_column: str = "GNSS Speed: Ground Speed") -> go.Figure:
+def gen_map(df_map: pd.DataFrame,
+            mapbox_access_token: str = None,
+            lat: str = "Latitude",
+            lon: str = "Longitude",
+            color_by_column: str = None,
+            filter_positive_color_vals: bool = False,
+            hover_data: list[str] = [],
+            size_max: float = 15.0,
+            zoom_offset: float = -2.0
+            ) -> go.Figure:
     """
-    Plots GPS data on a map from a single recording, shading the points based some characteristic
-    (defaults to ground speed).
+    Plots GPS data on a map from a single recording, shading the points based on one of several characteristics
+        (defaults to ground speed).
     
     :param df_map: The pandas dataframe containing the recording data.
-    :param mapbox_access_token: The access token (or API key) needed to be able to plot against
-     a map.
-    :param filter_points_by_positive_groud_speed: A boolean variable, which will filter
-     which points are plotted by if they have corresponding positive ground speeds.  This helps
-     remove points which didn't actually have a GPS location found (was created by a bug in the hardware I believe).
+    :param mapbox_access_token: The access token (or API key) needed to be able to plot against a map using Mapbox,
+        `create a free account here <https://www.mapbox.com/pricing>`_
+
+        * If no access token is provided, a `"stamen-terrain"` tile will be used,
+            `see Plotly for more information <https://plotly.com/python/mapbox-layers/>`_
+    :param lat: The dataframe column title to use for latitude
+    :param lon: The dataframe column title to use for longitude
     :param color_by_column: The dataframe column title to color the plotted points by.
+        If `None` is provided (the default), all the points will be the same color
+    :param filter_positive_color_vals: A boolean variable, which will filter which points are plotted by
+        if they have corresponding positive values, default is `False`
+    :param hover_data: The list of dataframe column titles with data to display when the mouse hovers over a datapoint
+    :param size_max: The size of the scatter points in the map, default 15
+    :param zoom_offset: The offset to apply to the zoom, default -2, this is influenced by the final figure size
+
+    Here is an example map of a drive from Boston Logan Airport to Mide Technology
+
+    .. code:: python
+
+        import endaq
+        endaq.plot.utilities.set_theme()
+        import pandas as pd
+
+        # Get GPS Data
+        gps = pd.read_csv('https://info.endaq.com/hubfs/data/mide-map-gps-data.csv')
+
+        # Generate & Show Map
+        fig = endaq.plot.gen_map(
+            gps,
+            lat="Latitude",
+            lon="Longitude",
+            color_by_column="Ground Speed",
+            hover_data=["Date"]
+        )
+        fig.show()
+
+    .. plotly::
+        :fig-vars: fig
+
+        import endaq
+        endaq.plot.utilities.set_theme()
+        import pandas as pd
+
+        # Get GPS Data
+        gps = pd.read_csv('https://info.endaq.com/hubfs/data/mide-map-gps-data.csv')
+
+        # Generate & Show Map
+        fig = endaq.plot.gen_map(
+            gps,
+            lat="Latitude",
+            lon="Longitude",
+            color_by_column="Ground Speed",
+            hover_data=["Date"]
+        )
+        fig.show()
     """
-    if filter_points_by_positive_groud_speed:
-        df_map = df_map[df_map["GNSS Speed: Ground Speed"] > 0]
+    if filter_positive_color_vals and color_by_column is not None:
+        df_map = df_map[df_map[color_by_column] > 0]
     
-    zoom = determine_plotly_map_zoom(lats=df_map["Location: Latitude"], lons=df_map["Location: Longitude"])
-    center = get_center_of_coordinates(lats=df_map["Location: Latitude"], lons=df_map["Location: Longitude"])
+    zoom = determine_plotly_map_zoom(lats=df_map[lat], lons=df_map[lon])
+    center = get_center_of_coordinates(lats=df_map[lat], lons=df_map[lon])
     
     px.set_mapbox_access_token(mapbox_access_token)
     
     fig = px.scatter_mapbox(
         df_map,
-        lat="Location: Latitude",
-        lon="Location: Longitude",
+        lat=lat,
+        lon=lon,
         color=color_by_column,
-        size_max=15,
-        zoom=zoom - 1,
+        hover_data=hover_data,
+        size_max=size_max,
+        zoom=zoom + zoom_offset,
         center=center,
     )
 
-    return fig
+    if mapbox_access_token is None:
+        fig.update_layout(mapbox_style="stamen-terrain")
+
+    return fig.update_layout(margin={"r": 20, "t": 20, "l": 20, "b": 0})
     
 
 def octave_spectrogram(df: pd.DataFrame, window: float, bins_per_octave: int = 3, freq_start: float = 20.0,
@@ -298,9 +357,9 @@ def octave_spectrogram(df: pd.DataFrame, window: float, bins_per_octave: int = 3
     if len(df.columns) != 1:
         raise ValueError("The parameter 'df' must have only one column of data!")
 
-    num_slices = int(len(df) * sample_spacing(df) / window)
+    num_slices = int(len(df) * utils.sample_spacing(df) / window)
 
-    df_psd = rolling_psd(df, num_slices=num_slices, octave_bins=bins_per_octave,
+    df_psd = psd.rolling_psd(df, num_slices=num_slices, octave_bins=bins_per_octave,
                          fstart=freq_start)
 
     return df_psd, spectrum_over_time(df_psd, freq_max=max_freq, log_val=db_scale, log_freq=log_scale_y_axis)
@@ -317,9 +376,9 @@ def octave_psd_bar_plot(df: pd.DataFrame, bins_per_octave: int = 3, f_start: flo
     :param yaxis_title: The text to label the y-axis
     :param log_scale_y_axis: If the y-axis should be log scaled
     """
-    psd_df = welch(df, 1, scaling='spectrum')
+    psd_df = psd.welch(df, 1, scaling='spectrum')
 
-    octave_psd_df = to_octave(
+    octave_psd_df = psd.to_octave(
         psd_df,
         f_start, 
         bins_per_octave,
