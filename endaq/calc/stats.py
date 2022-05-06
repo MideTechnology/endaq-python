@@ -301,7 +301,7 @@ def find_peaks(
 
         #Add Peaks & Display
         fig.add_trace(
-            go.Scattergl(
+            go.Scatter(
                 x=df_peaks.index,
                 y=df_peaks.abs().max(axis=1).to_numpy(),
                 mode='markers', name='Peak Events', marker_symbol='x', marker_color='white'
@@ -336,7 +336,7 @@ def find_peaks(
 
         #Add Peaks & Display
         fig.add_trace(
-            go.Scattergl(
+            go.Scatter(
                 x=df_peaks.index,
                 y=df_peaks.abs().max(axis=1).to_numpy(),
                 mode='markers', name='Peak Events', marker_symbol='x', marker_color='white'
