@@ -32,7 +32,6 @@ def aggregate_fft(df, **kwargs):
     """
     kwargs['scaling'] = 'unit'
     kwargs['window'] = 'boxcar'
-    kwargs['noverlap'] = 0
     return psd.welch(df, **kwargs)
 
 
