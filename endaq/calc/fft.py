@@ -30,9 +30,8 @@ def aggregate_fft(df, **kwargs):
         - `SciPy Welch's method <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.welch.html>`_
           Documentation for the periodogram function wrapped internally.
     """
-    kwargs['scaling'] = 'unit'
-    kwargs['window'] = 'boxcar'
-    kwargs['noverlap'] = 0
+    kwargs.setdefault('scaling', 'unit')
+    kwargs.setdefault('window', 'boxcar')
     return psd.welch(df, **kwargs)
 
 
