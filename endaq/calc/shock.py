@@ -13,8 +13,7 @@ import numpy as np
 import pandas as pd
 import scipy.signal
 
-from endaq.calc.stats import L2_norm
-from endaq.calc import utils
+from endaq.calc import utils, stats
 
 
 def _absolute_acceleration_coefficients(omega, Q, T):
@@ -410,6 +409,8 @@ def shock_spectrum(
     bins_per_octave: float = 12.0,
     damp: float = 0.05,
     mode: typing.Literal["srs", "pvss"] = "srs",
+    max_time: float = 2.0,
+    peak_threshold: float = 0.1,
     two_sided: bool = False,
     aggregate_axes: bool = False,
 ) -> pd.DataFrame:
@@ -428,6 +429,12 @@ def shock_spectrum(
 
         *  `'srs'` (default) specifies the Shock Response Spectrum (SRS)
         *  `'pvss'` specifies the Pseudo-Velocity Shock Spectrum (PVSS)
+    :param max_time: the maximum duration in seconds to compute the shock spectrum for, if the time duration is greater
+        than :py:func:`~endaq.calc.stats.find_peaks()` is used to find peak locations, then the shock spectrums at each
+        peak is calculated with :py:func:`~endaq.calc.shock.rolling_shock_spectrum()` with `max_time` defining the
+        `slice_width`
+    :param peak_threshold: if the duration is greater than `max_time` all peaks that are greater than `peak_threshold`
+        will be calculated, and the aggregate max per frequency will be reported
     :param two_sided: whether to return for each frequency:
         both the maximum negative and positive shocks (`True`),
         or simply the maximum absolute shock (`False`; default)
@@ -451,6 +458,33 @@ def shock_spectrum(
     freqs = np.asarray(freqs)
     if freqs.ndim != 1:
         raise ValueError("target frequencies must be in a 1D-array")
+
+    # Check for total time, if too long compute only for peaks
+    dt = utils.sample_spacing(accel)
+    if dt * len(accel) > max_time:
+        rolling_srs = rolling_shock_spectrum(
+            accel,
+            damp=damp,
+            mode=mode,
+            add_resultant=aggregate_axes,
+            freqs=freqs,
+            indexes=stats.find_peaks(accel, time_distance=max_time, threshold_multiplier=peak_threshold),
+            slice_width=max_time
+        )
+        srs = pd.DataFrame(
+            index=pd.Series(rolling_srs['frequency (Hz)'].unique(), name='frequency (Hz)'),
+            columns=rolling_srs['variable'].unique()
+        )
+        for var in srs.columns:
+            pivot = rolling_srs[rolling_srs.variable == var].copy()
+            pivot = pivot.pivot_table(
+                columns='timestamp',
+                index='frequency (Hz)',
+                values='value'
+            )
+            srs[var] = pivot.max(axis=1)
+        return srs
+
     omega = 2 * np.pi * freqs
 
     if mode == "srs":
@@ -465,7 +499,6 @@ def shock_spectrum(
         dtype=np.float64,
     )
 
-    dt = utils.sample_spacing(accel)
     T_padding = 1 / (
         freqs.min() * np.sqrt(1 - damp ** 2)
     )  # uses lowest damped frequency
@@ -489,8 +522,8 @@ def shock_spectrum(
         )
 
         if aggregate_axes:
-            rd = L2_norm(rd, axis=-1, keepdims=True)
-            rd_padding = L2_norm(rd_padding, axis=-1, keepdims=True)
+            rd = stats.L2_norm(rd, axis=-1, keepdims=True)
+            rd_padding = stats.L2_norm(rd_padding, axis=-1, keepdims=True)
 
         results[(0,) + i_nd] = -np.minimum(rd.min(axis=0), rd_padding.min(axis=0))
         results[(1,) + i_nd] = np.maximum(rd.max(axis=0), rd_padding.max(axis=0))
@@ -517,6 +550,7 @@ def rolling_shock_spectrum(
         damp: float = 0.05,
         mode: typing.Literal["srs", "pvss"] = "srs",
         add_resultant: bool = True,
+        freqs: np.ndarray = None,
         init_freq: float = 0.5,
         bins_per_octave: float = 12.0,
         num_slices: int = 100,
@@ -537,8 +571,8 @@ def rolling_shock_spectrum(
         *  `'pvss'` specifies the Pseudo-Velocity Shock Spectrum (PVSS)
     :param add_resultant: if `True` (default) the column-wise resultant will
         also be computed
-    :param add_resultant: whether to calculate the column-wise resultant (`True`)
-        or calculate spectra along each column independently (`False`; default)
+    :param freqs: the natural frequencies across which to calculate the spectrum,
+        if `None` (the default) it uses `init_freq` and `bins_per_octave` to define them
     :param init_freq: the initial frequency in the sequence; if `None`,
         use the frequency corresponding to the data's duration, default is 0.5 Hz
     :param bins_per_octave: the number of frequencies per octave, default is 12    
@@ -548,8 +582,6 @@ def rolling_shock_spectrum(
     :param index_values: the index values of each peak event to quantify (slower but more intuitive than using `indexes`)
     :param slice_width: the time in seconds to center about each slice index,
         if none is provided it will calculate one based upon the number of slices
-    :param add_resultant: if `True` the root sum of squares of each shock spectrum column will
-        also be computed, default is `False`
     :param disable_warnings: if `True` (default) it disables the warnings on the initial frequency
     :return: a dataframe containing all the shock spectrums, stacked on each other
     
@@ -558,6 +590,8 @@ def rolling_shock_spectrum(
     Surface plots, and Animations
 
     """
+    if freqs is None:
+        freqs = utils.logfreqs(df, init_freq=init_freq, bins_per_octave=bins_per_octave)
 
     indexes, slice_width, num, length = utils._rolling_slice_definitions(
         df,
@@ -579,8 +613,7 @@ def rolling_shock_spectrum(
                 df.iloc[window_start:window_end],
                 mode=mode,
                 damp=damp,
-                init_freq=init_freq,
-                bins_per_octave=bins_per_octave,
+                freqs=freqs,
             )
         if add_resultant:
             with warnings.catch_warnings():
@@ -590,8 +623,7 @@ def rolling_shock_spectrum(
                     df.iloc[window_start:window_end],
                     mode=mode,
                     damp=damp,
-                    init_freq=init_freq,
-                    bins_per_octave=bins_per_octave,
+                    freqs=freqs,
                     aggregate_axes=True
                 )['resultant']
 

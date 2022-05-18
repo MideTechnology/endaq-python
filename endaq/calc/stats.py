@@ -213,8 +213,9 @@ def shock_vibe_metrics(
         freqs = utils.logfreqs(df, bins_per_octave=bins_per_octave, init_freq=init_freq)
         pvss = shock.shock_spectrum(df, freqs=freqs, damp=damp, mode='pvss')
         if include_resultant:
-            pvss['Resultant'] = shock.shock_spectrum(df, freqs=freqs, damp=damp, mode='pvss', aggregate_axes=True)[
-                                    'resultant']
+            srs = shock.shock_spectrum(df, freqs=freqs, damp=damp, mode='pvss', aggregate_axes=True)
+            srs.columns = srs.columns.str.lower()
+            pvss['Resultant'] = srs['resultant']
 
         if display_plots:
             px.line(pvss, log_x=True, log_y=True).update_layout(yaxis_title_text='Pseudo Velocity',

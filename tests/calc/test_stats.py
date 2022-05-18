@@ -87,8 +87,9 @@ def test_shock_vibe_metrics(generate_time_dataframe):
 
     # Do PVSS
     pvss = shock.shock_spectrum(df, init_freq=init_freq, bins_per_octave=bins_per_octave, damp=damp, mode='pvss',
-                                aggregate_axes=True)[
-        'resultant']
+                                aggregate_axes=True)
+    pvss.columns = pvss.columns.str.lower()
+    pvss = pvss['resultant']
 
     np.testing.assert_almost_equal(
         pvss.max(),
