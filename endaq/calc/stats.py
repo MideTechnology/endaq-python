@@ -412,7 +412,7 @@ def rolling_metrics(
 
     Here's a continuation of the example shown in :py:func:`~endaq.calc.stats.find_peaks()`::
 
-    .. code:: python3
+    .. code:: python
 
         #Calculate for all Peak Event Indexes
         metrics = endaq.calc.stats.rolling_metrics(accel, indexes=indexes, slice_width=2.0)
@@ -428,6 +428,7 @@ def rolling_metrics(
         metrics = endaq.calc.stats.rolling_metrics(
             accel, num_slices=50, highpass_cutoff=2,
             tukey_percent=0.0, include_pseudo_velocity=False)
+
     """
     indexes, slice_width, num, length = utils._rolling_slice_definitions(
         df,

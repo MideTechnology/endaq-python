@@ -617,8 +617,7 @@ def rolling_shock_spectrum(
                 df.iloc[window_start:window_end],
                 mode=mode,
                 damp=damp,
-                init_freq=init_freq,
-                bins_per_octave=bins_per_octave,
+                freqs=freqs,
             )
         if add_resultant:
             with warnings.catch_warnings():
@@ -628,8 +627,7 @@ def rolling_shock_spectrum(
                     df.iloc[window_start:window_end],
                     mode=mode,
                     damp=damp,
-                    init_freq=init_freq,
-                    bins_per_octave=bins_per_octave,
+                    freqs=freqs,
                     aggregate_axes=True
                 )['Resultant']
 
