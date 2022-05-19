@@ -471,18 +471,22 @@ def shock_spectrum(
             indexes=stats.find_peaks(accel, time_distance=max_time, threshold_multiplier=peak_threshold),
             slice_width=max_time
         )
+        var_name = 'variable'
+        if 'axis' in rolling_srs.columns:
+            var_name = 'axis'
         srs = pd.DataFrame(
             index=pd.Series(rolling_srs['frequency (Hz)'].unique(), name='frequency (Hz)'),
-            columns=rolling_srs['variable'].unique()
+            columns=rolling_srs[var_name].unique()
         )
         for var in srs.columns:
-            pivot = rolling_srs[rolling_srs.variable == var].copy()
+            pivot = rolling_srs[rolling_srs[var_name] == var].copy()
             pivot = pivot.pivot_table(
                 columns='timestamp',
                 index='frequency (Hz)',
                 values='value'
             )
             srs[var] = pivot.max(axis=1)
+        srs.columns.name = accel.columns.name
         return srs
 
     omega = 2 * np.pi * freqs
@@ -532,7 +536,7 @@ def shock_spectrum(
         return pd.DataFrame(
             np.maximum(results[0], results[1]),
             index=pd.Series(freqs, name="frequency (Hz)"),
-            columns=(["resultant"] if aggregate_axes else accel.columns),
+            columns=(["Resultant"] if aggregate_axes else accel.columns),
         )
 
     return namedtuple("PseudoVelocityResults", "neg pos")(
@@ -570,7 +574,7 @@ def rolling_shock_spectrum(
         *  `'srs'` (default) specifies the Shock Response Spectrum (SRS)
         *  `'pvss'` specifies the Pseudo-Velocity Shock Spectrum (PVSS)
     :param add_resultant: if `True` (default) the column-wise resultant will
-        also be computed
+        also be computed and returned with the spectra per-column
     :param freqs: the natural frequencies across which to calculate the spectrum,
         if `None` (the default) it uses `init_freq` and `bins_per_octave` to define them
     :param init_freq: the initial frequency in the sequence; if `None`,
@@ -613,7 +617,8 @@ def rolling_shock_spectrum(
                 df.iloc[window_start:window_end],
                 mode=mode,
                 damp=damp,
-                freqs=freqs,
+                init_freq=init_freq,
+                bins_per_octave=bins_per_octave,
             )
         if add_resultant:
             with warnings.catch_warnings():
@@ -623,9 +628,10 @@ def rolling_shock_spectrum(
                     df.iloc[window_start:window_end],
                     mode=mode,
                     damp=damp,
-                    freqs=freqs,
+                    init_freq=init_freq,
+                    bins_per_octave=bins_per_octave,
                     aggregate_axes=True
-                )['resultant']
+                )['Resultant']
 
         slice_srs = slice_srs.reset_index().melt(id_vars=slice_srs.index.name)
         slice_srs['timestamp'] = df.index[i]
