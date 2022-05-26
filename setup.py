@@ -32,6 +32,7 @@ INSTALL_REQUIRES = [
     "python-dotenv>=0.18.0",
     "requests>=2.25.1",
     "scipy>=1.7.1",
+    "pint>=0.19"
     ]
 
 TEST_REQUIRES = [

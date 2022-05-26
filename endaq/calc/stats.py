@@ -412,19 +412,19 @@ def rolling_metrics(
 
     Here's a continuation of the example shown in :py:func:`~endaq.calc.stats.find_peaks()`::
 
-    .. code:: python
+    .. code-block:: python
 
-        #Calculate for all Peak Event Indexes
+        # Calculate for all Peak Event Indexes
         metrics = endaq.calc.stats.rolling_metrics(accel, indexes=indexes, slice_width=2.0)
 
-        #Calculate for 3 Specific Times
+        # Calculate for 3 Specific Times
         import pandas as pd
         metrics = endaq.calc.stats.rolling_metrics(
             accel,
             index_values = pd.DatetimeIndex(['2020-03-13 23:40:13', '2020-03-13 23:45:00', '2020-03-13 23:50:00'],tz='UTC'),
             slice_width=5.0)
     
-        #Calculate for 50 Equally Spaced & Sized Slices, Turning off Pseudo Velocity (Only Recommended for Smaller Time Slices)
+        # Calculate for 50 Equally Spaced & Sized Slices, Turning off Pseudo Velocity (Only Recommended for Smaller Time Slices)
         metrics = endaq.calc.stats.rolling_metrics(
             accel, num_slices=50, highpass_cutoff=2,
             tukey_percent=0.0, include_pseudo_velocity=False)

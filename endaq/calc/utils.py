@@ -216,19 +216,19 @@ def convert_units(
         print_conversion: bool = False,
 ) -> pd.DataFrame:
     """
-    Using the `Pint library <https://github.com/hgrecco/pint/blob/master/pint/default_en.txt>`_ this will apply a unit
-    conversion to a provided dataframe.
+    Using the `Pint library <https://github.com/hgrecco/pint/blob/master/pint/default_en.txt>`_ apply a unit
+    conversion to a provided unit-unaware dataframe.
 
     :param src: a text string defining the base units to convert from like `"in"` for inches
     :param dst: a text string defining the destination units to convert to like `"mm"` for millimeters
-    :param df: the input dataframe
+    :param df: the input dataframe, if none is provided the unit conversion is only applied from `src` to `dst`
     :param print_conversion: if `True` the conversion applied is printed to the console, default is `False`
     :return: a dataframe with the values scaled according to the unit conversion, if no dataframe is provided then a
         scaler value is returned
 
     Some examples are provided below:
 
-    .. code:: python
+    .. code-block:: python
 
         # Simple conversion factor from inches to millimeters
         in_2_mm = endaq.calc.utils.convert_units('in', 'mm')

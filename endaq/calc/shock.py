@@ -415,7 +415,8 @@ def shock_spectrum(
     aggregate_axes: bool = False,
 ) -> pd.DataFrame:
     """
-    Calculate the shock spectrum of an acceleration signal.
+    Calculate the shock spectrum of an acceleration signal. Note this defaults to first find peak events, then compute
+    the spectrum on those peaks to speed up processing time.
     
     :param accel: the absolute acceleration `y"`
     :param freqs: the natural frequencies across which to calculate the spectrum,
@@ -432,7 +433,7 @@ def shock_spectrum(
     :param max_time: the maximum duration in seconds to compute the shock spectrum for, if the time duration is greater
         than :py:func:`~endaq.calc.stats.find_peaks()` is used to find peak locations, then the shock spectrums at each
         peak is calculated with :py:func:`~endaq.calc.shock.rolling_shock_spectrum()` with `max_time` defining the
-        `slice_width`
+        `slice_width`. Set `max_time` to `None` to force the function to not do the peak finding.
     :param peak_threshold: if the duration is greater than `max_time` all peaks that are greater than `peak_threshold`
         will be calculated, and the aggregate max per frequency will be reported
     :param two_sided: whether to return for each frequency:
@@ -461,6 +462,8 @@ def shock_spectrum(
 
     # Check for total time, if too long compute only for peaks
     dt = utils.sample_spacing(accel)
+    if max_time is None:
+        max_time = dt * len(accel) * 2
     if dt * len(accel) > max_time:
         rolling_srs = rolling_shock_spectrum(
             accel,

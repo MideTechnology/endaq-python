@@ -29,7 +29,8 @@ __all__ = [
     'rolling_min_max_envelope',
     'around_peak',
     'animate_quaternion',
-    'spectrum_over_time'
+    'spectrum_over_time',
+    'pvss_on_4cp'
 ]
 
 DEFAULT_ATTRIBUTES_TO_PLOT_INDIVIDUALLY = np.array([
@@ -992,3 +993,245 @@ def spectrum_over_time(
         fig.update_layout(scene_camera=dict(eye=dict(x=-1.5, y=-1.5, z=1)))
 
     return fig
+
+
+def _log_ticks(start, stop, spacing):
+    """Create an array of values that would be the equivalent of tick marks in a log scaled plot"""
+    start = np.floor(np.log10(start))
+    stop = np.ceil(np.log10(stop))
+    if spacing == 'coarse':
+        ones = np.array([1])
+    elif spacing == 'medium':
+        ones = np.array([1, 2, 5])
+    else:
+        ones = np.linspace(1, 9, 9)
+    output = ones * (10 ** start)
+    for i in np.arange(start + 1, stop, 1):
+        output = np.concatenate((output,
+                                 ones * (10 ** i)))
+    return np.concatenate((output, np.array([10 ** stop])))
+
+
+def _add_df(fig, df, line_color, units):
+    """Add lines for each column in a dataframe to an existing figure"""
+    for col in df.columns:
+        fig.add_trace(go.Scatter(
+            x=df.index,
+            y=df[col].to_numpy(),
+            mode="lines",
+            line=dict(color=line_color, width=1, dash='solid'),
+            showlegend=False,
+            hoverinfo='skip',
+            name=str(col) + units
+        ))
+    return fig
+
+
+def pvss_on_4cp(
+        df: pd.DataFrame,
+        mode: typing.Literal["srs", "pvss"] = "srs",
+        accel_units: str = "gravity",
+        disp_units: str = "in",
+        tick_spacing: typing.Literal["fine", "medium", "coarse"] = "medium",
+        include_text: bool = True,
+        size: int = 800,
+) -> go.Figure:
+    """
+    Given a shock response as a SRS or PVSS (see :py:func:`~endaq.calc.shock.shock_spectrum()`) return a plot of the
+    pseudo velocity on a four coordinate plot (4CP or tripartite) that includes diagonal lines and hover labels to also
+    signify the displacement and acceleration levels as a function of natural frequency.
+
+    :param df: the input dataframe of shock response data, each column is plotted separately
+    :param mode: the type of spectrum of the input dataframe, options are:
+
+        *  `srs`:  default, shock response spectrum (SRS) which assumes has units of `accel_units`
+        *  `pvss`: pseudo-velocity shock spectrum (PVSS) which assumes has units of `disp_units / s`
+    :param accel_units: the units to display acceleration as, default is `"gravity"` which will be shortened to 'g'
+        in labels, the unit conversion is handled using :py:func:`~endaq.calc.utils.convert_units()`
+    :param disp_units: the units to display displacement as and velocity (divided by seconds), default is `"in"`,
+        the unit conversion is handled using :py:func:`~endaq.calc.utils.convert_units()`
+    :param tick_spacing: the spacing of each tick and corresponding diagonal line:
+
+        *  `fine`:  order of magnitude, and linearly spaced ticks between each order of magnitude
+        *  `medium`: default, order of magnitude, and then 2x and 5x between each order of magnitude, typical for Plotly,
+        *  `coarse`: only the order of magnitude
+    :param include_text: if `True` (default) add text labels to the diagonal lines
+    :param size: the number of pixels to set the width and height of the figure, default is 800
+    :return: a Plotly figure of the PVSS on 4CP paper with hover information for acceleration and displacement
+
+
+    Here's a few examples from a dataset recorded with an enDAQ sensor on a motorcycle
+    as it revved the engine which resulted in changing frequency content
+
+    .. code:: python3
+
+        import endaq
+        endaq.plot.utilities.set_theme()
+        import pandas as pd
+
+        # Get crash data
+        df_crash = pd.read_csv('https://info.endaq.com/hubfs/data/motorcycle-crash.csv',index_col=0)
+
+        # Calculate SRS
+        srs = endaq.calc.shock.shock_spectrum(df_crash, mode='srs', damp=0.05)
+
+        # Generate 4CP Plot
+        imp = endaq.plot.plots.pvss_on_4cp(srs, disp_units='in')
+        imp.show()
+
+        # Change Plot Theme
+        endaq.plot.utilities.set_theme('endaq_light')
+
+        # Generate 4CP Plot with Different Units
+        met = endaq.plot.plots.pvss_on_4cp(srs, disp_units='mm', tick_spacing='coarse', size=600)
+        met.show()
+
+    .. plotly::
+        :fig-vars: imp, met
+
+        import endaq
+        endaq.plot.utilities.set_theme()
+        import pandas as pd
+
+        # Get crash data
+        df_crash = pd.read_csv('https://info.endaq.com/hubfs/data/motorcycle-crash.csv',index_col=0)
+
+        # Calculate SRS
+        srs = endaq.calc.shock.shock_spectrum(df_crash, mode='srs', damp=0.05)
+
+        # Generate 4CP Plot
+        imp = endaq.plot.plots.pvss_on_4cp(srs, disp_units='in')
+        imp.show()
+
+        # Change Plot Theme
+        endaq.plot.utilities.set_theme('endaq_light')
+
+        # Generate 4CP Plot with Different Units
+        met = endaq.plot.plots.pvss_on_4cp(srs, disp_units='mm', tick_spacing='coarse', size=600)
+        met.show()
+
+    """
+
+    # Generate pseudo velocity data if srs is provided
+    if mode == 'srs':
+        df = utils.convert_units(
+            src=accel_units + '*s^2',
+            dst=disp_units,
+            df=df.div(2 * np.pi * df.index.to_series(), axis=0)
+        )
+
+    # Generate acceleration & displacement dataframes
+    accel = utils.convert_units(
+        src=disp_units + '/s^2',
+        dst=accel_units,
+        df=df.mul(2 * np.pi * df.index.to_series(), axis=0)
+    )
+    disp = df.div(2 * np.pi * df.index.to_series(), axis=0)
+
+    # Specify accel label
+    accel_label = accel_units
+    if accel_label == 'gravity':
+        accel_label = 'g'
+
+    # Get diagonal line information
+    pvss_ticks = _log_ticks(
+        start=10 ** np.floor(np.log10(df.min(axis=1).min())),
+        stop=10 ** np.ceil(np.log10(df.max(axis=1).max())),
+        spacing=tick_spacing
+    )
+    vel_2_accel = utils.convert_units(src=disp_units + '/s^2', dst=accel_units)
+    accel_ticks = _log_ticks(
+        start=pvss_ticks[0] * df.index[0] * 2 * np.pi * vel_2_accel,
+        stop=pvss_ticks[-1] * df.index[-1] * 2 * np.pi * vel_2_accel,
+        spacing=tick_spacing
+    )
+    disp_ticks = _log_ticks(
+        start=pvss_ticks[0] / (df.index[-1] * 2 * np.pi),
+        stop=pvss_ticks[-1] / (df.index[0] * 2 * np.pi),
+        spacing=tick_spacing
+    )
+    accel_tick_df = pd.DataFrame(
+        np.outer(1 / (df.index * 2 * np.pi), accel_ticks / vel_2_accel),
+        index=df.index,
+        columns=accel_ticks
+    )
+    disp_tick_df = pd.DataFrame(
+        np.outer((df.index * 2 * np.pi), disp_ticks),
+        index=df.index,
+        columns=disp_ticks
+    )
+
+    # Filter to only include relevant data
+    accel_tick_df = accel_tick_df[(accel_tick_df < pvss_ticks[-1]) & (accel_tick_df > pvss_ticks[0])]
+    disp_tick_df = disp_tick_df[(disp_tick_df < pvss_ticks[-1]) & (disp_tick_df > pvss_ticks[0])]
+
+    # Generate figure & add shock spectrum data to plots
+    fig = go.Figure()
+    for c in df.columns:
+        fig.add_trace(go.Scattergl(
+            x=df.index.to_numpy(),
+            y=df[c].to_numpy(),
+            name=c,
+            customdata=pd.DataFrame({
+                    'Freq': df.index.to_numpy(),
+                    'Accel': accel[c].to_numpy(),
+                    'PV': df[c].to_numpy(),
+                    'Disp': disp[c].to_numpy()}
+            ),
+            hovertemplate=c + '<br><br>' +
+                          'Natural Frequency (Hz): %{customdata[0]:.2f}<br><br>' +
+                          'Acceleration (' + accel_label + '): %{customdata[1]:.4E}<br>' +
+                          'Pseudo-Velocity (' + disp_units + '/s): %{customdata[2]:.4E}<br>' +
+                          'Displacement (' + disp_units + '): %{customdata[3]:.4E}<br><extra></extra>'
+        ))
+
+    # Add diagonal lines
+    fig = _add_df(fig, accel_tick_df, fig.layout.template.layout.xaxis.gridcolor, accel_label)
+    fig = _add_df(fig, disp_tick_df, fig.layout.template.layout.xaxis.gridcolor, disp_units)
+
+    # Add text
+    if include_text:
+        dt = disp_tick_df.columns
+        if tick_spacing == 'fine':
+            dt = dt[np.remainder(np.log10(dt), 1) == 0]
+        for disp in dt:
+            disp_str = str(disp) + " " + disp_units
+            if disp >= 1:
+                disp_str = f"{disp:.0f}" + " " + disp_units
+            fig.add_annotation(
+                x=np.log10(pvss_ticks[-1] / (disp * 2 * np.pi)),
+                y=1,
+                text=disp_str,
+                yref='paper',
+                xanchor='left',
+                yanchor='bottom',
+                textangle=-45,
+                showarrow=False)
+        at = accel_tick_df.columns
+        if tick_spacing == 'fine':
+            at = at[np.remainder(np.log10(at), 1) == 0]
+        for accel in at:
+            accel_str = str(accel) + " " + accel_label
+            if accel >= 1:
+                accel_str = f"{accel:.0f}" + " " + accel_label
+            fig.add_annotation(
+                x=1,
+                y=np.log10(accel / (df.index[-1] * 2 * np.pi) / vel_2_accel),
+                text=accel_str,
+                xref='paper',
+                xanchor='left',
+                yanchor='top',
+                textangle=45,
+                showarrow=False)
+
+    return fig.update_layout(
+        yaxis_type='log',
+        xaxis_type='log',
+        yaxis_range=np.log10([pvss_ticks[0], pvss_ticks[-1]]),
+        xaxis_range=np.log10([df.index[0], df.index[-1]]),
+        yaxis_title_text='Pseudo Velocity (' + disp_units + '/s)',
+        xaxis_title_text='Natural Frequency (Hz)',
+        width=size,
+        height=size
+    )
+
