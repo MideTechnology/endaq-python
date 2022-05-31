@@ -12,8 +12,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly import colors
 from plotly.subplots import make_subplots
-import scipy.spatial.transform
-from scipy import spatial
+from scipy import spatial, constants
 
 from endaq.calc import utils, psd
 from .utilities import determine_plotly_map_zoom, get_center_of_coordinates
@@ -1030,11 +1029,10 @@ def _add_df(fig, df, line_color, units):
 def pvss_on_4cp(
         df: pd.DataFrame,
         mode: typing.Literal["srs", "pvss"] = "srs",
-        accel_units: str = "gravity",
-        disp_units: str = "in",
+        disp_units: typing.Literal["in", "mm"] = "in",
         tick_spacing: typing.Literal["fine", "medium", "coarse"] = "medium",
         include_text: bool = True,
-        size: int = 800,
+        size: int = 600,
 ) -> go.Figure:
     """
     Given a shock response as a SRS or PVSS (see :py:func:`~endaq.calc.shock.shock_spectrum()`) return a plot of the
@@ -1044,12 +1042,10 @@ def pvss_on_4cp(
     :param df: the input dataframe of shock response data, each column is plotted separately
     :param mode: the type of spectrum of the input dataframe, options are:
 
-        *  `srs`:  default, shock response spectrum (SRS) which assumes has units of `accel_units`
-        *  `pvss`: pseudo-velocity shock spectrum (PVSS) which assumes has units of `disp_units / s`
-    :param accel_units: the units to display acceleration as, default is `"gravity"` which will be shortened to 'g'
-        in labels, the unit conversion is handled using :py:func:`~endaq.calc.utils.convert_units()`
+        *  `srs`:  default, shock response spectrum (SRS) which assumes has units of `g` or 9.80665 m/s^2
+        *  `pvss`: pseudo-velocity shock spectrum (PVSS) which assumes has units of `g * s` or 9.80665 m/s
     :param disp_units: the units to display displacement as and velocity (divided by seconds), default is `"in"`,
-        the unit conversion is handled using :py:func:`~endaq.calc.utils.convert_units()`
+        but `"mm"` will also be accepted
     :param tick_spacing: the spacing of each tick and corresponding diagonal line:
 
         *  `fine`:  order of magnitude, and linearly spaced ticks between each order of magnitude
@@ -1083,7 +1079,7 @@ def pvss_on_4cp(
         endaq.plot.utilities.set_theme('endaq_light')
 
         # Generate 4CP Plot with Different Units
-        met = endaq.plot.plots.pvss_on_4cp(srs, disp_units='mm', tick_spacing='coarse', size=600)
+        met = endaq.plot.plots.pvss_on_4cp(srs, disp_units='mm', tick_spacing='coarse', size=500)
         met.show()
 
     .. plotly::
@@ -1107,31 +1103,30 @@ def pvss_on_4cp(
         endaq.plot.utilities.set_theme('endaq_light')
 
         # Generate 4CP Plot with Different Units
-        met = endaq.plot.plots.pvss_on_4cp(srs, disp_units='mm', tick_spacing='coarse', size=600)
+        met = endaq.plot.plots.pvss_on_4cp(srs, disp_units='mm', tick_spacing='coarse', size=500)
         met.show()
 
     """
+    # Get and apply unit conversion specifying how to go from `g` to the displacement units
+    g_2_disp = constants.g
+    if disp_units == 'in':
+        g_2_disp /= constants.inch
+    else:
+        disp_units = 'mm'
+        g_2_disp /= constants.milli
+    df = df.copy() * g_2_disp
 
     # Generate pseudo velocity data if srs is provided
     if mode == 'srs':
-        df = utils.convert_units(
-            src=accel_units + '*s^2',
-            dst=disp_units,
-            df=df.div(2 * np.pi * df.index.to_series(), axis=0)
-        )
+        df = df.div(2 * np.pi * df.index.to_series(), axis=0)
 
     # Generate acceleration & displacement dataframes
-    accel = utils.convert_units(
-        src=disp_units + '/s^2',
-        dst=accel_units,
-        df=df.mul(2 * np.pi * df.index.to_series(), axis=0)
-    )
+    accel = df.mul(2 * np.pi * df.index.to_series(), axis=0) / g_2_disp
     disp = df.div(2 * np.pi * df.index.to_series(), axis=0)
 
     # Specify accel label
-    accel_label = accel_units
-    if accel_label == 'gravity':
-        accel_label = 'g'
+    # TODO: Allow for arbitrary unit conversion later using PINT
+    accel_label = 'g'
 
     # Get diagonal line information
     pvss_ticks = _log_ticks(
@@ -1139,10 +1134,9 @@ def pvss_on_4cp(
         stop=10 ** np.ceil(np.log10(df.max(axis=1).max())),
         spacing=tick_spacing
     )
-    vel_2_accel = utils.convert_units(src=disp_units + '/s^2', dst=accel_units)
     accel_ticks = _log_ticks(
-        start=pvss_ticks[0] * df.index[0] * 2 * np.pi * vel_2_accel,
-        stop=pvss_ticks[-1] * df.index[-1] * 2 * np.pi * vel_2_accel,
+        start=pvss_ticks[0] * df.index[0] * 2 * np.pi / g_2_disp,
+        stop=pvss_ticks[-1] * df.index[-1] * 2 * np.pi / g_2_disp,
         spacing=tick_spacing
     )
     disp_ticks = _log_ticks(
@@ -1150,20 +1144,18 @@ def pvss_on_4cp(
         stop=pvss_ticks[-1] / (df.index[0] * 2 * np.pi),
         spacing=tick_spacing
     )
+    freqs = np.append(pvss_ticks[-1] / disp_ticks[0] / (2 * np.pi), df.index)
+    freqs = np.append(freqs, pvss_ticks[-1] / disp_ticks[-1] / (2 * np.pi))
     accel_tick_df = pd.DataFrame(
-        np.outer(1 / (df.index * 2 * np.pi), accel_ticks / vel_2_accel),
-        index=df.index,
+        np.outer(1 / (freqs * 2 * np.pi), accel_ticks * g_2_disp),
+        index=freqs,
         columns=accel_ticks
     )
     disp_tick_df = pd.DataFrame(
-        np.outer((df.index * 2 * np.pi), disp_ticks),
-        index=df.index,
+        np.outer((freqs * 2 * np.pi), disp_ticks),
+        index=freqs,
         columns=disp_ticks
     )
-
-    # Filter to only include relevant data
-    accel_tick_df = accel_tick_df[(accel_tick_df < pvss_ticks[-1]) & (accel_tick_df > pvss_ticks[0])]
-    disp_tick_df = disp_tick_df[(disp_tick_df < pvss_ticks[-1]) & (disp_tick_df > pvss_ticks[0])]
 
     # Generate figure & add shock spectrum data to plots
     fig = go.Figure()
@@ -1197,7 +1189,7 @@ def pvss_on_4cp(
         for disp in dt:
             disp_str = str(disp) + " " + disp_units
             if disp >= 1:
-                disp_str = f"{disp:.0f}" + " " + disp_units
+                disp_str = f"{disp:,.0f}" + " " + disp_units
             fig.add_annotation(
                 x=np.log10(pvss_ticks[-1] / (disp * 2 * np.pi)),
                 y=1,
@@ -1213,10 +1205,10 @@ def pvss_on_4cp(
         for accel in at:
             accel_str = str(accel) + " " + accel_label
             if accel >= 1:
-                accel_str = f"{accel:.0f}" + " " + accel_label
+                accel_str = f"{accel:,.0f}" + " " + accel_label
             fig.add_annotation(
                 x=1,
-                y=np.log10(accel / (df.index[-1] * 2 * np.pi) / vel_2_accel),
+                y=np.log10(accel / (df.index[-1] * 2 * np.pi) * g_2_disp),
                 text=accel_str,
                 xref='paper',
                 xanchor='left',

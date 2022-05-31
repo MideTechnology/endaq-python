@@ -9,7 +9,6 @@ import warnings
 import numpy as np
 import pandas as pd
 import scipy.signal
-import pint
 
 
 def sample_spacing(
@@ -207,56 +206,3 @@ def _rolling_slice_definitions(
     num = int(slice_width / spacing / 2)
 
     return indexes, slice_width, num, length
-
-
-def convert_units(
-        src: str,
-        dst: str,
-        df: pd.DataFrame = None,
-        print_conversion: bool = False,
-) -> pd.DataFrame:
-    """
-    Using the `Pint library <https://github.com/hgrecco/pint/blob/master/pint/default_en.txt>`_ apply a unit
-    conversion to a provided unit-unaware dataframe.
-
-    :param src: a text string defining the base units to convert from like `"in"` for inches
-    :param dst: a text string defining the destination units to convert to like `"mm"` for millimeters
-    :param df: the input dataframe, if none is provided the unit conversion is only applied from `src` to `dst`
-    :param print_conversion: if `True` the conversion applied is printed to the console, default is `False`
-    :return: a dataframe with the values scaled according to the unit conversion, if no dataframe is provided then a
-        scaler value is returned
-
-    Some examples are provided below:
-
-    .. code-block:: python
-
-        # Simple conversion factor from inches to millimeters
-        in_2_mm = endaq.calc.utils.convert_units('in', 'mm')
-
-        # Get acceleration data in 'g' and convert to in/s^2
-        accel_in_gs = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/data/All-Channels.ide', measurement_type='accel')
-        accel_in_inches = endaq.calc.utils.convert_units('gravity', 'in/s**2', accel_in_gs)
-
-        # Get temperature in Celsius and convert to Fahrenheit
-        temp_in_C = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/data/All-Channels.ide', measurement_type='temp')
-        temp_in_F = endaq.calc.utils.convert_units('degC', 'degF', temp_in_C)
-
-    """
-    ureg = pint.UnitRegistry()
-    src = ureg(src)
-    dst = ureg(dst)
-
-    if print_conversion:
-        if src.dimensionality != "[temperature]":
-            print(f"converting {src.magnitude} * {src.units} to {src.to(dst).magnitude} * {dst.units}")
-        else:
-            print(f"converting {src.units} to {dst.units}")
-
-    if df is None:
-        return src.to(dst).magnitude
-    else:
-        converted_df = df.copy()
-        vals = (df.values * src).to(dst).magnitude
-        for i, c in enumerate(df.columns):
-            converted_df[c] = vals[:, i]
-        return converted_df
