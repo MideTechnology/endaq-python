@@ -587,6 +587,7 @@ def spectrum_over_time(
         log_freq: bool = False,
         log_val: bool = False,
         round_time: bool = True,
+        round_freq: int = 2,
         waterfall_line_sequence: bool = True,
         zsmooth: str = "best",
         waterfall_line_color: str = '#EE7F27',
@@ -625,6 +626,7 @@ def spectrum_over_time(
     :param log_val: if `True` the values will be in a log scale, default is `False`
     :param round_time: if `True` (default) the time values will be rounded to the nearest second for datetimes and
         hundredths of a second for floats
+    :param round_freq: number of decimals to round the frequency bins to, default is 3
     :param waterfall_line_sequence: if `True` the waterfall line colors are defined with a color scale,
         if `False` all lines will have the same color, default is `True`
     :param zsmooth: the Plotly smooth algorithm to use in the heatmap, default is `"best"` which looks ideal but
@@ -830,8 +832,8 @@ def spectrum_over_time(
     first_step = df_pivot[freq_column].iloc[1] - df_pivot[freq_column].iloc[0]
     second_step = df_pivot[freq_column].iloc[2] - df_pivot[freq_column].iloc[1]
     if np.isclose(first_step, second_step):
-        round_freq = np.round(df_pivot[freq_column].min(), 0)
-        df_pivot[freq_column] = np.round(df_pivot[freq_column].to_numpy() / round_freq, 0) * round_freq
+        min_freq = np.round(df_pivot[freq_column].min(), round_freq)
+        df_pivot[freq_column] = np.round(df_pivot[freq_column].to_numpy() / min_freq, 0) * min_freq
     df_pivot = df_pivot.pivot_table(columns=time_column, index=freq_column, values=val_column)
 
     # Heatmap & Surface
