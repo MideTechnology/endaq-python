@@ -41,7 +41,6 @@ def test_welch_parseval(df):
     assert df_psd.to_numpy().sum() == pytest.approx(stats.rms(df.to_numpy()) ** 2)
 
 
-"""
 @hyp.given(
     psd_df=hyp_np.arrays(
         dtype=np.float64,
@@ -64,7 +63,7 @@ def test_welch_parseval(df):
 )
 @pytest.mark.filterwarnings("ignore:empty frequency bins:RuntimeWarning")
 def test_to_jagged_modes(psd_df, freq_splits, agg1, agg2):
-    # Test `to_jagged(..., mode='mean')` against the equivalent `mode=np.mean`.
+    """ Test `to_jagged(..., mode='mean')` against the equivalent `mode=np.mean`. """
     result1 = psd.to_jagged(psd_df, freq_splits, agg=agg1)
     result2 = psd.to_jagged(psd_df, freq_splits, agg=agg2)
 
@@ -74,7 +73,6 @@ def test_to_jagged_modes(psd_df, freq_splits, agg1, agg2):
         result2.to_numpy(),
         atol=psd_df.min().min() * 1e-7,
     )
-"""
 
 
 @pytest.mark.skip(

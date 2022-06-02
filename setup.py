@@ -35,7 +35,7 @@ INSTALL_REQUIRES = [
     ]
 
 TEST_REQUIRES = [
-    "hypothesis",
+    "hypothesis==6.41.0",
     "pytest",
     "pytest-cov",
     "pytest-xdist[psutil]",

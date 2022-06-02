@@ -369,7 +369,6 @@ def test_eq_static_accel_phase(freq, damp):
     npt.assert_allclose(za, la, rtol=.1, atol=1e-6)
 
 
-"""
 @hyp.given(
     df_accel=hyp_np.arrays(
         dtype=np.float64,
@@ -423,7 +422,6 @@ def test_pseudo_velocity_zero_padding(
             pd.testing.assert_frame_equal(calc_result[i], calc_result_padded[i])
     else:
         pd.testing.assert_frame_equal(calc_result, calc_result_padded)
-"""
 
 
 @hyp.given(

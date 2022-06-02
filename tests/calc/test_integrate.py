@@ -28,7 +28,7 @@ def test_integrate(df, zero):
     # Ensure derivative looks correct
     calc_result = integrate._integrate(df, zero)
     expt_result_diff = 0.5 * dt * (df.to_numpy()[:-1] + df.to_numpy()[1:])
-    # assert np.diff(calc_result.to_numpy(), axis=0) == pytest.approx(expt_result_diff)
+    assert np.diff(calc_result.to_numpy(), axis=0) == pytest.approx(expt_result_diff)
 
     # Ensure offset results in zero-mean data
     # Note: symbols cannot be directly tested, since scalar factors are floats
@@ -54,7 +54,6 @@ def test_integrals():
         assert np.all(x == integrate._integrate(dx_dt))
 
 
-"""
 @hyp.given(
     df=hyp_np.arrays(
         elements=hyp_st.floats(-1e7, 1e7),
@@ -72,4 +71,3 @@ def test_integrals_iter_vs_list(df, **kwargs):
 
     for r1, r2 in zip(result1, result2):
         pd.testing.assert_frame_equal(r1, r2)
-"""
