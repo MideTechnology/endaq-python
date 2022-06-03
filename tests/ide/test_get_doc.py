@@ -1,4 +1,6 @@
 import os.path
+import random
+import time
 import unittest
 
 from idelib.dataset import Dataset
@@ -80,7 +82,23 @@ class GetDocTests(unittest.TestCase):
 
     def test_get_doc_gdrive(self):
         """ Test getting an IDE from a Google Drive URL. """
-        doc = files.get_doc(IDE_GDRIVE_URL)
+        # There are sporadic HTTP failures getting the sample file from
+        # Google Drive, possibly a result of the GitHub tests suspiciously
+        # hammering the URL. This is a naive implementation allowing 3
+        # retries, with a random sleep in between.
+        retries = 2
+        doc = None
+        while retries:
+            try:
+                doc = files.get_doc(IDE_GDRIVE_URL)
+                break
+            except ValueError as err:
+                retries -= 1
+                if "403: Forbidden" not in str(err) or not retries:
+                    raise
+                else:
+                    time.sleep(random.random() * 3)
+
         self.assertIsInstance(doc, Dataset,
                               "get_doc() did not return a Dataset")
         self.assertEqual(len(self.dataset.ebmldoc), len(doc.ebmldoc),
