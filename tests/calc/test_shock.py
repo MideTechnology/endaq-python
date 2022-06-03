@@ -549,6 +549,6 @@ class TestRollingShockSpectrum:
                 mode='pvss',
                 aggregate_axes=True,
                 init_freq=4
-            )['resultant'].to_numpy()
+            )['Resultant'].to_numpy()
         )
 

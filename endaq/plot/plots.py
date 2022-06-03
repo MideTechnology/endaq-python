@@ -12,8 +12,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly import colors
 from plotly.subplots import make_subplots
-import scipy.spatial.transform
-from scipy import spatial
+from scipy import spatial, constants
 
 from endaq.calc import utils, psd
 from .utilities import determine_plotly_map_zoom, get_center_of_coordinates
@@ -29,7 +28,8 @@ __all__ = [
     'rolling_min_max_envelope',
     'around_peak',
     'animate_quaternion',
-    'spectrum_over_time'
+    'spectrum_over_time',
+    'pvss_on_4cp'
 ]
 
 DEFAULT_ATTRIBUTES_TO_PLOT_INDIVIDUALLY = np.array([
@@ -587,6 +587,7 @@ def spectrum_over_time(
         log_freq: bool = False,
         log_val: bool = False,
         round_time: bool = True,
+        round_freq: int = 2,
         waterfall_line_sequence: bool = True,
         zsmooth: str = "best",
         waterfall_line_color: str = '#EE7F27',
@@ -625,6 +626,7 @@ def spectrum_over_time(
     :param log_val: if `True` the values will be in a log scale, default is `False`
     :param round_time: if `True` (default) the time values will be rounded to the nearest second for datetimes and
         hundredths of a second for floats
+    :param round_freq: number of decimals to round the frequency bins to, default is 3
     :param waterfall_line_sequence: if `True` the waterfall line colors are defined with a color scale,
         if `False` all lines will have the same color, default is `True`
     :param zsmooth: the Plotly smooth algorithm to use in the heatmap, default is `"best"` which looks ideal but
@@ -830,8 +832,8 @@ def spectrum_over_time(
     first_step = df_pivot[freq_column].iloc[1] - df_pivot[freq_column].iloc[0]
     second_step = df_pivot[freq_column].iloc[2] - df_pivot[freq_column].iloc[1]
     if np.isclose(first_step, second_step):
-        round_freq = np.round(df_pivot[freq_column].min(), 0)
-        df_pivot[freq_column] = np.round(df_pivot[freq_column].to_numpy() / round_freq, 0) * round_freq
+        min_freq = np.round(df_pivot[freq_column].min(), round_freq)
+        df_pivot[freq_column] = np.round(df_pivot[freq_column].to_numpy() / min_freq, 0) * min_freq
     df_pivot = df_pivot.pivot_table(columns=time_column, index=freq_column, values=val_column)
 
     # Heatmap & Surface
@@ -992,3 +994,238 @@ def spectrum_over_time(
         fig.update_layout(scene_camera=dict(eye=dict(x=-1.5, y=-1.5, z=1)))
 
     return fig
+
+
+def _log_ticks(start, stop, spacing):
+    """Create an array of values that would be the equivalent of tick marks in a log scaled plot"""
+    start = np.floor(np.log10(start))
+    stop = np.ceil(np.log10(stop))
+    if spacing == 'coarse':
+        ones = np.array([1])
+    elif spacing == 'medium':
+        ones = np.array([1, 2, 5])
+    else:
+        ones = np.linspace(1, 9, 9)
+    output = ones * (10 ** start)
+    for i in np.arange(start + 1, stop, 1):
+        output = np.concatenate((output,
+                                 ones * (10 ** i)))
+    return np.concatenate((output, np.array([10 ** stop])))
+
+
+def _add_df(fig, df, line_color, units):
+    """Add lines for each column in a dataframe to an existing figure"""
+    for col in df.columns:
+        fig.add_trace(go.Scatter(
+            x=df.index,
+            y=df[col].to_numpy(),
+            mode="lines",
+            line=dict(color=line_color, width=1, dash='solid'),
+            showlegend=False,
+            hoverinfo='skip',
+            name=str(col) + units
+        ))
+    return fig
+
+
+def pvss_on_4cp(
+        df: pd.DataFrame,
+        mode: typing.Literal["srs", "pvss"] = "srs",
+        disp_units: typing.Literal["in", "mm"] = "in",
+        tick_spacing: typing.Literal["fine", "medium", "coarse"] = "medium",
+        include_text: bool = True,
+        size: int = 600,
+) -> go.Figure:
+    """
+    Given a shock response as a SRS or PVSS (see :py:func:`~endaq.calc.shock.shock_spectrum()`) return a plot of the
+    pseudo velocity on a four coordinate plot (4CP or tripartite) that includes diagonal lines and hover labels to also
+    signify the displacement and acceleration levels as a function of natural frequency.
+
+    :param df: the input dataframe of shock response data, each column is plotted separately
+    :param mode: the type of spectrum of the input dataframe, options are:
+
+        *  `srs`:  default, shock response spectrum (SRS) which assumes has units of `g` or 9.80665 m/s^2
+        *  `pvss`: pseudo-velocity shock spectrum (PVSS) which assumes has units of `g * s` or 9.80665 m/s
+    :param disp_units: the units to display displacement as and velocity (divided by seconds), default is `"in"`,
+        but `"mm"` will also be accepted
+    :param tick_spacing: the spacing of each tick and corresponding diagonal line:
+
+        *  `fine`:  order of magnitude, and linearly spaced ticks between each order of magnitude
+        *  `medium`: default, order of magnitude, and then 2x and 5x between each order of magnitude, typical for Plotly,
+        *  `coarse`: only the order of magnitude
+    :param include_text: if `True` (default) add text labels to the diagonal lines
+    :param size: the number of pixels to set the width and height of the figure, default is 800
+    :return: a Plotly figure of the PVSS on 4CP paper with hover information for acceleration and displacement
+
+
+    Here's a few examples from a dataset recorded with an enDAQ sensor on a motorcycle
+    as it revved the engine which resulted in changing frequency content
+
+    .. code:: python3
+
+        import endaq
+        endaq.plot.utilities.set_theme()
+        import pandas as pd
+
+        # Get crash data
+        df_crash = pd.read_csv('https://info.endaq.com/hubfs/data/motorcycle-crash.csv',index_col=0)
+
+        # Calculate SRS
+        srs = endaq.calc.shock.shock_spectrum(df_crash, mode='srs', damp=0.05)
+
+        # Generate 4CP Plot
+        imp = endaq.plot.plots.pvss_on_4cp(srs, disp_units='in')
+        imp.show()
+
+        # Change Plot Theme
+        endaq.plot.utilities.set_theme('endaq_light')
+
+        # Generate 4CP Plot with Different Units
+        met = endaq.plot.plots.pvss_on_4cp(srs, disp_units='mm', tick_spacing='coarse', size=500)
+        met.show()
+
+    .. plotly::
+        :fig-vars: imp, met
+
+        import endaq
+        endaq.plot.utilities.set_theme()
+        import pandas as pd
+
+        # Get crash data
+        df_crash = pd.read_csv('https://info.endaq.com/hubfs/data/motorcycle-crash.csv',index_col=0)
+
+        # Calculate SRS
+        srs = endaq.calc.shock.shock_spectrum(df_crash, mode='srs', damp=0.05)
+
+        # Generate 4CP Plot
+        imp = endaq.plot.plots.pvss_on_4cp(srs, disp_units='in')
+        imp.show()
+
+        # Change Plot Theme
+        endaq.plot.utilities.set_theme('endaq_light')
+
+        # Generate 4CP Plot with Different Units
+        met = endaq.plot.plots.pvss_on_4cp(srs, disp_units='mm', tick_spacing='coarse', size=500)
+        met.show()
+
+    """
+    # Get and apply unit conversion specifying how to go from `g` to the displacement units
+    g_2_disp = constants.g
+    if disp_units == 'in':
+        g_2_disp /= constants.inch
+    else:
+        disp_units = 'mm'
+        g_2_disp /= constants.milli
+    df = df.copy() * g_2_disp
+
+    # Generate pseudo velocity data if srs is provided
+    if mode == 'srs':
+        df = df.div(2 * np.pi * df.index.to_series(), axis=0)
+
+    # Generate acceleration & displacement dataframes
+    accel = df.mul(2 * np.pi * df.index.to_series(), axis=0) / g_2_disp
+    disp = df.div(2 * np.pi * df.index.to_series(), axis=0)
+
+    # Specify accel label
+    # TODO: Allow for arbitrary unit conversion later using PINT
+    accel_label = 'g'
+
+    # Get diagonal line information
+    pvss_ticks = _log_ticks(
+        start=10 ** np.floor(np.log10(df.min(axis=1).min())),
+        stop=10 ** np.ceil(np.log10(df.max(axis=1).max())),
+        spacing=tick_spacing
+    )
+    accel_ticks = _log_ticks(
+        start=pvss_ticks[0] * df.index[0] * 2 * np.pi / g_2_disp,
+        stop=pvss_ticks[-1] * df.index[-1] * 2 * np.pi / g_2_disp,
+        spacing=tick_spacing
+    )
+    disp_ticks = _log_ticks(
+        start=pvss_ticks[0] / (df.index[-1] * 2 * np.pi),
+        stop=pvss_ticks[-1] / (df.index[0] * 2 * np.pi),
+        spacing=tick_spacing
+    )
+    freqs = np.append(pvss_ticks[-1] / disp_ticks[0] / (2 * np.pi), df.index)
+    freqs = np.append(freqs, pvss_ticks[-1] / disp_ticks[-1] / (2 * np.pi))
+    accel_tick_df = pd.DataFrame(
+        np.outer(1 / (freqs * 2 * np.pi), accel_ticks * g_2_disp),
+        index=freqs,
+        columns=accel_ticks
+    )
+    disp_tick_df = pd.DataFrame(
+        np.outer((freqs * 2 * np.pi), disp_ticks),
+        index=freqs,
+        columns=disp_ticks
+    )
+
+    # Generate figure & add shock spectrum data to plots
+    fig = go.Figure()
+    for c in df.columns:
+        fig.add_trace(go.Scattergl(
+            x=df.index.to_numpy(),
+            y=df[c].to_numpy(),
+            name=c,
+            customdata=pd.DataFrame({
+                    'Freq': df.index.to_numpy(),
+                    'Accel': accel[c].to_numpy(),
+                    'PV': df[c].to_numpy(),
+                    'Disp': disp[c].to_numpy()}
+            ),
+            hovertemplate=c + '<br><br>' +
+                          'Natural Frequency (Hz): %{customdata[0]:.2f}<br><br>' +
+                          'Acceleration (' + accel_label + '): %{customdata[1]:.4E}<br>' +
+                          'Pseudo-Velocity (' + disp_units + '/s): %{customdata[2]:.4E}<br>' +
+                          'Displacement (' + disp_units + '): %{customdata[3]:.4E}<br><extra></extra>'
+        ))
+
+    # Add diagonal lines
+    fig = _add_df(fig, accel_tick_df, fig.layout.template.layout.xaxis.gridcolor, accel_label)
+    fig = _add_df(fig, disp_tick_df, fig.layout.template.layout.xaxis.gridcolor, disp_units)
+
+    # Add text
+    if include_text:
+        dt = disp_tick_df.columns
+        if tick_spacing == 'fine':
+            dt = dt[np.remainder(np.log10(dt), 1) == 0]
+        for disp in dt:
+            disp_str = str(disp) + " " + disp_units
+            if disp >= 1:
+                disp_str = f"{disp:,.0f}" + " " + disp_units
+            fig.add_annotation(
+                x=np.log10(pvss_ticks[-1] / (disp * 2 * np.pi)),
+                y=1,
+                text=disp_str,
+                yref='paper',
+                xanchor='left',
+                yanchor='bottom',
+                textangle=-45,
+                showarrow=False)
+        at = accel_tick_df.columns
+        if tick_spacing == 'fine':
+            at = at[np.remainder(np.log10(at), 1) == 0]
+        for accel in at:
+            accel_str = str(accel) + " " + accel_label
+            if accel >= 1:
+                accel_str = f"{accel:,.0f}" + " " + accel_label
+            fig.add_annotation(
+                x=1,
+                y=np.log10(accel / (df.index[-1] * 2 * np.pi) * g_2_disp),
+                text=accel_str,
+                xref='paper',
+                xanchor='left',
+                yanchor='top',
+                textangle=45,
+                showarrow=False)
+
+    return fig.update_layout(
+        yaxis_type='log',
+        xaxis_type='log',
+        yaxis_range=np.log10([pvss_ticks[0], pvss_ticks[-1]]),
+        xaxis_range=np.log10([df.index[0], df.index[-1]]),
+        yaxis_title_text='Pseudo Velocity (' + disp_units + '/s)',
+        xaxis_title_text='Natural Frequency (Hz)',
+        width=size,
+        height=size
+    )
+

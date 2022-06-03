@@ -63,7 +63,7 @@ def test_welch_parseval(df):
 )
 @pytest.mark.filterwarnings("ignore:empty frequency bins:RuntimeWarning")
 def test_to_jagged_modes(psd_df, freq_splits, agg1, agg2):
-    """Test `to_jagged(..., mode='mean')` against the equivalent `mode=np.mean`."""
+    """ Test `to_jagged(..., mode='mean')` against the equivalent `mode=np.mean`. """
     result1 = psd.to_jagged(psd_df, freq_splits, agg=agg1)
     result2 = psd.to_jagged(psd_df, freq_splits, agg=agg2)
 

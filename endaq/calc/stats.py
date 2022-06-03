@@ -214,7 +214,7 @@ def shock_vibe_metrics(
         pvss = shock.shock_spectrum(df, freqs=freqs, damp=damp, mode='pvss')
         if include_resultant:
             pvss['Resultant'] = shock.shock_spectrum(df, freqs=freqs, damp=damp, mode='pvss', aggregate_axes=True)[
-                                    'resultant']
+                                    'Resultant']
 
         if display_plots:
             px.line(pvss, log_x=True, log_y=True).update_layout(yaxis_title_text='Pseudo Velocity',
@@ -412,22 +412,23 @@ def rolling_metrics(
 
     Here's a continuation of the example shown in :py:func:`~endaq.calc.stats.find_peaks()`::
 
-    .. code:: python3
+    .. code-block:: python
 
-        #Calculate for all Peak Event Indexes
+        # Calculate for all Peak Event Indexes
         metrics = endaq.calc.stats.rolling_metrics(accel, indexes=indexes, slice_width=2.0)
 
-        #Calculate for 3 Specific Times
+        # Calculate for 3 Specific Times
         import pandas as pd
         metrics = endaq.calc.stats.rolling_metrics(
             accel,
             index_values = pd.DatetimeIndex(['2020-03-13 23:40:13', '2020-03-13 23:45:00', '2020-03-13 23:50:00'],tz='UTC'),
             slice_width=5.0)
     
-        #Calculate for 50 Equally Spaced & Sized Slices, Turning off Pseudo Velocity (Only Recommended for Smaller Time Slices)
+        # Calculate for 50 Equally Spaced & Sized Slices, Turning off Pseudo Velocity (Only Recommended for Smaller Time Slices)
         metrics = endaq.calc.stats.rolling_metrics(
             accel, num_slices=50, highpass_cutoff=2,
             tukey_percent=0.0, include_pseudo_velocity=False)
+
     """
     indexes, slice_width, num, length = utils._rolling_slice_definitions(
         df,

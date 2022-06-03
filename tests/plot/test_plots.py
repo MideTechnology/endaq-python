@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 
-from endaq import plot
+from endaq import plot, calc
 
 
 @pytest.fixture(params=["float", "datetime"])
@@ -74,6 +74,15 @@ def test_octave_spectrogram(generate_time_dataframe):
 
 def test_around_peak(generate_time_dataframe):
     fig = plot.around_peak(generate_time_dataframe)
+    assert fig['data'][0]['type'] == 'scattergl'
+
+
+def test_pvss_on_4cp(generate_time_dataframe):
+    srs = calc.shock.shock_spectrum(generate_time_dataframe)
+    fig = plot.pvss_on_4cp(srs)
+    assert fig['data'][0]['type'] == 'scattergl'
+
+    fig = plot.pvss_on_4cp(srs, disp_units='mm')
     assert fig['data'][0]['type'] == 'scattergl'
 
 

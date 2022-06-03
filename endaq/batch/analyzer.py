@@ -321,7 +321,7 @@ class CalcCache:
             damp=0.05,
             mode="pvss",
             aggregate_axes=True,
-        )
+        )[['Resultant']]
 
         return pv
 
