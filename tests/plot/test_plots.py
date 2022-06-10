@@ -107,3 +107,8 @@ def test_map():
         color_by_column="Ground Speed"
     )
     assert fig['data'][0]['subplot'] == 'mapbox'
+
+
+def test_table_plot(generate_dataframe):
+    fig = plot.table_plot(generate_dataframe)
+    assert type(fig['data'][0]).__name__ == 'Table'

@@ -29,7 +29,8 @@ __all__ = [
     'around_peak',
     'animate_quaternion',
     'spectrum_over_time',
-    'pvss_on_4cp'
+    'pvss_on_4cp',
+    'table_plot'
 ]
 
 DEFAULT_ATTRIBUTES_TO_PLOT_INDIVIDUALLY = np.array([
@@ -405,8 +406,8 @@ def octave_psd_bar_plot(df: pd.DataFrame, bins_per_octave: int = 3, f_start: flo
     return fig
 
 
-def rolling_min_max_envelope(df: pd.DataFrame, desired_num_points: int = 250, plot_as_bars: bool = False,
-                             plot_title: str = "", opacity: float = 1.0,
+def rolling_min_max_envelope(df: pd.DataFrame, desired_num_points: int = 2000, plot_as_bars: bool = True,
+                             plot_title: str = "", opacity: float = 0.7,
                              colors_to_use: Optional[Container] = None) -> go.Figure:
     """
     A function to create a Plotly Figure to plot the data for each of the available data sub-channels, designed to
@@ -417,7 +418,7 @@ def rolling_min_max_envelope(df: pd.DataFrame, desired_num_points: int = 250, pl
 
     :param df: The dataframe of sub-channel data indexed by time stamps
     :param desired_num_points: The desired number of points to be plotted for each subchannel.  The number of points
-     will be reduced from it's original sampling rate by applying metrics (e.g. min, max) over sliding windows
+     will be reduced from its original sampling rate by applying metrics (e.g. min, max) over sliding windows
      and then using that information to represent/visualize the data contained within the original data.  If less than
      the desired number of points are present, then a sliding window will NOT be used, and instead the points will be
      plotted as they were originally recorded  (also the subchannel will NOT be plotted as a bar based plot even if
@@ -426,7 +427,7 @@ def rolling_min_max_envelope(df: pd.DataFrame, desired_num_points: int = 250, pl
      shaded rectangle is used to represent the maximum and minimum values of the data during the time window
      covered by the rectangle.  These maximum and minimum values are visualized by the locations of the top and bottom
      edges of the rectangle respectively, unless the height of the rectangle would be 0, in which case a line segment
-     will be displayed in it's place.  If this parameter is `False`, two lines will be plotted for each
+     will be displayed in its place.  If this parameter is `False`, two lines will be plotted for each
      of the sub-channels in the figure being created, creating an 'envelope' around the data.  An 'envelope' around the
      data consists of a line plotted for the maximum values contained in each of the time windows, and another line
      plotted for the minimum values.  Together these lines create a boundary which contains all the data points
@@ -438,6 +439,47 @@ def rolling_min_max_envelope(df: pd.DataFrame, desired_num_points: int = 250, pl
      be used to color the data on each of the sub-channels uniquely, repeating from the start of the `colorway` if
      all colors have been used.
     :return: The Plotly Figure with the data plotted
+
+
+    Here's an example plotting a dataset with over 6 million points per channel
+
+    .. code:: python3
+
+        import endaq
+        endaq.plot.utilities.set_theme()
+        import plotly.graph_objects as go
+
+        # Get Accel, 6M datapoints per axis
+        accel = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/ford_f150.ide',
+            measurement_type='accel',
+            time_mode='datetime')
+
+        # Apply Highpass Filter
+        accel = endaq.calc.filters.butterworth(accel, low_cutoff=2)
+
+        # Generate Shaded Bar Plot of All Data
+        fig = endaq.plot.rolling_min_max_envelope(accel)
+        fig.show()
+
+    .. plotly::
+        :fig-vars: fig
+
+        import endaq
+        endaq.plot.utilities.set_theme()
+        import plotly.graph_objects as go
+
+        # Get Accel, 6M datapoints per axis
+        accel = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/ford_f150.ide',
+            measurement_type='accel',
+            time_mode='datetime')
+
+        # Apply Highpass Filter
+        accel = endaq.calc.filters.butterworth(accel, low_cutoff=2)
+
+        # Generate Shaded Bar Plot of All Data
+        fig = endaq.plot.rolling_min_max_envelope(accel)
+        fig.show()
+
     """
 
     return rolling_enveloped_dashboard(
@@ -1031,10 +1073,11 @@ def _add_df(fig, df, line_color, units):
 def pvss_on_4cp(
         df: pd.DataFrame,
         mode: typing.Literal["srs", "pvss"] = "srs",
-        disp_units: typing.Literal["in", "mm"] = "in",
+        accel_units: str = "gravity",
+        disp_units: str = "in",
         tick_spacing: typing.Literal["fine", "medium", "coarse"] = "medium",
         include_text: bool = True,
-        size: int = 600,
+        size: int = None,
 ) -> go.Figure:
     """
     Given a shock response as a SRS or PVSS (see :py:func:`~endaq.calc.shock.shock_spectrum()`) return a plot of the
@@ -1044,17 +1087,20 @@ def pvss_on_4cp(
     :param df: the input dataframe of shock response data, each column is plotted separately
     :param mode: the type of spectrum of the input dataframe, options are:
 
-        *  `srs`:  default, shock response spectrum (SRS) which assumes has units of `g` or 9.80665 m/s^2
-        *  `pvss`: pseudo-velocity shock spectrum (PVSS) which assumes has units of `g * s` or 9.80665 m/s
+        *  `srs`:  default, shock response spectrum (SRS) which assumes has units of `accel_units`
+        *  `pvss`: pseudo-velocity shock spectrum (PVSS) which assumes has units of `accel_units * s`
+    :param accel_units: the units to display acceleration as, default is `"gravity"` which will be shortened to 'g'
+        in labels, the unit conversion is handled using :py:func:`~endaq.calc.utils.convert_units()`
     :param disp_units: the units to display displacement as and velocity (divided by seconds), default is `"in"`,
-        but `"mm"` will also be accepted
+        the unit conversion is handled using :py:func:`~endaq.calc.utils.convert_units()`
     :param tick_spacing: the spacing of each tick and corresponding diagonal line:
 
         *  `fine`:  order of magnitude, and linearly spaced ticks between each order of magnitude
         *  `medium`: default, order of magnitude, and then 2x and 5x between each order of magnitude, typical for Plotly,
         *  `coarse`: only the order of magnitude
     :param include_text: if `True` (default) add text labels to the diagonal lines
-    :param size: the number of pixels to set the width and height of the figure, default is 800
+    :param size: the number of pixels to set the width and height of the figure to force it to be square,
+        default is `None`
     :return: a Plotly figure of the PVSS on 4CP paper with hover information for acceleration and displacement
 
 
@@ -1109,26 +1155,22 @@ def pvss_on_4cp(
         met.show()
 
     """
-    # Get and apply unit conversion specifying how to go from `g` to the displacement units
-    g_2_disp = constants.g
-    if disp_units == 'in':
-        g_2_disp /= constants.inch
-    else:
-        disp_units = 'mm'
-        g_2_disp /= constants.milli
-    df = df.copy() * g_2_disp
+    # Get and apply unit conversion
+    accel_2_disp = utils.convert_units(src=accel_units, dst=disp_units + '/s^2')
+    df = df.copy() * accel_2_disp
 
     # Generate pseudo velocity data if srs is provided
     if mode == 'srs':
         df = df.div(2 * np.pi * df.index.to_series(), axis=0)
 
     # Generate acceleration & displacement dataframes
-    accel = df.mul(2 * np.pi * df.index.to_series(), axis=0) / g_2_disp
+    accel = df.mul(2 * np.pi * df.index.to_series(), axis=0) / accel_2_disp
     disp = df.div(2 * np.pi * df.index.to_series(), axis=0)
 
     # Specify accel label
-    # TODO: Allow for arbitrary unit conversion later using PINT
-    accel_label = 'g'
+    accel_label = accel_units
+    if accel_label == 'gravity':
+        accel_label = 'g'
 
     # Get diagonal line information
     pvss_ticks = _log_ticks(
@@ -1137,8 +1179,8 @@ def pvss_on_4cp(
         spacing=tick_spacing
     )
     accel_ticks = _log_ticks(
-        start=pvss_ticks[0] * df.index[0] * 2 * np.pi / g_2_disp,
-        stop=pvss_ticks[-1] * df.index[-1] * 2 * np.pi / g_2_disp,
+        start=pvss_ticks[0] * df.index[0] * 2 * np.pi / accel_2_disp,
+        stop=pvss_ticks[-1] * df.index[-1] * 2 * np.pi / accel_2_disp,
         spacing=tick_spacing
     )
     disp_ticks = _log_ticks(
@@ -1149,7 +1191,7 @@ def pvss_on_4cp(
     freqs = np.append(pvss_ticks[-1] / disp_ticks[0] / (2 * np.pi), df.index)
     freqs = np.append(freqs, pvss_ticks[-1] / disp_ticks[-1] / (2 * np.pi))
     accel_tick_df = pd.DataFrame(
-        np.outer(1 / (freqs * 2 * np.pi), accel_ticks * g_2_disp),
+        np.outer(1 / (freqs * 2 * np.pi), accel_ticks * accel_2_disp),
         index=freqs,
         columns=accel_ticks
     )
@@ -1210,7 +1252,7 @@ def pvss_on_4cp(
                 accel_str = f"{accel:,.0f}" + " " + accel_label
             fig.add_annotation(
                 x=1,
-                y=np.log10(accel / (df.index[-1] * 2 * np.pi) * g_2_disp),
+                y=np.log10(accel / (df.index[-1] * 2 * np.pi) * accel_2_disp),
                 text=accel_str,
                 xref='paper',
                 xanchor='left',
@@ -1229,3 +1271,106 @@ def pvss_on_4cp(
         height=size
     )
 
+
+def table_plot(
+        table: pd.DataFrame,
+        num_round: int = 2,
+        row_size: int = None,
+        font_color: str = None,
+        bg_color: str = None,
+        line_color: str = None
+) -> go.Figure:
+    """
+    Generate a Plotly figure from a Pandas dataframe that is styled consistent with the current Plotly template
+
+    :param table: the input dataframe to generate the plot from
+    :param num_round: the precision to round all numbers (if any) in `table` before displaying
+    :param row_size: the size for each row, if `None` it will set this to 2 times the default Plotly template font size
+    :param font_color: the color of all cell's text and the background color for the header, if `None` it will set this
+        to the default Plotly font color
+    :param bg_color: the color of all cell's background color and the text for the header, if `None` it will set this
+        to the default Plotly background color
+    :param line_color: the color for the lines in the table, if `None` it will set this
+        to the default Plotly grid color
+    :return: a Plotly table figure with all content from the dataframe
+
+
+    Here's an example to generate a table from the metrics calculated with :py:func:`~endaq.calc.stats.shock_vibe_metrics()`
+
+    .. code:: python3
+
+        import endaq
+        endaq.plot.utilities.set_theme('endaq_light')
+        import pandas as pd
+
+        # Get Acceleration Data
+        accel = pd.read_csv('https://info.endaq.com/hubfs/Plots/bearing_data.csv', index_col=0)
+
+        # Calculate Metrics
+        metrics = endaq.calc.stats.shock_vibe_metrics(accel, include_resultant=False, freq_splits=[0, 65, 300, None])
+
+        # Generate Plot to Show Metrics as a Table
+        light_table = endaq.plot.table_plot(metrics)
+        light_table.show()
+
+        # Change Theme
+        endaq.plot.utilities.set_theme('endaq')
+
+        # Regenerate Plot to Show Metrics as a Table
+        dark_table = endaq.plot.table_plot(metrics, num_round=4)
+        dark_table.show()
+
+    .. plotly::
+        :fig-vars: light_table, dark_table
+
+        import endaq
+        endaq.plot.utilities.set_theme('endaq_light')
+        import pandas as pd
+
+        # Get Acceleration Data
+        accel = pd.read_csv('https://info.endaq.com/hubfs/Plots/bearing_data.csv', index_col=0)
+
+        # Calculate Metrics
+        metrics = endaq.calc.stats.shock_vibe_metrics(accel, include_resultant=False, freq_splits=[0, 65, 300, None])
+
+        # Generate Plot to Show Metrics as a Table
+        light_table = endaq.plot.table_plot(metrics)
+        light_table.show()
+
+        # Change Theme
+        endaq.plot.utilities.set_theme('endaq')
+
+        # Regenerate Plot to Show Metrics as a Table
+        dark_table = endaq.plot.table_plot(metrics, num_round=4)
+        dark_table.show()
+
+    """
+    # Generate a Plotly Figure, then determine colors and sizes
+    fig_template = go.Figure()
+    if row_size is None:
+        row_size = fig_template.layout.template.layout.font.size
+        # Some Plotly templates don't specify this so we need to check if None again
+        if row_size is None:
+            row_size = 30
+        else:
+            row_size *= 2
+    if bg_color is None:
+        bg_color = fig_template.layout.template.layout.plot_bgcolor
+    if font_color is None:
+        font_color = fig_template.layout.template.layout.font.color
+    if line_color is None:
+        line_color = fig_template.layout.template.layout.xaxis.gridcolor
+
+    # Generate Plot
+    fig_table = go.Figure(data=[go.Table(
+        header=dict(values=list(table.columns),
+                    fill_color=font_color,
+                    font_color=bg_color,
+                    height=row_size),
+        cells=dict(values=table.round(num_round).transpose().values.tolist(),
+                   fill_color=bg_color,
+                   height=row_size,
+                   line_color=line_color),
+    )
+    ])
+    return fig_table

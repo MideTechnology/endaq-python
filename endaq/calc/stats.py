@@ -19,6 +19,8 @@ def shock_vibe_metrics(
         df: pd.DataFrame,
         tukey_percent: float = 0.1,
         highpass_cutoff: float = None,
+        accel_units: str = "gravity",
+        disp_units: str = "in",
         freq_splits: np.array = [0, 65, 300, 1500, None],
         detrend: typing.Literal["start", "mean", "median", None] = "median",
         zero: typing.Literal["start", "mean", "median"] = "start",
@@ -42,11 +44,20 @@ def shock_vibe_metrics(
         - RMS Displacement
         - Peak Pseudo Velocity & Corresponding Frequency
         
-    :param df: the input dataframe with an index defining the time in seconds or datetime
+    :param df: the input dataframe with an index defining the time in seconds or datetime and units of `accel_units`
     :param tukey_percent: the portion of the time series to apply a Tukey window (a taper that forces beginning and end
         to 0), default is 0.1
 
         *  Note that the RMS metrics will only be computed on the portion of time that isn't tapered
+    :param highpass_cutoff: the cutoff frequency of a preconditioning highpass
+        filter; if None, no filter is applied. For shock events, it is recommended to set this to None (the default),
+        but it is recommended for vibration.
+    :param accel_units: the units to display acceleration as, default is `"gravity"` which will be shortened to 'g'
+        in labels, the unit conversion is handled using :py:func:`~endaq.calc.utils.convert_units()`
+    :param disp_units: the units to display displacement as and velocity (divided by seconds), default is `"in"`,
+        the unit conversion is handled using :py:func:`~endaq.calc.utils.convert_units()`
+    :param freq_splits: the boundaries of the frequency bins for the RMS calculations; must be strictly increasing, if
+        `None` is given for the last value (the default) it will set this as the sampling rate
     :param detrend: the output quantity driven to zero prior to the calculations
 
         *  `None` does nothing
@@ -58,11 +69,6 @@ def shock_vibe_metrics(
         *  `"start"` (default) forces the first datapoint to 0,
         *  `"mean"` chooses ``-np.mean(output)``
         *  `"median"` (default) chooses ``-np.median(output)``
-    :param highpass_cutoff: the cutoff frequency of a preconditioning highpass
-        filter; if None, no filter is applied. For shock events, it is recommended to set this to None (the default),
-        but it is recommended for vibration.
-    :param freq_splits: the boundaries of the frequency bins for the RMS calculations; must be strictly increasing, if
-        `None` is given for the last value (the default) it will set this as the sampling rate
     :param include_integration: if `True`, include the calculations of velocity and displacement.  Defaults to `True`.
     :param include_pseudo_velocity: if `True`, include the more time-consuming calculation of pseudo velocity.
         Defaults to `False`.
@@ -97,6 +103,7 @@ def shock_vibe_metrics(
         fig = px.bar(
             metrics,
             x="variable", y="value", color='variable',
+            hover_data = ["units"],
             facet_col="calculation", facet_col_wrap=3)
         fig.update_yaxes(matches=None, visible=False)
         fig.update_xaxes(visible=False)
@@ -121,12 +128,17 @@ def shock_vibe_metrics(
         fig = px.bar(
             metrics,
             x="variable", y="value", color='variable',
+            hover_data = ["units"],
             facet_col="calculation", facet_col_wrap=3)
         fig.update_yaxes(matches=None, visible=False)
         fig.update_xaxes(visible=False)
         fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
         fig.show()
     """
+    # Get unit conversion
+    accel_2_disp = utils.convert_units(src=accel_units, dst=disp_units + '/s^2')
+    if accel_units == 'gravity':
+        accel_units = 'g'
 
     # Remove Offset
     if detrend == "start":
@@ -145,15 +157,16 @@ def shock_vibe_metrics(
     data_list = [df]
     if include_integration:
         [accel, vel, disp] = integrate.integrals(
-            df, n=2, tukey_percent=tukey_percent, highpass_cutoff=highpass_cutoff, zero=zero)
+            df * accel_2_disp, n=2, tukey_percent=tukey_percent, highpass_cutoff=highpass_cutoff, zero=zero)
         data_list = [df, vel, disp]
 
     # Calculate Peak & RMS
     metrics = pd.DataFrame()
     rms_start = int(tukey_percent / 2 * df.shape[0])
     rms_end = df.shape[0] - rms_start
-    for label, data in zip(
+    for label, units, data in zip(
             ['Acceleration', 'Velocity', 'Displacement'],
+            [accel_units, disp_units + '/s', disp_units],
             data_list):
 
         # Display Plots
@@ -169,6 +182,7 @@ def shock_vibe_metrics(
                 'value': [data.pow(2).sum(axis=1).pow(0.5).abs().max()]
             })])
         peak['calculation'] = 'Peak Absolute ' + label
+        peak['units'] = units
 
         # Calculate RMS
         rms_stats = pd.DataFrame(data.iloc[rms_start:rms_end].pow(2).mean() ** 0.5).reset_index()
@@ -179,6 +193,7 @@ def shock_vibe_metrics(
                 'value': [np.sum(rms_stats.value ** 2) ** 0.5]
             })])
         rms_stats['calculation'] = f'RMS {label}'
+        rms_stats['units'] = units
 
         # Add to Metrics
         metrics = pd.concat([metrics, peak, rms_stats])
@@ -189,6 +204,7 @@ def shock_vibe_metrics(
     peak = parseval.idxmax().reset_index()
     peak.columns = ['variable', 'value']
     peak['calculation'] = 'Peak Frequency'
+    peak['units'] = 'Hz'
     metrics = pd.concat([metrics, peak])
 
     # Create Labels for Frequency Range Splits
@@ -206,15 +222,17 @@ def shock_vibe_metrics(
     rms_psd_breaks.index = pd.Series(labels, name='calculation')
     if include_resultant:
         rms_psd_breaks['Resultant'] = rms_psd_breaks.sum(axis=1)
-    metrics = pd.concat([metrics, rms_psd_breaks.reset_index().melt(id_vars='calculation')])
+    rms_psd_breaks = rms_psd_breaks.reset_index().melt(id_vars='calculation')
+    rms_psd_breaks['units'] = accel_units
+    metrics = pd.concat([metrics, rms_psd_breaks])
 
     # Optionally Calculate PVSS
     if include_pseudo_velocity:
         freqs = utils.logfreqs(df, bins_per_octave=bins_per_octave, init_freq=init_freq)
-        pvss = shock.shock_spectrum(df, freqs=freqs, damp=damp, mode='pvss')
+        pvss = shock.shock_spectrum(df * accel_2_disp, freqs=freqs, damp=damp, mode='pvss')
         if include_resultant:
-            pvss['Resultant'] = shock.shock_spectrum(df, freqs=freqs, damp=damp, mode='pvss', aggregate_axes=True)[
-                                    'Resultant']
+            pvss['Resultant'] = shock.shock_spectrum(df * accel_2_disp, freqs=freqs, damp=damp, mode='pvss',
+                                                     aggregate_axes=True)['Resultant']
 
         if display_plots:
             px.line(pvss, log_x=True, log_y=True).update_layout(yaxis_title_text='Pseudo Velocity',
@@ -224,12 +242,14 @@ def shock_vibe_metrics(
         pvss_stats = pd.DataFrame(pvss.max()).reset_index()
         pvss_stats.columns = ['variable', 'value']
         pvss_stats['calculation'] = 'Peak Pseudo Velocity'
+        pvss_stats['units'] = disp_units + '/s'
         metrics = pd.concat([metrics, pvss_stats])
 
         # Add Peak Frequency
         pvss_stats = pd.DataFrame(pvss.idxmax()).reset_index()
         pvss_stats.columns = ['variable', 'value']
         pvss_stats['calculation'] = 'Peak PVSS Frequency'
+        pvss_stats['units'] = 'Hz'
         metrics = pd.concat([metrics, pvss_stats])
 
     # Return Metrics

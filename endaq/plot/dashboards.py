@@ -60,6 +60,49 @@ def rolling_enveloped_dashboard(
      automatically scaled so this is the ratio of the total y-axis data range to pad both the top and bottom of the
      y axis with.  The default value is the one it appears Plotly uses as well.
     :return: The Plotly Figure containing the subplots of sensor data (the 'dashboard')
+
+
+    Here's an example plotting a dashboard of all channels recorded on a commercial aircraft seat base
+
+    .. code:: python3
+
+        import endaq
+        endaq.plot.utilities.set_theme('endaq_light')
+
+        # Get IDE Object
+        doc = endaq.ide.get_doc('https://info.endaq.com/hubfs/data/Seat-Base_21.ide')
+
+        # Get All Data
+        data = {doc.channels[ch].name: endaq.ide.to_pandas(doc.channels[ch], time_mode='datetime') for ch in doc.channels}
+
+        # Get Dashboard of All Channels
+        dashboard = endaq.plot.dashboards.rolling_enveloped_dashboard(
+            data,
+            num_rows=1,
+            num_cols=None
+        )
+        dashboard.show()
+
+    .. plotly::
+        :fig-vars: dashboard
+
+        import endaq
+        endaq.plot.utilities.set_theme('endaq_light')
+
+        # Get IDE Object
+        doc = endaq.ide.get_doc('https://info.endaq.com/hubfs/data/Seat-Base_21.ide')
+
+        # Get All Data
+        data = {doc.channels[ch].name: endaq.ide.to_pandas(doc.channels[ch], time_mode='datetime') for ch in doc.channels}
+
+        # Get Dashboard of All Channels
+        dashboard = endaq.plot.dashboards.rolling_enveloped_dashboard(
+            data,
+            num_rows=1,
+            num_cols=None
+        )
+        dashboard.show()
+
     """
     if not (num_rows is None or isinstance(num_rows, (int, np.integer))):
         raise TypeError(f"`num_rows` is of type `{type(num_rows)}`, which is not allowed.  " 

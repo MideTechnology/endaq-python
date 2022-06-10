@@ -31,7 +31,8 @@ INSTALL_REQUIRES = [
     "plotly>=5.3.1",
     "python-dotenv>=0.18.0",
     "requests>=2.25.1",
-    "scipy>=1.7.1"
+    "scipy>=1.7.1",
+    "pint>=0.18"
     ]
 
 TEST_REQUIRES = [
