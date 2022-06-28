@@ -152,6 +152,10 @@ def resample(df: pd.DataFrame, sample_rate: Optional[float] = None) -> pd.DataFr
         t=df.index.values.astype(np.float64),
     )
 
+    # Check for datetimes, if so localize
+    if 'datetime' in str(df.index.dtype):
+        df.index = df.index.tz_localize(None)
+
     resampled_df = pd.DataFrame(
         resampled_data,
         index=resampled_time.astype(df.index.dtype),

@@ -12,9 +12,11 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly import colors
 from plotly.subplots import make_subplots
-from scipy import spatial, constants
+from scipy import spatial
+import idelib.dataset
 
 from endaq.calc import utils, psd
+from endaq.ide import get_channel_table
 from .utilities import determine_plotly_map_zoom, get_center_of_coordinates
 from .dashboards import rolling_enveloped_dashboard
 
@@ -30,7 +32,8 @@ __all__ = [
     'animate_quaternion',
     'spectrum_over_time',
     'pvss_on_4cp',
-    'table_plot'
+    'table_plot',
+    'table_plot_from_ide'
 ]
 
 DEFAULT_ATTRIBUTES_TO_PLOT_INDIVIDUALLY = np.array([
@@ -1374,3 +1377,70 @@ def table_plot(
     )
     ])
     return fig_table
+
+
+def table_plot_from_ide(
+        doc: idelib.dataset.Dataset = None,
+        name: str = None,
+        **kwargs
+) -> go.Figure:
+    """
+    Generate a Plotly figure from a .IDE file using :py:func:`~endaq.plot.table_plot()` and
+        :py:func:`~endaq.ide.get_channel_table()` while also displaying the device serial number, part number, and the
+        date of the recording
+
+    :param doc: A `idelib.dataset.Dataset`
+    :param name: The plot title to add, if `None` then no title is added
+    :param kwargs: Other parameters to pass directly to :py:func:`~endaq.plot.table_plot()`
+    :return: a Plotly table figure with all content from the dataframe
+
+
+    Here's an example to generate a table from the metrics calculated with :py:func:`~endaq.calc.stats.shock_vibe_metrics()`
+
+    .. code:: python3
+
+        import endaq
+        endaq.plot.utilities.set_theme()
+
+        doc = endaq.ide.get_doc('https://info.endaq.com/hubfs/data/All-Channels.ide')
+        fig = endaq.plot.table_plot_from_ide(doc=doc, name='Example File')
+        fig.show()
+
+    .. plotly::
+        :fig-vars: fig
+
+        import endaq
+        endaq.plot.utilities.set_theme()
+
+        doc = endaq.ide.get_doc('https://info.endaq.com/hubfs/data/All-Channels.ide')
+        fig = endaq.plot.table_plot_from_ide(doc=doc, name='Example File')
+        fig.show()
+
+    """
+    # Get File Table
+    file_table = get_channel_table(doc).data
+    table = file_table[['name', 'type', 'units', 'samples', 'rate']].copy()
+
+    # Get Figure
+    fig_table = table_plot(table=table, **kwargs)
+
+    # Add Title
+    recorder_name = doc.recorderInfo['RecorderName']
+    serial = doc.recorderInfo['RecorderSerial']
+    part_no = doc.recorderInfo['PartNumber']
+    date = pd.to_datetime(doc.lastUtcTime, unit='s')
+    table_title = f'{recorder_name} (# {serial}, a {part_no})<br>Recorded on {date}'
+    text_size = fig_table.layout.template.layout.font.size
+    if text_size is None:
+        text_size = 30
+    else:
+        text_size *= 2
+    t_margin = text_size * 2 + 20
+    if name is not None:
+        table_title = name + '<br>' + table_title
+        t_margin += text_size
+
+    return fig_table.update_layout(
+        title_text=table_title,
+        title_y=.95, title_yanchor='top',
+        margin=dict(l=20, r=20, t=t_margin, b=0))

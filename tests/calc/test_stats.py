@@ -148,11 +148,11 @@ class TestRollingMetrics:
         times = df_rolling_metrics.timestamp.unique()
 
         pd.testing.assert_frame_equal(
-            df_rolling_metrics[df_rolling_metrics.timestamp == times[0]][['variable', 'value', 'calculation']],
+            df_rolling_metrics[df_rolling_metrics.timestamp == times[0]][['variable', 'value', 'calculation', 'units']],
             stats.shock_vibe_metrics(df[:1.4999])
         )
         pd.testing.assert_frame_equal(
-            df_rolling_metrics[df_rolling_metrics.timestamp == times[1]][['variable', 'value', 'calculation']],
+            df_rolling_metrics[df_rolling_metrics.timestamp == times[1]][['variable', 'value', 'calculation', 'units']],
             stats.shock_vibe_metrics(df[1.5:])
         )
 
@@ -166,10 +166,10 @@ class TestRollingMetrics:
         )
 
         pd.testing.assert_frame_equal(
-            df_rolling_metrics[df_rolling_metrics.timestamp == 1.0][['variable', 'value', 'calculation']],
+            df_rolling_metrics[df_rolling_metrics.timestamp == 1.0][['variable', 'value', 'calculation', 'units']],
             stats.shock_vibe_metrics(df.iloc[750:1250])
         )
         pd.testing.assert_frame_equal(
-            df_rolling_metrics[df_rolling_metrics.timestamp == 1.5][['variable', 'value', 'calculation']],
+            df_rolling_metrics[df_rolling_metrics.timestamp == 1.5][['variable', 'value', 'calculation', 'units']],
             stats.shock_vibe_metrics(df.iloc[1250:1750])
         )
