@@ -89,11 +89,11 @@ def test_pvss_on_4cp(generate_time_dataframe):
 class TestRollingMinMaxEnvelope:
 
     def test_bars(self, generate_time_dataframe):
-        fig = plot.rolling_min_max_envelope(generate_time_dataframe)
+        fig = plot.rolling_min_max_envelope(generate_time_dataframe, desired_num_points=250)
         assert fig['data'][0]['type'] == 'bar'
 
     def test_lines(self, generate_time_dataframe):
-        fig = plot.rolling_min_max_envelope(generate_time_dataframe, plot_as_bars=False)
+        fig = plot.rolling_min_max_envelope(generate_time_dataframe, plot_as_bars=False, desired_num_points=250)
         assert fig['data'][0]['type'] == 'scatter'
 
 
