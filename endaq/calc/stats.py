@@ -21,7 +21,7 @@ def shock_vibe_metrics(
         highpass_cutoff: float = None,
         accel_units: str = "gravity",
         disp_units: str = "in",
-        freq_splits: np.array = [0, 65, 300, 1500, None],
+        freq_splits: typing.Union[np.ndarray, list, tuple] = (0, 65, 300, 1500, None),
         detrend: typing.Literal["start", "mean", "median", None] = "median",
         zero: typing.Literal["start", "mean", "median"] = "start",
         include_integration: bool = True,
@@ -135,8 +135,10 @@ def shock_vibe_metrics(
         fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
         fig.show()
     """
+    freq_splits = np.array(freq_splits)
+
     # Get unit conversion
-    accel_2_disp = utils.convert_units(src=accel_units, dst=disp_units + '/s^2')
+    accel_2_disp = utils.convert_units(units_in=accel_units, units_out=disp_units + '/s^2')
     if accel_units == 'gravity':
         accel_units = 'g'
 

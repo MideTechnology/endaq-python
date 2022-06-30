@@ -214,40 +214,101 @@ def _rolling_slice_definitions(
 
 
 def convert_units(
-        src: str,
-        dst: str,
+        units_in: str,
+        units_out: str,
         df: pd.DataFrame = None,
-        print_conversion: bool = False,
 ) -> pd.DataFrame:
     """
     Using the `Pint library <https://github.com/hgrecco/pint/blob/master/pint/default_en.txt>`_ apply a unit
     conversion to a provided unit-unaware dataframe.
-    :param src: a text string defining the base units to convert from like `"in"` for inches
-    :param dst: a text string defining the destination units to convert to like `"mm"` for millimeters
+
+    :param units_in: a text string defining the base units to convert from like `"in"` for inches
+    :param units_out: a text string defining the destination units to convert to like `"mm"` for millimeters
     :param df: the input dataframe, if none is provided the unit conversion is only applied from `src` to `dst`
-    :param print_conversion: if `True` the conversion applied is printed to the console, default is `False`
     :return: a dataframe with the values scaled according to the unit conversion, if no dataframe is provided then a
         scaler value is returned
+
     Some examples are provided below:
-    .. code-block:: python
+
+    .. code:: python3
+
+        import endaq
+        endaq.plot.utilities.set_theme()
+        import pandas as pd
+        import plotly.express as px
+
         # Simple conversion factor from inches to millimeters
         in_2_mm = endaq.calc.utils.convert_units('in', 'mm')
+
+        # Get idelib dataset
+        doc = endaq.ide.get_doc('https://info.endaq.com/hubfs/data/All-Channels.ide')
+
         # Get acceleration data in 'g' and convert to in/s^2
-        accel_in_gs = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/data/All-Channels.ide', measurement_type='accel')
+        accel_in_gs = endaq.ide.get_primary_sensor_data(doc=doc, measurement_type='accel')
         accel_in_inches = endaq.calc.utils.convert_units('gravity', 'in/s**2', accel_in_gs)
+
         # Get temperature in Celsius and convert to Fahrenheit
-        temp_in_C = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/data/All-Channels.ide', measurement_type='temp')
+        temp_in_C = endaq.ide.get_primary_sensor_data(doc=doc, measurement_type='temp')
         temp_in_F = endaq.calc.utils.convert_units('degC', 'degF', temp_in_C)
+
+        # Merge C & F in one dataframe
+        temp_in_C.columns = ['Temperature in Degrees C']
+        temp_in_F.columns = ['Temperature in Degrees F']
+        temp = pd.concat([temp_in_C, temp_in_F], axis=1)
+
+        # Display plot with both C and F
+        fig = px.line(
+            temp.reset_index().melt(id_vars='timestamp'),
+            x='timestamp',
+            y='value',
+            facet_col='variable',
+            facet_col_spacing=0.07
+        ).for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+        fig.update_yaxes(matches=None, showticklabels=True, title_text='').update_xaxes(title_text='')
+        fig.show()
+
+    .. plotly::
+        :fig-vars: fig
+
+        import endaq
+        endaq.plot.utilities.set_theme()
+        import pandas as pd
+        import plotly.express as px
+
+        # Simple conversion factor from inches to millimeters
+        in_2_mm = endaq.calc.utils.convert_units('in', 'mm')
+
+        # Get idelib dataset
+        doc = endaq.ide.get_doc('https://info.endaq.com/hubfs/data/All-Channels.ide')
+
+        # Get acceleration data in 'g' and convert to in/s^2
+        accel_in_gs = endaq.ide.get_primary_sensor_data(doc=doc, measurement_type='accel')
+        accel_in_inches = endaq.calc.utils.convert_units('gravity', 'in/s**2', accel_in_gs)
+
+        # Get temperature in Celsius and convert to Fahrenheit
+        temp_in_C = endaq.ide.get_primary_sensor_data(doc=doc, measurement_type='temp')
+        temp_in_F = endaq.calc.utils.convert_units('degC', 'degF', temp_in_C)
+
+        # Merge C & F in one dataframe
+        temp_in_C.columns = ['Temperature in Degrees C']
+        temp_in_F.columns = ['Temperature in Degrees F']
+        temp = pd.concat([temp_in_C, temp_in_F], axis=1)
+
+        # Display plot with both C and F
+        fig = px.line(
+            temp.reset_index().melt(id_vars='timestamp'),
+            x='timestamp',
+            y='value',
+            facet_col='variable',
+            facet_col_spacing=0.07
+        ).for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+        fig.update_yaxes(matches=None, showticklabels=True, title_text='').update_xaxes(title_text='')
+        fig.show()
+
     """
     ureg = pint.UnitRegistry()
-    src = ureg(src)
-    dst = ureg(dst)
-
-    if print_conversion:
-        if src.dimensionality != "[temperature]":
-            print(f"converting {src.magnitude} * {src.units} to {src.to(dst).magnitude} * {dst.units}")
-        else:
-            print(f"converting {src.units} to {dst.units}")
+    src = ureg(units_in)
+    dst = ureg(units_out)
 
     if df is None:
         return src.to(dst).magnitude

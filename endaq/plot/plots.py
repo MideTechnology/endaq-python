@@ -1080,7 +1080,7 @@ def pvss_on_4cp(
         disp_units: str = "in",
         tick_spacing: typing.Literal["fine", "medium", "coarse"] = "medium",
         include_text: bool = True,
-        size: int = None,
+        size: typing.Optional[int] = None,
 ) -> go.Figure:
     """
     Given a shock response as a SRS or PVSS (see :py:func:`~endaq.calc.shock.shock_spectrum()`) return a plot of the
@@ -1159,7 +1159,7 @@ def pvss_on_4cp(
 
     """
     # Get and apply unit conversion
-    accel_2_disp = utils.convert_units(src=accel_units, dst=disp_units + '/s^2')
+    accel_2_disp = utils.convert_units(units_in=accel_units, units_out=disp_units + '/s^2')
     df = df.copy() * accel_2_disp
 
     # Generate pseudo velocity data if srs is provided
@@ -1277,11 +1277,11 @@ def pvss_on_4cp(
 
 def table_plot(
         table: pd.DataFrame,
-        num_round: int = 2,
-        row_size: int = None,
-        font_color: str = None,
-        bg_color: str = None,
-        line_color: str = None
+        num_round: typing.Optional[int] = 2,
+        row_size: typing.Optional[int] = None,
+        font_color: typing.Optional[str] = None,
+        bg_color: typing.Optional[str] = None,
+        line_color: typing.Optional[str] = None
 ) -> go.Figure:
     """
     Generate a Plotly figure from a Pandas dataframe that is styled consistent with the current Plotly template
@@ -1386,8 +1386,8 @@ def table_plot_from_ide(
 ) -> go.Figure:
     """
     Generate a Plotly figure from a .IDE file using :py:func:`~endaq.plot.table_plot()` and
-        :py:func:`~endaq.ide.get_channel_table()` while also displaying the device serial number, part number, and the
-        date of the recording
+    :py:func:`~endaq.ide.get_channel_table()` while also displaying the device serial number, part number, and the
+    date of the recording
 
     :param doc: A `idelib.dataset.Dataset`
     :param name: The plot title to add, if `None` then no title is added
