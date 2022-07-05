@@ -45,7 +45,7 @@ def test_shock_vibe_metrics(generate_time_dataframe):
     damp = 0.05
     accel_units = 'gravity'
     disp_units = 'feet'
-    accel_2_disp = utils.convert_units(src=accel_units, dst=disp_units + '/s^2')
+    accel_2_disp = utils.convert_units(units_in=accel_units, units_out=disp_units + '/s^2')
 
     # Calculate Metrics Using Function
     metrics = stats.shock_vibe_metrics(

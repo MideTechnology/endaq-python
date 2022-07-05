@@ -102,8 +102,8 @@ def test_rolling_slice_definitions():
 
 
 def test_convert_units():
-    assert utils.convert_units('in', 'mm', print_conversion=True) == 25.4
+    assert utils.convert_units('in', 'mm') == 25.4
 
     df = pd.DataFrame({'Val': [-40, 0, 10]})
-    np.testing.assert_allclose(utils.convert_units('degC', 'degF', df, print_conversion=True).Val[0], -40)
-    np.testing.assert_allclose(utils.convert_units('degC', 'degF', df, print_conversion=True).Val[1], 32)
+    np.testing.assert_allclose(utils.convert_units('degC', 'degF', df).Val[0], -40)
+    np.testing.assert_allclose(utils.convert_units('degC', 'degF', df).Val[1], 32)
