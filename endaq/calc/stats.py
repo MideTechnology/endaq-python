@@ -134,6 +134,7 @@ def shock_vibe_metrics(
         fig.update_xaxes(visible=False)
         fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
         fig.show()
+
     """
     freq_splits = np.array(freq_splits)
 
@@ -432,7 +433,8 @@ def rolling_metrics(
     :param kwargs: Other parameters to pass directly to :py:func:`~endaq.calc.stats.shock_vibe_metrics()`
     :return: a dataframe containing all the metrics, one computed per column of the input dataframe, and one per peak event
 
-    Here's a continuation of the example shown in :py:func:`~endaq.calc.stats.find_peaks()`::
+    Here's a continuation of the example shown in :py:func:`~endaq.calc.stats.find_peaks()` that generates a table of
+        metrics for a few defined time stamps, and then a row of subplots for each metric calculated.
 
     .. code:: python
 
