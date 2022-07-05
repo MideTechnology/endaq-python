@@ -99,3 +99,11 @@ def test_rolling_slice_definitions():
         index_values=pd.DatetimeIndex(['1970-01-01 00:00:00.9951'])
     )
     assert indexes[0] == 995
+
+
+def test_convert_units():
+    assert utils.convert_units('in', 'mm') == 25.4
+
+    df = pd.DataFrame({'Val': [-40, 0, 10]})
+    np.testing.assert_allclose(utils.convert_units('degC', 'degF', df).Val[0], -40)
+    np.testing.assert_allclose(utils.convert_units('degC', 'degF', df).Val[1], 32)

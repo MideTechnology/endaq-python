@@ -14,6 +14,13 @@ first master Python and its scientific stack in their entireties.
    calc_usage
 
 
+``endaq.calc.fft``
+==================
+
+.. automodule:: endaq.calc.fft
+  :members:
+
+
 ``endaq.calc.filters``
 ======================
 
@@ -35,10 +42,10 @@ first master Python and its scientific stack in their entireties.
   :members:
 
 
-``endaq.calc.fft``
-==================
+``endaq.calc.rotation``
+====================
 
-.. automodule:: endaq.calc.fft
+.. automodule:: endaq.calc.rotation
   :members:
 
 
@@ -61,3 +68,6 @@ first master Python and its scientific stack in their entireties.
 
 .. automodule:: endaq.calc.utils
   :members:
+
+
+

@@ -43,12 +43,15 @@ def test_shock_vibe_metrics(generate_time_dataframe):
     bins_per_octave = 12
     init_freq = 2
     damp = 0.05
+    accel_units = 'gravity'
+    disp_units = 'feet'
+    accel_2_disp = utils.convert_units(units_in=accel_units, units_out=disp_units + '/s^2')
 
     # Calculate Metrics Using Function
     metrics = stats.shock_vibe_metrics(
         generate_time_dataframe, include_resultant=True, include_pseudo_velocity=True,
         tukey_percent=tukey_percent, highpass_cutoff=highpass_cutoff, display_plots=True, damp=damp,
-        init_freq=init_freq, bins_per_octave=bins_per_octave)
+        init_freq=init_freq, bins_per_octave=bins_per_octave, accel_units=accel_units, disp_units=disp_units)
 
     # Do Integration Related Calculations
     df = filters.butterworth(
@@ -56,7 +59,7 @@ def test_shock_vibe_metrics(generate_time_dataframe):
         low_cutoff=highpass_cutoff, tukey_percent=tukey_percent)
 
     [accel, vel, disp] = integrate.integrals(
-        df, n=2, tukey_percent=tukey_percent, highpass_cutoff=highpass_cutoff, zero=zero)
+        df * accel_2_disp, n=2, tukey_percent=tukey_percent, highpass_cutoff=highpass_cutoff, zero=zero)
 
     rms_start = int(tukey_percent / 2 * df.shape[0])
     rms_end = df.shape[0] - rms_start
@@ -84,8 +87,8 @@ def test_shock_vibe_metrics(generate_time_dataframe):
     )
 
     # Do PVSS
-    pvss = shock.shock_spectrum(df, init_freq=init_freq, bins_per_octave=bins_per_octave, damp=damp, mode='pvss',
-                                aggregate_axes=True)[
+    pvss = shock.shock_spectrum(df * accel_2_disp, init_freq=init_freq, bins_per_octave=bins_per_octave, damp=damp,
+                                mode='pvss', aggregate_axes=True)[
         'Resultant']
 
     np.testing.assert_almost_equal(
@@ -145,11 +148,11 @@ class TestRollingMetrics:
         times = df_rolling_metrics.timestamp.unique()
 
         pd.testing.assert_frame_equal(
-            df_rolling_metrics[df_rolling_metrics.timestamp == times[0]][['variable', 'value', 'calculation']],
+            df_rolling_metrics[df_rolling_metrics.timestamp == times[0]][['variable', 'value', 'calculation', 'units']],
             stats.shock_vibe_metrics(df[:1.4999])
         )
         pd.testing.assert_frame_equal(
-            df_rolling_metrics[df_rolling_metrics.timestamp == times[1]][['variable', 'value', 'calculation']],
+            df_rolling_metrics[df_rolling_metrics.timestamp == times[1]][['variable', 'value', 'calculation', 'units']],
             stats.shock_vibe_metrics(df[1.5:])
         )
 
@@ -163,10 +166,10 @@ class TestRollingMetrics:
         )
 
         pd.testing.assert_frame_equal(
-            df_rolling_metrics[df_rolling_metrics.timestamp == 1.0][['variable', 'value', 'calculation']],
+            df_rolling_metrics[df_rolling_metrics.timestamp == 1.0][['variable', 'value', 'calculation', 'units']],
             stats.shock_vibe_metrics(df.iloc[750:1250])
         )
         pd.testing.assert_frame_equal(
-            df_rolling_metrics[df_rolling_metrics.timestamp == 1.5][['variable', 'value', 'calculation']],
+            df_rolling_metrics[df_rolling_metrics.timestamp == 1.5][['variable', 'value', 'calculation', 'units']],
             stats.shock_vibe_metrics(df.iloc[1250:1750])
         )

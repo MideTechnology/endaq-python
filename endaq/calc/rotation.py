@@ -4,7 +4,7 @@ import pandas as pd
 import scipy.spatial
 
 
-def validate_euler_mode(mode: str) -> Tuple[str, List[str]]:
+def _validate_euler_mode(mode: str) -> Tuple[str, List[str]]:
 
     _mode = mode.lower()
 
@@ -78,7 +78,7 @@ def quaternion_to_euler(df: pd.DataFrame, mode: str = 'x-y-z') -> pd.DataFrame:
         - `Wikipedia's article on Euler angles <https://en.wikipedia.org/wiki/Euler_angles>`_
     """
 
-    valid_mode, columns = validate_euler_mode(mode)
+    valid_mode, columns = _validate_euler_mode(mode)
 
     r = scipy.spatial.transform.Rotation.from_quat(df[['X', 'Y', 'Z', 'W']])
 

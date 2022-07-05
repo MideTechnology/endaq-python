@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 
-from endaq import plot, calc
+from endaq import plot, calc, ide
 
 
 @pytest.fixture(params=["float", "datetime"])
@@ -88,13 +88,13 @@ def test_pvss_on_4cp(generate_time_dataframe):
 
 class TestRollingMinMaxEnvelope:
 
-    def test_lines(self, generate_time_dataframe):
-        fig = plot.rolling_min_max_envelope(generate_time_dataframe)
-        assert fig['data'][0]['type'] == 'scatter'
+    def test_bars(self, generate_time_dataframe):
+        fig = plot.rolling_min_max_envelope(generate_time_dataframe, desired_num_points=250)
+        assert fig['data'][0]['type'] == 'bar'
 
     def test_lines(self, generate_time_dataframe):
-        fig = plot.rolling_min_max_envelope(generate_time_dataframe, plot_as_bars=True)
-        assert fig['data'][0]['type'] == 'bar'
+        fig = plot.rolling_min_max_envelope(generate_time_dataframe, plot_as_bars=False, desired_num_points=250)
+        assert fig['data'][0]['type'] == 'scatter'
 
 
 def test_map():
@@ -107,3 +107,14 @@ def test_map():
         color_by_column="Ground Speed"
     )
     assert fig['data'][0]['subplot'] == 'mapbox'
+
+
+def test_table_plot(generate_dataframe):
+    fig = plot.table_plot(generate_dataframe)
+    assert type(fig['data'][0]).__name__ == 'Table'
+
+
+def test_table_plot_from_ide():
+    doc = ide.get_doc('https://info.endaq.com/hubfs/data/All-Channels.ide')
+    fig = plot.table_plot_from_ide(doc=doc, name='Example File')
+    assert type(fig['data'][0]).__name__ == 'Table'
