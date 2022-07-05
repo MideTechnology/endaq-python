@@ -84,7 +84,7 @@ def shock_vibe_metrics(
     :return: a dataframe containing all the metrics, one computed per column of the input dataframe
 
     Here is an example calculating and displaying these metrics for the bearing dataset discussed in our blog
-        `Top 12 Vibration Metrics to Monitor & How to Calculate Them <https://blog.endaq.com/top-vibration-metrics-to-monitor-how-to-calculate-them>`_
+    `Top 12 Vibration Metrics to Monitor & How to Calculate Them <https://blog.endaq.com/top-vibration-metrics-to-monitor-how-to-calculate-them>`_
 
     .. code:: python
 
@@ -296,7 +296,7 @@ def find_peaks(
           Documentation for the SciPy function used to identify the peak events.
 
     Here's an example implementation using a 60M dataset that loads the data, finds the peaks, and plots with the peak
-        events identified all very quickly
+    events identified all very quickly
     
     .. code:: python
 
@@ -434,7 +434,7 @@ def rolling_metrics(
     :return: a dataframe containing all the metrics, one computed per column of the input dataframe, and one per peak event
 
     Here's a continuation of the example shown in :py:func:`~endaq.calc.stats.find_peaks()` that generates a table of
-        metrics for a few defined time stamps, and then a row of subplots for each metric calculated.
+    metrics for a few defined time stamps, and then a row of subplots for each metric calculated.
 
     .. code:: python
 
