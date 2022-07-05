@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import typing  # for `SupportsIndex`, which is Python3.8+ only
-from typing import Union
+from typing import Optional, Union
 from collections.abc import Sequence
 import warnings
 
@@ -18,7 +18,7 @@ from endaq.calc import filters, integrate, utils, shock, psd
 def shock_vibe_metrics(
         df: pd.DataFrame,
         tukey_percent: float = 0.1,
-        highpass_cutoff: float = None,
+        highpass_cutoff: Optional[float] = None,
         accel_units: str = "gravity",
         disp_units: str = "in",
         freq_splits: typing.Union[np.ndarray, list, tuple] = (0, 65, 300, 1500, None),
@@ -434,22 +434,98 @@ def rolling_metrics(
 
     Here's a continuation of the example shown in :py:func:`~endaq.calc.stats.find_peaks()`::
 
-    .. code-block:: python
+    .. code:: python
 
-        # Calculate for all Peak Event Indexes
-        metrics = endaq.calc.stats.rolling_metrics(accel, indexes=indexes, slice_width=2.0)
+        import endaq
+        endaq.plot.utilities.set_theme()
+        import plotly.express as px
+        import pandas as pd
+
+        # Get Accel
+        accel = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/ford_f150.ide',measurement_type='accel',
+            time_mode='datetime')
+
+        # Filter
+        accel = endaq.calc.filters.butterworth(accel,low_cutoff=2)
 
         # Calculate for 3 Specific Times
-        import pandas as pd
         metrics = endaq.calc.stats.rolling_metrics(
             accel,
             index_values = pd.DatetimeIndex(['2020-03-13 23:40:13', '2020-03-13 23:45:00', '2020-03-13 23:50:00'],tz='UTC'),
             slice_width=5.0)
-    
+
+        # Simplify Timestamp Column
+        metrics.timestamp = metrics.timestamp.astype(str).map(lambda x: x[10:19])
+
+        # Generate Plot Table of Metrics
+        table_plot = endaq.plot.table_plot(metrics)
+        table_plot.show()
+
         # Calculate for 50 Equally Spaced & Sized Slices, Turning off Pseudo Velocity (Only Recommended for Smaller Time Slices)
         metrics = endaq.calc.stats.rolling_metrics(
             accel, num_slices=50, highpass_cutoff=2,
             tukey_percent=0.0, include_pseudo_velocity=False)
+
+
+        # Generate Row with Subplots for each metric
+        metrics_fig = px.scatter(
+            metrics,
+            x='timestamp',
+            y='value',
+            color='variable',
+            facet_col='calculation',
+            facet_col_spacing=0.03
+        )
+        metrics_fig.update_yaxes(title_text='', matches=None, showticklabels=True).update_xaxes(title_text='')
+        metrics_fig.update_layout(width=3000, legend_y=1.2, legend_title_text='').for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+        metrics_fig.show()
+
+    .. plotly::
+       :fig-vars: table_plot, metrics_fig
+
+        import endaq
+        endaq.plot.utilities.set_theme()
+        import plotly.express as px
+        import pandas as pd
+
+        # Get Accel
+        accel = endaq.ide.get_primary_sensor_data('https://info.endaq.com/hubfs/ford_f150.ide',measurement_type='accel',
+            time_mode='datetime')
+
+        # Filter
+        accel = endaq.calc.filters.butterworth(accel,low_cutoff=2)
+
+        # Calculate for 3 Specific Times
+        metrics = endaq.calc.stats.rolling_metrics(
+            accel,
+            index_values = pd.DatetimeIndex(['2020-03-13 23:40:13', '2020-03-13 23:45:00', '2020-03-13 23:50:00'],tz='UTC'),
+            slice_width=5.0)
+
+        # Simplify Timestamp Column
+        metrics.timestamp = metrics.timestamp.astype(str).map(lambda x: x[10:19])
+
+        # Generate Plot Table of Metrics
+        table_plot = endaq.plot.table_plot(metrics)
+        table_plot.show()
+
+        # Calculate for 50 Equally Spaced & Sized Slices, Turning off Pseudo Velocity (Only Recommended for Smaller Time Slices)
+        metrics = endaq.calc.stats.rolling_metrics(
+            accel, num_slices=50, highpass_cutoff=2,
+            tukey_percent=0.0, include_pseudo_velocity=False)
+
+
+        # Generate Row with Subplots for each metric
+        metrics_fig = px.scatter(
+            metrics,
+            x='timestamp',
+            y='value',
+            color='variable',
+            facet_col='calculation',
+            facet_col_spacing=0.03
+        )
+        metrics_fig.update_yaxes(title_text='', matches=None, showticklabels=True).update_xaxes(title_text='')
+        metrics_fig.update_layout(width=3000, legend_y=1.2, legend_title_text='').for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+        metrics_fig.show()
 
     """
     indexes, slice_width, num, length = utils._rolling_slice_definitions(

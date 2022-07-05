@@ -216,7 +216,7 @@ def _rolling_slice_definitions(
 def convert_units(
         units_in: str,
         units_out: str,
-        df: pd.DataFrame = None,
+        df: Optional[pd.DataFrame] = None,
 ) -> pd.DataFrame:
     """
     Using the `Pint library <https://github.com/hgrecco/pint/blob/master/pint/default_en.txt>`_ apply a unit
@@ -224,11 +224,12 @@ def convert_units(
 
     :param units_in: a text string defining the base units to convert from like `"in"` for inches
     :param units_out: a text string defining the destination units to convert to like `"mm"` for millimeters
-    :param df: the input dataframe, if none is provided the unit conversion is only applied from `src` to `dst`
+    :param df: the input dataframe, if none the unit conversion is only applied from `units_in` to `units_out`
     :return: a dataframe with the values scaled according to the unit conversion, if no dataframe is provided then a
         scaler value is returned
 
-    Some examples are provided below:
+    Some examples are provided below which includes a table of common unit conversions. A full list is available from
+    the `Pint library <https://github.com/hgrecco/pint/blob/master/pint/default_en.txt>`_.
 
     .. code:: python3
 
@@ -267,8 +268,20 @@ def convert_units(
         fig.update_yaxes(matches=None, showticklabels=True, title_text='').update_xaxes(title_text='')
         fig.show()
 
+        # Get Table of Unit Conversions
+        df = pd.read_csv('https://info.endaq.com/hubfs/Unit-Conversion-Examples.csv')
+        df['output'] = 0
+        for i in df.index:
+            df.loc[i, 'output'] = endaq.calc.utils.convert_units(
+                units_in = df.loc[i, 'units_in'],
+                units_out = df.loc[i, 'units_out'])
+
+        # Generate Plot Table
+        plot_table = endaq.plot.table_plot(df, num_round=6)
+        plot_table.show()
+
     .. plotly::
-        :fig-vars: fig
+        :fig-vars: fig, plot_table
 
         import endaq
         endaq.plot.utilities.set_theme()
@@ -305,8 +318,20 @@ def convert_units(
         fig.update_yaxes(matches=None, showticklabels=True, title_text='').update_xaxes(title_text='')
         fig.show()
 
+        # Get Table of Unit Conversions
+        df = pd.read_csv('https://info.endaq.com/hubfs/Unit-Conversion-Examples.csv')
+        df['output'] = 0
+        for i in df.index:
+            df.loc[i, 'output'] = endaq.calc.utils.convert_units(
+                units_in = df.loc[i, 'units_in'],
+                units_out = df.loc[i, 'units_out'])
+
+        # Generate Plot Table
+        plot_table = endaq.plot.table_plot(df, num_round=6)
+        plot_table.show()
+
     """
-    ureg = pint.UnitRegistry()
+    ureg = pint.UnitRegistry(autoconvert_offset_to_baseunit = True)
     src = ureg(units_in)
     dst = ureg(units_out)
 
