@@ -486,3 +486,69 @@ class TestHalfSineWavePulse:
         ampl, T = env_half_sine
         assert ampl == mock.sentinel.amplitude
         assert T == mock.sentinel.duration
+
+@pytest.fixture
+def df_test():
+    half = shock.HalfSineWavePulse(
+        amplitude=pd.Series([100, 50]),
+        duration=pd.Series([.1, .05])
+    )
+
+    df_accel = pd.concat([
+        half.to_time_series(tstart=0, tstop=1),
+        half.to_time_series(tstart=1, tstop=2),
+    ])
+    df_accel.columns = ['A', 'B']
+
+    return df_accel
+
+
+class TestRollingShockSpectrum:
+
+    def test_even_slices(self, df_test):
+        df_rolling_srs = shock.rolling_shock_spectrum(
+            df_test,
+            num_slices=2,
+            add_resultant=False,
+            init_freq=2
+        )
+
+        # Get the Individual SRS
+        first_srs = shock.shock_spectrum(df_test[:1.0], init_freq=2)
+        second_srs = shock.shock_spectrum(df_test[1.0:], init_freq=2)
+
+        # Do Assertions
+        npt.assert_almost_equal(
+            df_rolling_srs[(df_rolling_srs.variable == 'A') & (df_rolling_srs.timestamp == 0.5)]['value'].to_numpy(),
+            first_srs['A'].to_numpy())
+        npt.assert_almost_equal(
+            df_rolling_srs[(df_rolling_srs.variable == 'B') & (df_rolling_srs.timestamp == 0.5)]['value'].to_numpy(),
+            first_srs['B'].to_numpy())
+        npt.assert_almost_equal(
+            df_rolling_srs[(df_rolling_srs.variable == 'A') & (df_rolling_srs.timestamp != 0.5)]['value'].to_numpy(),
+            second_srs['A'].to_numpy())
+        npt.assert_almost_equal(
+            df_rolling_srs[(df_rolling_srs.variable == 'B') & (df_rolling_srs.timestamp != 0.5)]['value'].to_numpy(),
+            second_srs['B'].to_numpy())
+
+    def test_defined_slices(self, df_test):
+        df_rolling_srs = shock.rolling_shock_spectrum(
+            df_test,
+            index_values=[1.0],
+            bins_per_octave=6,
+            slice_width=0.5,
+            mode='pvss',
+            init_freq=4
+        )
+
+        npt.assert_almost_equal(
+            df_rolling_srs[df_rolling_srs.variable == 'Resultant']['value'].to_numpy(),
+            shock.shock_spectrum(
+                df_test[0.75:1.2499],
+                bins_per_octave=6,
+                mode='pvss',
+                aggregate_axes=True,
+                init_freq=4
+            )['Resultant'].to_numpy()
+        )
+

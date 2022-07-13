@@ -139,5 +139,59 @@ class TestRFFT:
         df = pd.DataFrame(np.arange(10))
 
         with raises:
-
             fft.rfft(df, norm=normalization, output=output, nfft=n)
+
+
+@pytest.fixture
+def df_test():
+    # Build Time Array
+    time = np.arange(1000) / 1000
+
+    # Build Dataframe with Noise
+    df_accel = pd.DataFrame({
+        'time': np.concatenate((time, time + 1.0)),
+        'A': np.concatenate((
+            np.sin(2 * np.pi * 10 * time),
+            np.sin(2 * np.pi * 13 * time))
+        )
+    }).set_index('time')
+
+    # Add Random
+    df_accel.A = df_accel.A + np.random.random(2000) * 2 - 1
+
+    return df_accel
+
+
+class TestRollingFFT:
+
+    def test_using_spectrogram(self, df_test):
+        df_rolling_fft = fft.rolling_fft(
+            df_test,
+            num_slices=2,
+            add_resultant=False
+        )
+        times = df_rolling_fft.timestamp.unique()
+
+        npt.assert_almost_equal(
+            df_rolling_fft[df_rolling_fft.timestamp == times[0]].value.to_numpy(),
+            fft.aggregate_fft(df_test[:1.0])['A'].to_numpy())
+        npt.assert_almost_equal(
+            df_rolling_fft[df_rolling_fft.timestamp == times[1]].value.to_numpy(),
+            fft.aggregate_fft(df_test[1.0:])['A'].to_numpy())
+
+    @pytest.mark.filterwarnings("ignore::UserWarning")
+    def test_defined_slices(self, df_test):
+        df_rolling_fft = fft.rolling_fft(
+            df_test,
+            index_values=[1.0, 1.5],
+            slice_width=0.5,
+            add_resultant=False,
+        )
+
+        # Do Assertions
+        npt.assert_almost_equal(
+            df_rolling_fft[df_rolling_fft.timestamp == 1.0].value.to_numpy(),
+            fft.aggregate_fft(df_test.iloc[750:1250])['A'].to_numpy())
+        npt.assert_almost_equal(
+            df_rolling_fft[df_rolling_fft.timestamp == 1.5].value.to_numpy(),
+            fft.aggregate_fft(df_test.iloc[1250:1750])['A'].to_numpy())

@@ -63,7 +63,7 @@ def test_welch_parseval(df):
 )
 @pytest.mark.filterwarnings("ignore:empty frequency bins:RuntimeWarning")
 def test_to_jagged_modes(psd_df, freq_splits, agg1, agg2):
-    """Test `to_jagged(..., mode='mean')` against the equivalent `mode=np.mean`."""
+    """ Test `to_jagged(..., mode='mean')` against the equivalent `mode=np.mean`. """
     result1 = psd.to_jagged(psd_df, freq_splits, agg=agg1)
     result2 = psd.to_jagged(psd_df, freq_splits, agg=agg2)
 
@@ -159,3 +159,53 @@ def test_to_octave(psd_df, agg, expt_f, expt_array):
     calc_df = psd.to_octave(psd_df, fstart=1, octave_bins=1, agg=agg)
     assert calc_df.index.to_numpy().tolist() == expt_f
     assert calc_df.to_numpy().flatten().tolist() == expt_array
+
+
+@pytest.fixture
+def df_test():
+    # Build Time Array
+    time = np.arange(1000) / 1000
+
+    # Build Dataframe with Noise
+    df_accel = pd.DataFrame({
+        'time': np.concatenate((time, time + 1.0)),
+        'A': np.random.random(2000)
+    }).set_index('time')
+
+    return df_accel
+
+
+@pytest.mark.filterwarnings("ignore:empty frequency bins:RuntimeWarning")
+class TestRollingPSD:
+
+    def test_using_spectrogram(self, df_test):
+        df_rolling_psd = psd.rolling_psd(
+            df_test,
+            num_slices=2,
+            add_resultant=False
+        )
+        times = df_rolling_psd.timestamp.unique()
+
+        np.testing.assert_almost_equal(
+            df_rolling_psd[df_rolling_psd.timestamp == times[0]].value.to_numpy(),
+            psd.welch(df_test[:1.0])['A'].to_numpy())
+        np.testing.assert_almost_equal(
+            df_rolling_psd[df_rolling_psd.timestamp == times[1]].value.to_numpy(),
+            psd.welch(df_test[1.0:])['A'].to_numpy())
+
+    @pytest.mark.filterwarnings("ignore::UserWarning")
+    def test_defined_slices(self, df_test):
+        df_rolling_psd = psd.rolling_psd(
+            df_test,
+            index_values=[1.0, 1.5],
+            slice_width=0.5,
+            add_resultant=False,
+        )
+
+        # Do Assertions
+        np.testing.assert_almost_equal(
+            df_rolling_psd[df_rolling_psd.timestamp == 1.0].value.to_numpy(),
+            psd.welch(df_test.iloc[750:1250])['A'].to_numpy())
+        np.testing.assert_almost_equal(
+            df_rolling_psd[df_rolling_psd.timestamp == 1.5].value.to_numpy(),
+            psd.welch(df_test.iloc[1250:1750])['A'].to_numpy())

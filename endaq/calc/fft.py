@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import typing
 from typing import Optional
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -10,7 +11,7 @@ import scipy.fft
 from endaq.calc import psd, utils
 
 
-__all__ = ["aggregate_fft", "fft", "rfft", "dct", "dst"]
+__all__ = ["aggregate_fft", "rolling_fft", "fft", "rfft", "dct", "dst"]
 
 
 def aggregate_fft(df, **kwargs):
@@ -29,10 +30,88 @@ def aggregate_fft(df, **kwargs):
         - `SciPy Welch's method <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.welch.html>`_
           Documentation for the periodogram function wrapped internally.
     """
-    kwargs['scaling'] = 'unit'
-    kwargs['window'] = 'boxcar'
-    kwargs['noverlap'] = 0
+    kwargs.setdefault('scaling', 'unit')
+    kwargs.setdefault('window', 'boxcar')
     return psd.welch(df, **kwargs)
+
+
+def rolling_fft(
+        df: pd.DataFrame,
+        bin_width: float = 1.0,
+        num_slices: int = 100,
+        indexes: np.array = None,
+        index_values: np.array = None,
+        slice_width: float = None,
+        add_resultant: bool = True,
+        disable_warnings: bool = True,
+        **kwargs,
+) -> pd.DataFrame:
+    """
+    Compute FFTs for defined slices of a time series data set using :py:func:`~endaq.calc.fft.aggregate_fft()`
+    
+    :param df: the input dataframe with an index defining the time in seconds or datetime
+    :param bin_width: the bin width or resolution in Hz for the FFT
+    :param num_slices: the number of slices to split the time series into, default is 100,
+        this is ignored if `indexes` is defined
+    :param indexes: the center index locations (not value) of each slice to compute the FFT
+    :param index_values: the index values of each peak event to quantify (slower but more intuitive than using `indexes`)
+    :param slice_width: the time in seconds to center about each slice index,
+        if none is provided it will calculate one based upon the number of slices
+    :param add_resultant: if `True` the root sum of squares of each FFT column will
+        also be computed
+    :param disable_warnings: if `True` (default) it disables the warnings on the PSD length
+    :param kwargs: Other parameters to pass directly to :py:func:`~endaq.calc.fft.aggregate_fft()`
+    :return: a dataframe containing all the FFTs, stacked on each other
+
+    See example use cases and syntax at :py:func:`~endaq.plot.spectrum_over_time()`
+    which visualizes the output of this function in Heatmaps, Waterfall plots, 
+    Surface plots, and Animations
+
+    """
+    use_spectrogram = True
+    if (indexes is not None) | (index_values is not None):
+        use_spectrogram = False
+
+    indexes, slice_width, num, length = utils._rolling_slice_definitions(
+        df,
+        indexes=indexes,
+        index_values=index_values,
+        num_slices=num_slices,
+        slice_width=slice_width
+    )
+
+    if use_spectrogram:
+        fft_df = psd.spectrogram(
+            df=df,
+            num_slices=num_slices,
+            bin_width=bin_width,
+            scaling='unit',
+            add_resultant=add_resultant,
+            disable_warnings=disable_warnings,
+            **kwargs
+        )
+    else:
+        # Loop through and compute fft
+        fft_df = pd.DataFrame()
+        for i in indexes:
+            window_start = max(0, i - num)
+            window_end = min(length, i + num)
+            with warnings.catch_warnings():
+                if disable_warnings:
+                    warnings.filterwarnings('ignore', '.*greater than.*')
+                slice_fft = aggregate_fft(
+                    df.iloc[window_start:window_end],
+                    bin_width=bin_width,
+                    **kwargs
+                )
+            if add_resultant:
+                slice_fft['Resultant'] = slice_fft.pow(2).sum(axis=1).pow(0.5)
+
+            slice_fft = slice_fft.reset_index().melt(id_vars=slice_fft.index.name)
+            slice_fft['timestamp'] = df.index[i]
+            fft_df = pd.concat([fft_df, slice_fft])
+
+    return fft_df
 
 
 def fft(
