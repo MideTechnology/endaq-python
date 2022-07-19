@@ -1425,7 +1425,7 @@ def table_plot_from_ide(
     fig_table = table_plot(table=table, **kwargs)
 
     # Add Title
-    recorder_name = doc.recorderInfo.get('RecorderName', 'enDAQ')
+    recorder_name = doc.recorderInfo.get('RecorderName', '')
     serial = doc.recorderInfo.get('RecorderSerial', '')
     part_no = doc.recorderInfo.get('PartNumber', '')
     date = pd.to_datetime(doc.lastUtcTime, unit='s')
