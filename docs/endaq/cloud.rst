@@ -15,3 +15,10 @@ This module houses tools and functions to make both interacting with the enDAQ C
 
 .. automodule:: endaq.cloud.core
   :members:
+
+
+`endaq.cloud.scripting`
+==================
+
+.. automodule:: endaq.cloud.scripting
+  :members:
