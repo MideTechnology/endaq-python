@@ -19,7 +19,7 @@ def _integrate(
     dt = utils.sample_spacing(df)
 
     result = df.apply(
-        functools.partial(scipy.integrate.cumulative_trapezoid, dx=dt, initial=0),
+        functools.partial(scipy.integrate.cumtrapz, dx=dt, initial=0),
         axis=0,
         raw=True,
     )
