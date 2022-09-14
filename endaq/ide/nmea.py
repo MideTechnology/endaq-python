@@ -84,11 +84,40 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
     fulldates = []  # we always want the timestamps
     rows = []       # holds all rows, used in dataframe construction
 
-    # checks measurement types. future use to help set column indexes?
-    wantDirs = measure.DIRECTION in include or measure.ANY
-    wantLocs = measure.LOCATION in include or measure.ANY
-    wantSpds = measure.SPEED in include or measure.ANY
+    # checks measurement types
+    wantDirs = wantLocs = wantSpds = False
+    if measure.ANY in include:
+        wantDirs = wantLocs = wantSpds = True
+        colnames = ["direction", "latitude", "longitude", "speed", "quality"]
+    else:
+        colnames = []
+        if measure.DIRECTION in include:
+            wantDirs = True
+            colnames.append("direction")
+        if measure.LOCATION in include:
+            wantLocs = True
+            colnames.append("latitude")
+            colnames.append("longitude")
+        if measure.SPEED in include:
+            wantSpds = True
+            colnames.append("speed")
+        colnames.append("quality")
 
+    # Column indexes for database construction
+    numCol = 0 # data quality column is a given, location is always the last
+    dirCol = latCol = lonCol = spdCol = -1
+    if wantDirs:
+        dirCol = numCol
+        numCol += 1
+    if wantLocs:
+        latCol = numCol
+        lonCol = latCol + 1
+        numCol += 2
+    if wantSpds:
+        spdCol = numCol
+        numCol += 1
+    qualCol = numCol
+    numCol += 1
     # NOTES: messages containing more than timestamps start appearing at time 17:17:44
     collecting = False  # signifies that we're building the block
     processing = False  # signifies that we're processing the block
@@ -102,7 +131,7 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
 
         if processing:
             quality = -1
-            row = []  # holds one row, used to store data before filter_level validation
+            row = [None] * numCol  # holds one row, used to store data before filter_level validation
             timestamp = None
             for message in block:
                 if message.msgID == "RMC":
@@ -112,34 +141,34 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
                         quality = int(message.numSV)
                 if wantDirs and message.msgID == "VTG":  # Direction Collection
                     if message.cogt == "":
-                        row.append(float(0.0))
+                        row[dirCol] = float(0.0)
                     else:
-                        row.append(float(message.cog))
+                        row[dirCol] = float(message.cog)
                 if wantLocs and message.msgID == "GGA":  # Location Collection
                     # latitude
                     if message.lat == "":
-                        row.append("0000.0000")
+                        row[latCol] = "0000.0000"
                     else:
                         if message.NS == "S":
-                            row.append(-float(message.lat))
+                            row[latCol] = (-float(message.lat))
                         else:
-                            row.append(float(message.lat))
+                            row[latCol] = float(message.lat)
                     # longitude (copy of above)
                     if message.lon == "":
-                        row.append("0000.0000")
+                        row[lonCol] = "0000.0000"
                     else:
                         if message.EW == "W":
-                            row.append(-float(message.lon))
+                            row[lonCol] = (-float(message.lon))
                         else:
-                            row.append(float(message.lon))
+                            row[lonCol] = float(message.lon)
                 if wantSpds and message.msgID == "VTG":  # Speed Collection
                     if message.sogk == "":
-                        row.append(float(0.0))
+                        row[spdCol] = float(0.0)
                     else:
-                        row.append(float(message.sogk))
+                        row[spdCol] = float(message.sogk)
             if quality >= filter_level:
                 fulldates.append(timestamp)
-                row.append(quality)
+                row[qualCol] = quality
                 rows.append(row)
             processing = False  # processing complete, switch off for final conditional
             block.clear()
@@ -151,7 +180,6 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
                 collecting = True
                 block.append(sentence)
 
-    colnames = ["direction", "speed", "latitude", "longitude", "quality"]
     # direction: degrees (unicode char \u00B0)
     return pd.DataFrame(data=rows, index=fulldates, columns=colnames)
 
@@ -169,7 +197,7 @@ nmea_data = get_nmea_sentence(ds)
 pd.set_option("display.max_rows", None)
 pd.set_option("display.max_columns", None)
 pd.set_option("display.max_colwidth", None)
-velo_dataframe = get_nmea_measurement(nmea_data, measure.ANY, 6)
+velo_dataframe = get_nmea_measurement(nmea_data, "speed", 6)
 print(velo_dataframe)
 print(velo_dataframe.shape)
 
