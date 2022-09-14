@@ -80,64 +80,70 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
     # # orientation - actually for quaternion stuff
     # # time - used for internal non-nmea gps stuff
 
-    block = []  # holds NMEA messages before processing
+    block = []      # holds NMEA messages before processing
     fulldates = []  # we always want the timestamps
-    dirs = [] if measure.DIRECTION in include or measure.ANY in include else None
-    spds = [] if measure.SPEED in include or measure.ANY in include else None
-    lats = [] if measure.LOCATION in include or measure.ANY in include else None
-    lons = [] if measure.LOCATION in include or measure.ANY in include else None
+    rows = []       # holds all rows, used in dataframe construction
 
-    # these just save some writing
-    wantDirs = dirs is not None
-    wantLocs = lats is not None and lons is not None
-    wantSpds = spds is not None
+    # checks measurement types. future use to help set column indexes?
+    wantDirs = measure.DIRECTION in include or measure.ANY
+    wantLocs = measure.LOCATION in include or measure.ANY
+    wantSpds = measure.SPEED in include or measure.ANY
 
-    # TODO: all the gsv stuff below this, see chat with David. Also talk about putting this on Github
-    # more specifically, process the gsv data and see if the number of connected satelites is good enough (filter_level)
-    # for data collection to begin. this will probably happen in the first else block below.
-
-    # TODO: make data quality a column in the dataframe, on the far right, where time used to be
+    # NOTES: messages containing more than timestamps start appearing at time 17:17:44
     collecting = False  # signifies that we're building the block
     processing = False  # signifies that we're processing the block
     for sentence in data:
+
         if collecting:
             if sentence.msgID == "GLL":  # Final message in block
                 collecting = False  # switch off for final conditional
                 processing = True  # begin processing previous block
             block.append(sentence)
+
         if processing:
+            quality = -1
+            row = []  # holds one row, used to store data before filter_level validation
+            timestamp = None
             for message in block:
                 if message.msgID == "RMC":
-                    fulldates.append(dt.datetime.combine(message.date, message.time))
+                    timestamp = dt.datetime.combine(message.date, message.time)
+                if message.msgID == "GSV":
+                    if quality == -1:  # protects quality from multiple GSV messages
+                        quality = int(message.numSV)
                 if wantDirs and message.msgID == "VTG":  # Direction Collection
                     if message.cogt == "":
-                        dirs.append(float(0.0))
+                        row.append(float(0.0))
                     else:
-                        dirs.append(float(message.cog))
+                        row.append(float(message.cog))
                 if wantLocs and message.msgID == "GGA":  # Location Collection
                     # latitude
                     if message.lat == "":
-                        lats.append("0000.0000")
+                        row.append("0000.0000")
                     else:
                         if message.NS == "S":
-                            lats.append(-float(message.lat))
+                            row.append(-float(message.lat))
                         else:
-                            lats.append(float(message.lat))
+                            row.append(float(message.lat))
                     # longitude (copy of above)
                     if message.lon == "":
-                        lons.append("0000.0000")
+                        row.append("0000.0000")
                     else:
                         if message.EW == "W":
-                            lons.append(-float(message.lon))
+                            row.append(-float(message.lon))
                         else:
-                            lons.append(float(message.lon))
+                            row.append(float(message.lon))
                 if wantSpds and message.msgID == "VTG":  # Speed Collection
                     if message.sogk == "":
-                        spds.append(float(0.0))
+                        row.append(float(0.0))
                     else:
-                        spds.append(float(message.sogk))
+                        row.append(float(message.sogk))
+            if quality >= filter_level:
+                fulldates.append(timestamp)
+                row.append(quality)
+                rows.append(row)
             processing = False  # processing complete, switch off for final conditional
             block.clear()
+        # this if avoids any data with no timestamp information
         if sentence.msgID == "RMC" and collecting is not True and processing is not True:
             if sentence.time == "" or sentence.date == "":
                 continue
@@ -145,70 +151,25 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
                 collecting = True
                 block.append(sentence)
 
-    #
-    # collecting = False  # prevents data collection until we have timestamps
-    # gsvProcesed = False  # prevents GSV analysis after the first GSV message, until a new Block
-    # for sentence in data:
-    #     if sentence.msgID == "RMC":
-    #         if sentence.time == "" or sentence.date == "":
-    #             continue
-    #         else:
-    #             collecting = True
-    #             gsvProcesed = False  # new block, reset GSV
-    #             fulldates.append(dt.datetime.combine(sentence.date, sentence.time))
-    #     if collecting:  # start of message_type stuff
-    #         if wantDirs and sentence.msgID == "VTG":  # Direction Collection
-    #             if sentence.cogt == "":
-    #                 dirs.append(float(0.0))
-    #             else:
-    #                 dirs.append(float(sentence.cog))
-    #         if wantLocs and sentence.msgID == "GGA":  # Location Collection
-    #             # latitude
-    #             if sentence.lat == "":
-    #                 lats.append("0000.0000")
-    #             else:
-    #                 if sentence.NS == "S":
-    #                     lats.append(-float(sentence.lat))
-    #                 else:
-    #                     lats.append(float(sentence.lat))
-    #             # longitude (copy of above)
-    #             if sentence.lon == "":
-    #                 lons.append("0000.0000")
-    #             else:
-    #                 if sentence.EW == "W":
-    #                     lons.append(-float(sentence.lon))
-    #                 else:
-    #                     lons.append(float(sentence.lon))
-    #         if wantSpds and sentence.msgID == "VTG":  # Speed Collection
-    #             if sentence.sogk == "":
-    #                 spds.append(float(0.0))
-    #             else:
-    #                 spds.append(float(sentence.sogk))
-    d = {}
-    # oh boy time for the dollar store switch statement
-    if wantDirs:
-        d.update({"direction": dirs})  # direction degrees (unicode for degrees is \u00B0)
-    if wantLocs:
-        d.update({"latitude": lats})  # latitude ddmm.mmmm
-        d.update({"longitude": lons})  # longitude ddmm.mmmm
-    if wantSpds:
-        d.update({"speed": spds})  # ground speed km/h
-    return pd.DataFrame(data=d, index=fulldates)
+    colnames = ["direction", "speed", "latitude", "longitude", "quality"]
+    # direction: degrees (unicode char \u00B0)
+    return pd.DataFrame(data=rows, index=fulldates, columns=colnames)
 
 
 # MAIN
 ds = endaq.ide.files.get_doc("C:\\Users\\jpolischuk\\Downloads\\DAQ12497_000032.IDE")
 nmea_data = get_nmea_sentence(ds)
-for i in range(len(nmea_data)):
-    print(str(i) + ": " + str(nmea_data[i]))
+# for i in range(len(nmea_data)):
+#     print(str(i) + ": " + str(nmea_data[i]))
 # for i in range(3):
 #     print("\n\tSPACER\n")
 # for i in range(len(nmea_data)):
-#     if nmea_data[i].msgID in ["RMC", "VTG"]:
+#     if nmea_data[i].msgID in ["RMC", "GSV"]:
 #         print(str(i) + ": " + nmea_data[i].msgID + " found: " + repr(nmea_data[i]))
 pd.set_option("display.max_rows", None)
 pd.set_option("display.max_columns", None)
 pd.set_option("display.max_colwidth", None)
-velo_dataframe = get_nmea_measurement(nmea_data, measure.ANY)
-print(velo_dataframe.tail(velo_dataframe.shape[1] - 55))
+velo_dataframe = get_nmea_measurement(nmea_data, measure.ANY, 6)
+print(velo_dataframe)
+print(velo_dataframe.shape)
 
