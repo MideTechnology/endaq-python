@@ -136,36 +136,38 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
             for message in block:
                 if message.msgID == "RMC":
                     timestamp = dt.datetime.combine(message.date, message.time)
-                if message.msgID == "GSV":
+                elif message.msgID == "VTG":
+                    if wantDirs:  # Direction Collection
+                        if message.cogt == "":
+                            row[dirCol] = float(0.0)
+                        else:
+                            row[dirCol] = float(message.cog)
+                    if wantSpds:  # Speed Collection
+                        if message.sogk == "":
+                            row[spdCol] = float(0.0)
+                        else:
+                            row[spdCol] = float(message.sogk)
+                elif message.msgID == "GGA":
+                    if wantLocs:  # Lat/Lon Collection
+                        # latitude
+                        if message.lat == "":
+                            row[latCol] = "0000.0000"
+                        else:
+                            if message.NS == "S":
+                                row[latCol] = (-float(message.lat))
+                            else:
+                                row[latCol] = float(message.lat)
+                        # longitude (copy of above)
+                        if message.lon == "":
+                            row[lonCol] = "0000.0000"
+                        else:
+                            if message.EW == "W":
+                                row[lonCol] = (-float(message.lon))
+                            else:
+                                row[lonCol] = float(message.lon)
+                elif message.msgID == "GSV":
                     if quality == -1:  # protects quality from multiple GSV messages
                         quality = int(message.numSV)
-                if wantDirs and message.msgID == "VTG":  # Direction Collection
-                    if message.cogt == "":
-                        row[dirCol] = float(0.0)
-                    else:
-                        row[dirCol] = float(message.cog)
-                if wantLocs and message.msgID == "GGA":  # Location Collection
-                    # latitude
-                    if message.lat == "":
-                        row[latCol] = "0000.0000"
-                    else:
-                        if message.NS == "S":
-                            row[latCol] = (-float(message.lat))
-                        else:
-                            row[latCol] = float(message.lat)
-                    # longitude (copy of above)
-                    if message.lon == "":
-                        row[lonCol] = "0000.0000"
-                    else:
-                        if message.EW == "W":
-                            row[lonCol] = (-float(message.lon))
-                        else:
-                            row[lonCol] = float(message.lon)
-                if wantSpds and message.msgID == "VTG":  # Speed Collection
-                    if message.sogk == "":
-                        row[spdCol] = float(0.0)
-                    else:
-                        row[spdCol] = float(message.sogk)
             if quality >= filter_level:
                 fulldates.append(timestamp)
                 row[qualCol] = quality
