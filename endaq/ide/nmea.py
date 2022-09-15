@@ -1,18 +1,17 @@
-import datetime
-
 import pandas as pd
 import datetime as dt
-
-import endaq.ide.files
+import endaq.ide.files  # used in commented-out testing at bottom of file
 import endaq.ide.measurement as measure
-from ebmlite import loadSchema
-from pynmeagps import NMEAReader, NMEAMessage, NMEAParseError
+from pynmeagps import NMEAReader, NMEAMessage
 
 
 def get_nmea(buffer, raw=False):
-    """ Simple NMEA sentence extractor. Returns a list of extracted
-        sentences and the leftover buffer (which could have partial
-        sentences completed in later blocks).
+    """ Simple NMEA sentence extractor.
+
+        :param buffer: a bytearray containing bytes from an IDE dataset
+        :param raw: if true, return raw NMEA bytes as opposed to parsed objects. Defaults to false
+        :returns: a list of extracted sentences and the leftover buffer (which could have partial sentences completed
+            in later blocks).
     """
     sentences = []
     while b'\r\n' in buffer:
@@ -33,9 +32,9 @@ def get_nmea_sentence(dataset, raw=False):
 
         :param dataset: a dataset, as from endaq.ide.files.get_doc()
         :param raw: if true, dump raw nmea sentences as opposed to parsed objects. Defaults to false
+        :return: NMEA sentence as NMEAMessage objects or bytes
 
-        ::seealso:
-            https://www.sparkfun.com/datasheets/GPS/NMEA%20Reference%20Manual-Rev2.1-Dec07.pdf - Ch. 1. Relevant
+        :seealso: https://www.sparkfun.com/datasheets/GPS/NMEA%20Reference%20Manual-Rev2.1-Dec07.pdf - Ch. 1. Relevant
             codes for this project are GLL and VTG.
 
     """
@@ -65,7 +64,7 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
         :param data: A dataset or list of NMEAMessage Objects. The data to pull measurements from
         :param measure_type: To be decided by David
         :param filter_level: reliability filter level - Will only process data when connected to this number of
-        satelites. Defaults to 0, maximum of 12.
+        satellites. Defaults to 0, maximum of 12.
         :param timestamp - Default is to provide timestamp from the GPS message. Selecting between GPS time and device
             time will be the last piece of the job.
     """
@@ -104,21 +103,22 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
         colnames.append("quality")
 
     # Column indexes for database construction
-    numCol = 0 # data quality column is a given, location is always the last
+    numCol = 0
     dirCol = latCol = lonCol = spdCol = -1
     if wantDirs:
-        dirCol = numCol
+        dirCol = numCol  # in degrees, degree sign character is \u00B0
         numCol += 1
     if wantLocs:
-        latCol = numCol
+        latCol = numCol  # in ddmm.mmmm
         lonCol = latCol + 1
         numCol += 2
     if wantSpds:
-        spdCol = numCol
+        spdCol = numCol  # in km/h
         numCol += 1
     qualCol = numCol
     numCol += 1
-    # NOTES: messages containing more than timestamps start appearing at time 17:17:44
+
+    # NOTE: messages containing more than timestamps start appearing at time 17:17:44
     collecting = False  # signifies that we're building the block
     processing = False  # signifies that we're processing the block
     for sentence in data:
@@ -131,40 +131,26 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
 
         if processing:
             quality = -1
-            row = [None] * numCol  # holds one row, used to store data before filter_level validation
+            row = [None] * numCol   # holds one row, used to store data before filter_level validation
             timestamp = None
-            for message in block:
+            for message in block:   # any updates please follow below format
                 if message.msgID == "RMC":
                     timestamp = dt.datetime.combine(message.date, message.time)
                 elif message.msgID == "VTG":
-                    if wantDirs:  # Direction Collection
-                        if message.cogt == "":
-                            row[dirCol] = float(0.0)
-                        else:
-                            row[dirCol] = float(message.cog)
-                    if wantSpds:  # Speed Collection
-                        if message.sogk == "":
-                            row[spdCol] = float(0.0)
-                        else:
+                    if wantDirs:    # Direction Collection
+                        if message.cogt:  # this is false if cogt = ""
+                            row[dirCol] = float(message.cogt)
+                    if wantSpds:    # Speed Collection
+                        if message.sogk:
                             row[spdCol] = float(message.sogk)
                 elif message.msgID == "GGA":
-                    if wantLocs:  # Lat/Lon Collection
+                    if wantLocs:    # Lat/Lon Collection
                         # latitude
-                        if message.lat == "":
-                            row[latCol] = "0000.0000"
-                        else:
-                            if message.NS == "S":
-                                row[latCol] = (-float(message.lat))
-                            else:
-                                row[latCol] = float(message.lat)
+                        if message.lat:
+                            row[latCol] = (-float(message.lat)) if message.NS == 'S' else float(message.lat)
                         # longitude (copy of above)
-                        if message.lon == "":
-                            row[lonCol] = "0000.0000"
-                        else:
-                            if message.EW == "W":
-                                row[lonCol] = (-float(message.lon))
-                            else:
-                                row[lonCol] = float(message.lon)
+                        if message.lon:
+                            row[lonCol] = (-float(message.lon)) if message.EW == 'W' else float(message.lon)
                 elif message.msgID == "GSV":
                     if quality == -1:  # protects quality from multiple GSV messages
                         quality = int(message.numSV)
@@ -182,24 +168,14 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
                 collecting = True
                 block.append(sentence)
 
-    # direction: degrees (unicode char \u00B0)
     return pd.DataFrame(data=rows, index=fulldates, columns=colnames)
 
 
 # MAIN
-ds = endaq.ide.files.get_doc("C:\\Users\\jpolischuk\\Downloads\\DAQ12497_000032.IDE")
-nmea_data = get_nmea_sentence(ds)
-# for i in range(len(nmea_data)):
-#     print(str(i) + ": " + str(nmea_data[i]))
-# for i in range(3):
-#     print("\n\tSPACER\n")
-# for i in range(len(nmea_data)):
-#     if nmea_data[i].msgID in ["RMC", "GSV"]:
-#         print(str(i) + ": " + nmea_data[i].msgID + " found: " + repr(nmea_data[i]))
-pd.set_option("display.max_rows", None)
-pd.set_option("display.max_columns", None)
-pd.set_option("display.max_colwidth", None)
-velo_dataframe = get_nmea_measurement(nmea_data, "speed", 6)
-print(velo_dataframe)
-print(velo_dataframe.shape)
-
+# ds = endaq.ide.files.get_doc("C:\\Users\\jpolischuk\\Downloads\\DAQ12497_000032.IDE")
+# nmea_data = get_nmea_sentence(ds)
+# pd.set_option("display.max_rows", None)
+# pd.set_option("display.max_columns", None)
+# pd.set_option("display.max_colwidth", None)
+# velo_dataframe = get_nmea_measurement(nmea_data, "any", 6)
+# print(velo_dataframe)
