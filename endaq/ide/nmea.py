@@ -1,6 +1,6 @@
 import pandas as pd
 import datetime as dt
-import endaq.ide.files  # used in commented-out testing at bottom of file
+# import endaq.ide.files  # used in commented-out testing at bottom of file
 import endaq.ide.measurement as measure
 from pynmeagps import NMEAReader, NMEAMessage
 
@@ -62,7 +62,9 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
         endaq.ide.to_pandas function.
 
         :param data: A dataset or list of NMEAMessage Objects. The data to pull measurements from
-        :param measure_type: To be decided by David
+        :param measure_type: Determines the kind of measurements that will be returned in the dataframe. Can accept
+            ANY (returns all following measurements), DIRECTION (degrees, True North), LOCATION (lat/long),
+            and SPEED (km/h).
         :param filter_level: reliability filter level - Will only process data when connected to this number of
         satellites. Defaults to 0, maximum of 12.
         :param timestamp - Default is to provide timestamp from the GPS message. Selecting between GPS time and device
@@ -79,8 +81,8 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
     # # orientation - actually for quaternion stuff
     # # time - used for internal non-nmea gps stuff
 
-    block = []      # holds NMEA messages before processing
     fulldates = []  # we always want the timestamps
+    block = []      # holds NMEA messages before processing
     rows = []       # holds all rows, used in dataframe construction
 
     # checks measurement types
@@ -118,7 +120,7 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
     qualCol = numCol
     numCol += 1
 
-    # NOTE: messages containing more than timestamps start appearing at time 17:17:44
+    # NOTE: messages containing more than timestamps start appearing at time 17:17:44 in test data file
     collecting = False  # signifies that we're building the block
     processing = False  # signifies that we're processing the block
     for sentence in data:
