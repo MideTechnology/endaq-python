@@ -71,16 +71,6 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
             time will be the last piece of the job.
     """
     include, _ = measure.split_types(measure_type)
-
-    # NOTE: DIRECTION IS A "FUTURE" TYPE IN THE measurement.py FILE. MIGHT WANT TO PULL IT OUT
-    # the measure types that make sense to pull from GPS Data are
-    # # ANY, DIRECTION, LOCATION, SPEED
-    # from the potential future types,
-    # # GENERIC, ALTITUDE
-    # do not use,
-    # # orientation - actually for quaternion stuff
-    # # time - used for internal non-nmea gps stuff
-
     fulldates = []  # we always want the timestamps
     block = []      # holds NMEA messages before processing
     rows = []       # holds all rows, used in dataframe construction
@@ -117,14 +107,13 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
     if wantSpds:
         spdCol = numCol  # in km/h
         numCol += 1
-    qualCol = numCol
+    qualCol = numCol     # number of satellites in use
     numCol += 1
 
     # NOTE: messages containing more than timestamps start appearing at time 17:17:44 in test data file
     collecting = False  # signifies that we're building the block
     processing = False  # signifies that we're processing the block
     for sentence in data:
-
         if collecting:
             if sentence.msgID == "GLL":  # Final message in block
                 collecting = False  # switch off for final conditional
@@ -146,6 +135,7 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
                         if message.sogk:
                             row[spdCol] = float(message.sogk)
                 elif message.msgID == "GGA":
+                    quality = int(message.numSV)
                     if wantLocs:    # Lat/Lon Collection
                         # latitude
                         if message.lat:
@@ -153,10 +143,8 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
                         # longitude (copy of above)
                         if message.lon:
                             row[lonCol] = (-float(message.lon)) if message.EW == 'W' else float(message.lon)
-                elif message.msgID == "GSV":
-                    if quality == -1:  # protects quality from multiple GSV messages
-                        quality = int(message.numSV)
-            if quality >= filter_level:
+
+            if quality >= filter_level and any(c is not None for c in row):  # quality row and not all none
                 fulldates.append(timestamp)
                 row[qualCol] = quality
                 rows.append(row)
@@ -173,9 +161,12 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
     return pd.DataFrame(data=rows, index=fulldates, columns=colnames)
 
 
-# MAIN
+# TESTING
 # ds = endaq.ide.files.get_doc("C:\\Users\\jpolischuk\\Downloads\\DAQ12497_000032.IDE")
 # nmea_data = get_nmea_sentence(ds)
+# for i in range(len(nmea_data)):
+#     if nmea_data[i].msgID in ["GGA"]:
+#         print(str(i) + ": " + repr(nmea_data[i]))
 # pd.set_option("display.max_rows", None)
 # pd.set_option("display.max_columns", None)
 # pd.set_option("display.max_colwidth", None)
