@@ -75,40 +75,38 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
     block = []      # holds NMEA messages before processing
     rows = []       # holds all rows, used in dataframe construction
 
-    # checks measurement types
-    wantDirs = wantLocs = wantSpds = False
     if measure.ANY in include:
+        # indexes for data columns
+        numCol = 5
+        # checks measurement types
         wantDirs = wantLocs = wantSpds = True
+        dirCol, latCol, lonCol, spdCol, qualCol = range(numCol)
         colnames = ["direction", "latitude", "longitude", "speed", "quality"]
     else:
+        numCol = 0
+        wantDirs = wantLocs = wantSpds = False
+        dirCol = latCol = lonCol = spdCol = -1
         colnames = []
         if measure.DIRECTION in include:
             wantDirs = True
+            dirCol = numCol  # in degrees, degree sign character is \u00B0
+            numCol += 1
             colnames.append("direction")
         if measure.LOCATION in include:
             wantLocs = True
+            latCol = numCol  # in ddmm.mmmm
+            lonCol = latCol + 1
+            numCol += 2
             colnames.append("latitude")
             colnames.append("longitude")
         if measure.SPEED in include:
             wantSpds = True
+            spdCol = numCol  # in km/h
+            numCol += 1
             colnames.append("speed")
+        qualCol = numCol     # number of satellites in use
+        numCol += 1
         colnames.append("quality")
-
-    # Column indexes for database construction
-    numCol = 0
-    dirCol = latCol = lonCol = spdCol = -1
-    if wantDirs:
-        dirCol = numCol  # in degrees, degree sign character is \u00B0
-        numCol += 1
-    if wantLocs:
-        latCol = numCol  # in ddmm.mmmm
-        lonCol = latCol + 1
-        numCol += 2
-    if wantSpds:
-        spdCol = numCol  # in km/h
-        numCol += 1
-    qualCol = numCol     # number of satellites in use
-    numCol += 1
 
     # NOTE: messages containing more than timestamps start appearing at time 17:17:44 in test data file
     collecting = False  # signifies that we're building the block
