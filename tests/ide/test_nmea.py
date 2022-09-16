@@ -17,7 +17,7 @@ def junk():
 @pytest.fixture()
 def ide_doc():
     """The IDE document to use for testing the parser"""
-    return get_doc("/nmea.IDE")
+    return get_doc("nmea.IDE")
 
 
 @pytest.fixture()
