@@ -1,32 +1,34 @@
-import datetime
-
 import pandas
-import pandas as pd
-import datetime as dt
+import datetime
 import pytest
 import endaq.ide.nmea as nmea
 import endaq.ide.measurement as measure
+import os.path
 from endaq.ide.files import get_doc
-from pynmeagps import NMEAReader, NMEAMessage
-from idelib.dataset import Dataset
+from pynmeagps import NMEAMessage
+
 
 @pytest.fixture()
 def junk():
+    """ A short string of garbage bytes to use for testing unclean data"""
     return bytearray(b'hsdfufuf')
 
 
 @pytest.fixture()
 def ide_doc():
-    return get_doc("C:\\Users\\jpolischuk\\Downloads\\DAQ12497_000032.IDE")
+    """The IDE document to use for testing the parser"""
+    return get_doc(os.path.abspath("../../tests/ide/nmea.IDE"))
 
 
 @pytest.fixture()
 def single_msg():
+    """A singluar NMEA message, in bytes"""
     return bytearray(b'$GNRMC,171800.00,A,4229.72940,N,07108.37734,W,0.305,,100622,,,A*7D\r\n')
 
 
 @pytest.fixture
 def multi_msg():
+    """A 'block' of NMEA messages, taken from the nmea.IDE doc"""
     return (bytearray(b'$GNRMC,171800.00,A,4229.72940,N,07108.37734,W,0.305,,100622,,,A*7D\r\n')
             + bytearray(b'$GNVTG,,T,,M,0.305,N,0.565,K,A*3D\r\n')
             + bytearray(b'$GNGGA,171800.00,4229.72940,N,07108.37734,W,1,05,2.88,209.6,M,-33.1,M,,*76\r\n')
@@ -46,18 +48,18 @@ def test_get_nmea(junk, single_msg, multi_msg):
     assert(nmea.get_nmea(junk, raw=True)) == ([], junk)
     assert(nmea.get_nmea(bytearray(), raw=False)) == ([], bytearray())
     assert(nmea.get_nmea(junk, raw=False)) == ([], junk)
-    #bad data
+    # bad data
     with pytest.raises(ValueError) as excInfo1:
         nmea.get_nmea(None)
     with pytest.raises(ValueError) as excInfo2:
         nmea.get_nmea("hello")
     assert(excInfo1.type is ValueError)
     assert(excInfo2.type is ValueError)
-    #single message
+    # single message
     assert(nmea.get_nmea(single_msg, raw=True) == ([bytearray(b'$GNRMC,171800.00,A,4229.72940,N,07108.37734,W,0.305,,100622,,,A*7D\r\n')], bytearray()))
     sentences, buffer = nmea.get_nmea(single_msg, raw=False)
     assert(str(sentences) == str([NMEAMessage('GN','RMC', 0, payload=['171800.00', 'A', '4229.72940', 'N', '07108.37734', 'W', '0.305', '', '100622', '', '', 'A'])]))
-    #multi message
+    # multi message
     sentences, buffer = nmea.get_nmea(multi_msg, raw=False)
     rsentences, rbuffer = nmea.get_nmea(multi_msg, raw=True)
     assert(len(sentences) == 10)
@@ -71,20 +73,22 @@ def test_get_nmea(junk, single_msg, multi_msg):
     assert(str(jrbuffer) == str(junk))
 
 def test_get_nmea_sentence(junk, ide_doc):
-    #bad data
+    # bad data
     with pytest.raises(ValueError) as excInfo1:
         nmea.get_nmea_sentence(None)
     with pytest.raises(ValueError) as excInfo2:
         nmea.get_nmea_sentence("hello")
     assert(excInfo1.type is ValueError)
     assert(excInfo2.type is ValueError)
-    #single line
+    # single line
     dataset = nmea.get_nmea_sentence(ide_doc)
     rdataset = nmea.get_nmea_sentence(ide_doc, raw=True)
     cdataset = nmea.get_nmea_sentence(ide_doc, channel=100)
     rcdataset = nmea.get_nmea_sentence(ide_doc, channel=100, raw=True)
-    assert(str(dataset[944]) == str(NMEAMessage('GN','RMC', 0, payload=['171800.00', 'A', '4229.72940', 'N', '07108.37734', 'W', '0.305', '', '100622', '', '', 'A'])))
-    #multi line
+    assert(str(dataset[944]) == str(NMEAMessage('GN','RMC', 0,
+                                    payload=['171800.00', 'A', '4229.72940', 'N', '07108.37734', 'W', '0.305', '',
+                                             '100622', '', '', 'A'])))
+    # multi line
     assert(len(dataset) == 1384)
     assert(len(rdataset) == 1384)
     assert(len(cdataset) == 1384)
@@ -92,19 +96,19 @@ def test_get_nmea_sentence(junk, ide_doc):
 
 
 def test_get_nmea_measurement(junk, ide_doc):
-    #bad data
+    # bad data
     with pytest.raises(ValueError) as excInfo1:
         nmea.get_nmea_measurement(None, measure.ANY)
     with pytest.raises(ValueError) as excInfo2:
         nmea.get_nmea_measurement("hello", measure.ANY)
-    #passing raw data
+    # passing raw data
     itsBloodyRaw = nmea.get_nmea_sentence(ide_doc, raw=True)
     with pytest.raises(ValueError) as excInfo3:
         nmea.get_nmea_measurement(itsBloodyRaw, measure.ANY)
     assert(excInfo1.type is ValueError)
     assert(excInfo2.type is ValueError)
     assert(excInfo3.type is ValueError)
-    #good data
+    # good data
     timestamps = [datetime.datetime(2022,6,10,17,18,s) for s in range(39, 44)]
     singledf = pandas.DataFrame({
         "speed": [0.228, 0.136, 0.146, 0.186, 0.072],
@@ -120,10 +124,10 @@ def test_get_nmea_measurement(junk, ide_doc):
     dataset = nmea.get_nmea_sentence(ide_doc)
     testsingledf = nmea.get_nmea_measurement(dataset, measure.SPEED, 8)
     testfulldf = nmea.get_nmea_measurement(dataset, measure.ANY, 8)
-    # the linter doesn't like pytest.approx. the below *ARE* tests
+    # the below *ARE* tests
     # need approx because float stuff, need dict conversion because pandas isn't supported
-    testsingledf.to_dict("list") == pytest.approx(singledf.to_dict("list"))
-    testfulldf.to_dict("list") == pytest.approx(fulldf.to_dict("list"))
+    _ = testsingledf.to_dict("list") == pytest.approx(singledf.to_dict("list"))
+    _ = testfulldf.to_dict("list") == pytest.approx(fulldf.to_dict("list"))
 
 
 

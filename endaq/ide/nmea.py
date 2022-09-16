@@ -1,5 +1,6 @@
 import pandas as pd
 import datetime as dt
+# import os.path
 # import endaq.ide.files  # used in commented-out testing at bottom of file
 import endaq.ide.measurement as measure
 from pynmeagps import NMEAReader, NMEAMessage
@@ -173,7 +174,7 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
 
 
 # TESTING
-# ds = endaq.ide.files.get_doc("C:\\Users\\jpolischuk\\Downloads\\DAQ12497_000032.IDE")
+# ds = endaq.ide.files.get_doc(os.path.abspath("../../tests/ide/nmea.IDE"))
 # nmea_data = get_nmea_sentence(ds)
 # for i in range(len(nmea_data)):
 #     # if i in range(944, 954):
