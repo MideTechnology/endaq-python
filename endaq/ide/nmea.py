@@ -3,9 +3,10 @@ import datetime as dt
 # import endaq.ide.files  # used in commented-out testing at bottom of file
 import endaq.ide.measurement as measure
 from pynmeagps import NMEAReader, NMEAMessage
+from idelib.dataset import Dataset
 
 
-def get_nmea(buffer, raw=False):
+def get_nmea(buffer: bytearray, raw=False):
     """ Simple NMEA sentence extractor.
 
         :param buffer: a bytearray containing bytes from an IDE dataset
@@ -13,6 +14,8 @@ def get_nmea(buffer, raw=False):
         :returns: a list of extracted sentences and the leftover buffer (which could have partial sentences completed
             in later blocks).
     """
+    if not isinstance(buffer, bytearray):
+        raise ValueError(f"Bad type for buffer: {type(buffer)}")
     sentences = []
     while b'\r\n' in buffer:
         chunk, _delimiter, buffer = buffer.partition(b'\r\n')
@@ -25,12 +28,12 @@ def get_nmea(buffer, raw=False):
     return sentences, buffer
 
 
-def get_nmea_sentence(dataset, raw=False):
+def get_nmea_sentence(dataset: [Dataset], channel = None, raw=False):
     """ Processes an IDE file to return the parsed data.
         Raise error if there is no raw NMEA channel
-        TODO - Need metadata from david to add error raise
 
         :param dataset: a dataset, as from endaq.ide.files.get_doc()
+        :param channel: allows user to specify dataset channel
         :param raw: if true, dump raw nmea sentences as opposed to parsed objects. Defaults to false
         :return: NMEA sentence as NMEAMessage objects or bytes
 
@@ -38,14 +41,22 @@ def get_nmea_sentence(dataset, raw=False):
             codes for this project are GLL and VTG.
 
     """
+    if not isinstance(dataset, Dataset):
+        raise ValueError("Requires Dataset object as input")
     # fill element list with the needed data (given by david)
     nmeaSentences = []
     rawBuffer = bytearray()
     nmea_channel_id = None
-    for chid, ch, in dataset.channels.items():
-        if "NMEA" in ch.name:
-            nmea_channel_id = chid
-            break
+
+    if channel is None:  # find it
+        for chid, ch, in dataset.channels.items():
+            if "NMEA" in ch.name:
+                nmea_channel_id = chid
+                break
+    else:  # given it
+        nmea_channel_id = channel
+    if nmea_channel_id is None:  # check there's something
+        raise ValueError("No raw NMEA channel specified or found")
 
     for el in dataset.ebmldoc:
         if el.name == "ChannelDataBlock":
@@ -70,6 +81,8 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
         :param timestamp - Default is to provide timestamp from the GPS message. Selecting between GPS time and device
             time will be the last piece of the job.
     """
+    if not isinstance(data, list) or not isinstance(data[0], NMEAMessage):
+        raise ValueError("Data expected as NMEAMessage objects. Try .get_nmea_sentence()")
     include, _ = measure.split_types(measure_type)
     fulldates = []  # we always want the timestamps
     block = []      # holds NMEA messages before processing
@@ -137,10 +150,10 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
                     if wantLocs:    # Lat/Lon Collection
                         # latitude
                         if message.lat:
-                            row[latCol] = (-float(message.lat)) if message.NS == 'S' else float(message.lat)
+                            row[latCol] = float(message.lat)  # NMEAMessage automatically adjusts sign
                         # longitude (copy of above)
                         if message.lon:
-                            row[lonCol] = (-float(message.lon)) if message.EW == 'W' else float(message.lon)
+                            row[lonCol] = float(message.lon)
 
             if quality >= filter_level and any(c is not None for c in row):  # quality row and not all none
                 fulldates.append(timestamp)
@@ -163,10 +176,10 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
 # ds = endaq.ide.files.get_doc("C:\\Users\\jpolischuk\\Downloads\\DAQ12497_000032.IDE")
 # nmea_data = get_nmea_sentence(ds)
 # for i in range(len(nmea_data)):
-#     if nmea_data[i].msgID in ["GGA"]:
-#         print(str(i) + ": " + repr(nmea_data[i]))
+#     # if i in range(944, 954):
+#     print(str(i) + ": " + repr(nmea_data[i]))
 # pd.set_option("display.max_rows", None)
 # pd.set_option("display.max_columns", None)
 # pd.set_option("display.max_colwidth", None)
-# velo_dataframe = get_nmea_measurement(nmea_data, "any", 6)
+# velo_dataframe = get_nmea_measurement(nmea_data, "any", 8)
 # print(velo_dataframe)
