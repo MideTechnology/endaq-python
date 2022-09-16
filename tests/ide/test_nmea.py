@@ -1,11 +1,11 @@
+from endaq.ide.files import get_doc
+from pynmeagps import NMEAMessage
 import pandas
 import datetime
 import pytest
 import endaq.ide.nmea as nmea
 import endaq.ide.measurement as measure
 import os.path
-from endaq.ide.files import get_doc
-from pynmeagps import NMEAMessage
 
 
 @pytest.fixture()
@@ -71,6 +71,7 @@ def test_get_nmea(junk, single_msg, multi_msg):
     jrsentences, jrbuffer = nmea.get_nmea(_junkMM, raw=True)
     assert(str(jbuffer) == str(junk))
     assert(str(jrbuffer) == str(junk))
+
 
 def test_get_nmea_sentence(junk, ide_doc):
     # bad data
