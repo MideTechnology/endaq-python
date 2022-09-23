@@ -298,6 +298,10 @@ def to_pandas(
 
         :return: a `pandas.DataFrame` containing the channel's data
     """
+    # Verify the channel contains data.
+    if not channel.getSession():
+        return pd.DataFrame()
+
     time_mode = str(time_mode).casefold()
     if time_mode not in ('seconds', 'timedelta', 'datetime'):
         raise ValueError(f'invalid time mode {time_mode!r}')
