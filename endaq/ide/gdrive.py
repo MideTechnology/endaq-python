@@ -33,7 +33,8 @@ def get_file_id(url):
     return None
 
 
-def gdrive_download(url, localfile, params=None, cookies=None, drive_url=DRIVE_URL):
+def gdrive_download(url, localfile, params=None, cookies=None,
+                    drive_url=DRIVE_URL, timeout=60):
     """
     Retrieve an IDE from Google Drive. The file must be set to be shared
     with anyone with the URL.
@@ -54,7 +55,8 @@ def gdrive_download(url, localfile, params=None, cookies=None, drive_url=DRIVE_U
         p.update(params)
 
     session = requests.Session()
-    response = session.get(drive_url, params=p, cookies=cookies, stream=True)
+    response = session.get(drive_url, params=p, cookies=cookies, stream=True,
+                           timeout=timeout)
 
     if not response.ok:
         raise ValueError(f"Could not retrieve data from URL {url} "

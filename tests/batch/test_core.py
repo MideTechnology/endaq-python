@@ -16,15 +16,15 @@ from endaq.batch.utils import ide_utils
     "filename, expt_result",
     [
         (
-            os.path.join("tests", "batch", "test1.IDE"),
+            os.path.join(os.path.dirname(__file__), "test1.IDE"),
             [10118, np.datetime64("2020-09-16 19:05:49.771728")],
         ),
         (
-            os.path.join("tests", "batch", "test2.IDE"),
+            os.path.join(os.path.dirname(__file__), "test2.IDE"),
             [10118, np.datetime64("2020-09-16 19:04:22.475738")],
         ),
         (
-            os.path.join("tests", "batch", "test4.IDE"),
+            os.path.join(os.path.dirname(__file__), "test4.IDE"),
             [10118, np.datetime64("2020-11-18 17:31:27.000000")],
         ),
     ],
@@ -40,9 +40,9 @@ def test_make_meta(filename, expt_result):
 @pytest.mark.parametrize(
     "filename",
     [
-        os.path.join("tests", "batch", "SSX70065.IDE"),
-        os.path.join("tests", "batch", "test1.IDE"),
-        os.path.join("tests", "batch", "test2.IDE"),
+        os.path.join(os.path.dirname(__file__), "SSX70065.IDE"),
+        os.path.join(os.path.dirname(__file__), "test1.IDE"),
+        os.path.join(os.path.dirname(__file__), "test2.IDE"),
     ],
 )
 def test_make_peak_windows(filename):
@@ -95,11 +95,11 @@ def test_make_peak_windows(filename):
 @pytest.mark.parametrize(
     "filename",
     [
-        os.path.join("tests", "batch", "SSX70065.IDE"),
-        os.path.join("tests", "batch", "test1.IDE"),
-        os.path.join("tests", "batch", "test3.IDE"),
-        os.path.join("tests", "batch", "test5.IDE"),
-        os.path.join("tests", "batch", "GPS-Chick-Fil-A_003.IDE"),
+        os.path.join(os.path.dirname(__file__), "SSX70065.IDE"),
+        os.path.join(os.path.dirname(__file__), "test1.IDE"),
+        os.path.join(os.path.dirname(__file__), "test3.IDE"),
+        os.path.join(os.path.dirname(__file__), "test5.IDE"),
+        os.path.join(os.path.dirname(__file__), "GPS-Chick-Fil-A_003.IDE"),
         "https://info.endaq.com/hubfs/data/High-Drop.ide",
         "https://info.endaq.com/hubfs/data/Punching-Bag.ide",
     ],
@@ -298,9 +298,9 @@ def assert_output_is_valid(output: endaq.batch.core.OutputStruct):
 def test_aggregate_data(getdata_builder):
     """Test `aggregate_data` over several configurations of `GetDataBuilder`."""
     filenames = [
-        os.path.join("tests", "batch", "test1.IDE"),
-        os.path.join("tests", "batch", "test2.IDE"),
-        os.path.join("tests", "batch", "test4.IDE"),
+        os.path.join(os.path.dirname(__file__), "test1.IDE"),
+        os.path.join(os.path.dirname(__file__), "test2.IDE"),
+        os.path.join(os.path.dirname(__file__), "test4.IDE"),
     ]
 
     calc_result = getdata_builder.aggregate_data(filenames)
@@ -674,22 +674,22 @@ def test_output_to_html_plots(output_struct):
     "filenames",
     [
         [
-            os.path.join("tests", "batch", "SSX70065.IDE"),
-            os.path.join("tests", "batch", "test1.IDE"),
-            os.path.join("tests", "batch", "test3.IDE"),
-            os.path.join("tests", "batch", "test5.IDE"),
-            os.path.join("tests", "batch", "GPS-Chick-Fil-A_003.IDE"),
+            os.path.join(os.path.dirname(__file__), "SSX70065.IDE"),
+            os.path.join(os.path.dirname(__file__), "test1.IDE"),
+            os.path.join(os.path.dirname(__file__), "test3.IDE"),
+            os.path.join(os.path.dirname(__file__), "test5.IDE"),
+            os.path.join(os.path.dirname(__file__), "GPS-Chick-Fil-A_003.IDE"),
             "https://info.endaq.com/hubfs/data/High-Drop.ide",
             "https://info.endaq.com/hubfs/data/Punching-Bag.ide",
         ],
         [
-            os.path.join("tests", "batch", "SSX70065.IDE"),
+            os.path.join(os.path.dirname(__file__), "SSX70065.IDE"),
         ],
         [
             "https://info.endaq.com/hubfs/data/High-Drop.ide",
         ],
         [
-            os.path.join("tests", "batch", "SSX70065.IDE"),
+            os.path.join(os.path.dirname(__file__), "SSX70065.IDE"),
             "https://info.endaq.com/hubfs/data/High-Drop.ide",
         ],
         [],

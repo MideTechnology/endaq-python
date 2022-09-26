@@ -148,7 +148,7 @@ def fft(
 
     .. seealso::
 
-        - `SciPy FFT method <https://docs.scipy.org/doc/scipy/reference/reference/generated/scipy.fft.fft.html>`_
+        - `SciPy FFT method <https://docs.scipy.org/doc/scipy/reference/generated/scipy.fft.fft.html>`_
           Documentation for the FFT function wrapped internally.
     """
     if output is None:
@@ -236,7 +236,7 @@ def rfft(
 
     .. seealso::
 
-        - `SciPy RFFT method <https://docs.scipy.org/doc/scipy/reference/reference/generated/scipy.fft.rfft.html>`_
+        - `SciPy RFFT method <https://docs.scipy.org/doc/scipy/reference/generated/scipy.fft.rfft.html>`_
           Documentation for the RFFT function wrapped internally.
     """
 
@@ -319,7 +319,7 @@ def dct(
 
     .. seealso::
 
-        - `SciPy DCT method <https://docs.scipy.org/doc/scipy/reference/reference/generated/scipy.fft.dct.html>`_
+        - `SciPy DCT method <https://docs.scipy.org/doc/scipy/reference/generated/scipy.fft.dct.html>`_
           Documentation for the DCT function wrapped internally.
     """
 
@@ -384,7 +384,7 @@ def dst(
 
     .. seealso::
 
-        - `SciPy DST method <https://docs.scipy.org/doc/scipy/reference/reference/generated/scipy.fft.dst.html>`_
+        - `SciPy DST method <https://docs.scipy.org/doc/scipy/reference/generated/scipy.fft.dst.html>`_
           Documentation for the DST function wrapped internally.
     """
 
