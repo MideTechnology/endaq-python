@@ -19,7 +19,7 @@ np.random.seed(0)
 
 @pytest.fixture()
 def ide_SSX70065():
-    with idelib.importFile(os.path.join("tests", "batch", "SSX70065.IDE")) as doc:
+    with idelib.importFile(os.path.join(os.path.dirname(__file__), "SSX70065.IDE")) as doc:
         yield doc
 
 
@@ -322,8 +322,8 @@ class TestAnalyzer:
     @pytest.mark.parametrize(
         "filename",
         [
-            os.path.join("tests", "batch", "test1.IDE"),
-            os.path.join("tests", "batch", "test2.IDE"),
+            os.path.join(os.path.dirname(__file__), "test1.IDE"),
+            os.path.join(os.path.dirname(__file__), "test2.IDE"),
         ],
     )
     def testLiveFiles1(self, filename):
@@ -386,7 +386,7 @@ class TestAnalyzer:
     @pytest.mark.parametrize(
         "filename",
         [
-            os.path.join("tests", "batch", "DAQ12006_000005.IDE"),
+            os.path.join(os.path.dirname(__file__), "DAQ12006_000005.IDE"),
         ],
     )
     def testLiveFiles2(self, filename):
@@ -425,7 +425,7 @@ class TestAnalyzer:
     @pytest.mark.parametrize(
         "filename",
         [
-            os.path.join("tests", "batch", "test3.IDE"),
+            os.path.join(os.path.dirname(__file__), "test3.IDE"),
         ],
     )
     def testLiveFile3(self, filename):
@@ -459,8 +459,8 @@ class TestAnalyzer:
     @pytest.mark.parametrize(
         "filename, sample_index",
         [
-            (os.path.join("tests", "batch", "test_GPS_2.IDE"), -2),
-            (os.path.join("tests", "batch", "test_GPS_3.IDE"), -4),
+            (os.path.join(os.path.dirname(__file__), "test_GPS_2.IDE"), -2),
+            (os.path.join(os.path.dirname(__file__), "test_GPS_3.IDE"), -4),
         ],
     )
     def testLiveFileGPS(self, filename, sample_index):
