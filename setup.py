@@ -29,6 +29,7 @@ INSTALL_REQUIRES = [
     "numpy>=1.19.5",
     "pandas>=1.3",
     "plotly>=5.3.1",
+    "pynmeagps",
     "python-dotenv>=0.18.0",
     "requests>=2.25.1",
     "scipy>=1.7.1",

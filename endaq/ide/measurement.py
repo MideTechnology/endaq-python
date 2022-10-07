@@ -252,7 +252,6 @@ TIME = MeasurementType("Time", "epo",
     labels=("epoch",))  # GPS Epoch Time
 "Marker object for filtering channels with time data"
 
-# For potential future use
 GENERIC = MeasurementType("Generic/Unspecified", "adc", "raw",
     labels=("adc", "raw"))
 ALTITUDE = MeasurementType("Altitude",
