@@ -1,6 +1,6 @@
 from pynmeagps import NMEAReader, NMEAMessage
 from idelib.dataset import Dataset
-from typing import Union
+from typing import Union, List
 import pandas as pd
 import datetime as dt
 import endaq.ide.measurement as measure
@@ -66,7 +66,7 @@ def get_nmea_sentences(dataset: Dataset, channel=None, raw=False):
     return nmeaSentences
 
 
-def get_nmea_measurement(data: Union[list, Dataset], measure_type, filter_level: int = 0, timestamp="GPS") -> \
+def get_nmea_measurement(data: Union[List[NMEAMessage], Dataset], measure_type, filter_level: int = 0, timestamp="GPS") -> \
                                                                                                         pd.DataFrame:
     """ Returned dataframe format should appear like dataframes for other channels run through the
         endaq.ide.to_pandas function.
