@@ -102,13 +102,16 @@ def test_get_nmea_measurement(junk, ide_doc):
         nmea.get_nmea_measurement(None, measure.ANY)
     with pytest.raises(ValueError) as excInfo2:
         nmea.get_nmea_measurement("hello", measure.ANY)
+    with pytest.raises(ValueError) as excInfo3:
+        nmea.get_nmea_measurement([], measure.ANY)
     # passing raw data
     itsBloodyRaw = nmea.get_nmea_sentences(ide_doc, raw=True)
-    with pytest.raises(ValueError) as excInfo3:
+    with pytest.raises(ValueError) as excInfo4:
         nmea.get_nmea_measurement(itsBloodyRaw, measure.ANY)
     assert(excInfo1.type is ValueError)
     assert(excInfo2.type is ValueError)
     assert(excInfo3.type is ValueError)
+    assert(excInfo4.type is ValueError)
     #passing dataset and sentences
     timestamps = [datetime.datetime(2022,6,10,17,18,s) for s in range(39, 44)]
     singledf = pandas.DataFrame({

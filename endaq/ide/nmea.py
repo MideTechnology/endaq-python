@@ -1,5 +1,6 @@
 from pynmeagps import NMEAReader, NMEAMessage
 from idelib.dataset import Dataset
+from typing import Union
 import pandas as pd
 import datetime as dt
 import endaq.ide.measurement as measure
@@ -30,7 +31,7 @@ def get_nmea(buffer: bytearray, raw=False):
     return sentences, buffer
 
 
-def get_nmea_sentences(dataset: [Dataset], channel=None, raw=False):
+def get_nmea_sentences(dataset: Dataset, channel=None, raw=False):
     """ Processes an IDE file to return the parsed data.
         Raise error if there is no raw NMEA channel.
 
@@ -65,7 +66,8 @@ def get_nmea_sentences(dataset: [Dataset], channel=None, raw=False):
     return nmeaSentences
 
 
-def get_nmea_measurement(data: [[NMEAMessage], Dataset], measure_type, filter_level: int = 0, timestamp="GPS") -> pd.DataFrame:
+def get_nmea_measurement(data: Union[list, Dataset], measure_type, filter_level: int = 0, timestamp="GPS") -> \
+                                                                                                        pd.DataFrame:
     """ Returned dataframe format should appear like dataframes for other channels run through the
         endaq.ide.to_pandas function.
 
@@ -81,7 +83,7 @@ def get_nmea_measurement(data: [[NMEAMessage], Dataset], measure_type, filter_le
         :see: NMEA reference <https://www.sparkfun.com/datasheets/GPS/NMEA%20Reference%20Manual-Rev2.1-Dec07.pdf>`
         :see: NMEAMessage Docs <https://github.com/semuconsulting/pynmeagps/blob/master/pynmeagps/nmeamessage.py>
     """
-    if (not isinstance(data, list) or not isinstance(data[0], NMEAMessage)) and not isinstance(data, Dataset):
+    if not data or not((isinstance(data, list) and isinstance(data[0], NMEAMessage)) or isinstance(data, Dataset)):
         raise ValueError("Data expected as NMEAMessage objects or Dataset.")
     if isinstance(data, Dataset):
         data = get_nmea_sentences(data)
