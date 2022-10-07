@@ -20,17 +20,17 @@ def get_nmea(buffer: bytearray, raw=False):
         raise ValueError(f"Bad type for buffer: {type(buffer)}")
     sentences = []
     while b'\r\n' in buffer:
-        chunk, _delimiter, buffer = buffer.partition(b'\r\n')
+        chunk, delimiter, buffer = buffer.partition(b'\r\n')
         _junk, prefix, chunk = chunk.partition(b'$G')
         if chunk:
             if raw:
-                sentences.append(prefix + chunk + _delimiter)
+                sentences.append(prefix + chunk + delimiter)
             else:
-                sentences.append(NMEAReader.parse(bytes(prefix + chunk + _delimiter)))
+                sentences.append(NMEAReader.parse(bytes(prefix + chunk + delimiter)))
     return sentences, buffer
 
 
-def get_nmea_sentence(dataset: [Dataset], channel=None, raw=False):
+def get_nmea_sentences(dataset: [Dataset], channel=None, raw=False):
     """ Processes an IDE file to return the parsed data.
         Raise error if there is no raw NMEA channel.
 
@@ -53,7 +53,7 @@ def get_nmea_sentence(dataset: [Dataset], channel=None, raw=False):
                 break
     else:  # given NMEA channel
         nmea_channel_id = channel
-    if nmea_channel_id is None:  # check we found something
+    if nmea_channel_id not in dataset.channels:  # check we found a valid channel ID
         raise ValueError("No raw NMEA channel specified or found")
 
     for el in dataset.ebmldoc:
@@ -65,7 +65,7 @@ def get_nmea_sentence(dataset: [Dataset], channel=None, raw=False):
     return nmeaSentences
 
 
-def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 0, timestamp="GPS") -> pd.DataFrame:
+def get_nmea_measurement(data: [[NMEAMessage], Dataset], measure_type, filter_level: int = 0, timestamp="GPS") -> pd.DataFrame:
     """ Returned dataframe format should appear like dataframes for other channels run through the
         endaq.ide.to_pandas function.
 
@@ -81,43 +81,37 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
         :see: NMEA reference <https://www.sparkfun.com/datasheets/GPS/NMEA%20Reference%20Manual-Rev2.1-Dec07.pdf>`
         :see: NMEAMessage Docs <https://github.com/semuconsulting/pynmeagps/blob/master/pynmeagps/nmeamessage.py>
     """
-    if not isinstance(data, list) or not isinstance(data[0], NMEAMessage):
-        raise ValueError("Data expected as NMEAMessage objects. Try .get_nmea_sentence()")
+    if (not isinstance(data, list) or not isinstance(data[0], NMEAMessage)) and not isinstance(data, Dataset):
+        raise ValueError("Data expected as NMEAMessage objects or Dataset.")
+    if isinstance(data, Dataset):
+        data = get_nmea_sentences(data)
     include, _ = measure.split_types(measure_type)
     fulldates = []  # we always want the timestamps
     block = []      # holds NMEA messages before processing
     rows = []       # holds all rows, used in dataframe construction
     if measure.ANY in include:
-        # indexes for data columns
-        numCol = 5
-        # checks measurement types
         wantDirs = wantLocs = wantSpds = True
-        dirCol, latCol, lonCol, spdCol, qualCol = range(numCol)
         colnames = ["direction", "latitude", "longitude", "speed", "quality"]
+        dirCol, latCol, lonCol, spdCol, qualCol = range(len(colnames))
     else:
-        numCol = 0
         wantDirs = wantLocs = wantSpds = False
         dirCol = latCol = lonCol = spdCol = -1
         colnames = []
         if measure.DIRECTION in include:
             wantDirs = True
-            dirCol = numCol  # in degrees, degree sign character is \u00B0
-            numCol += 1
+            dirCol = len(colnames)  # in degrees, degree sign character is \u00B0
             colnames.append("direction")
         if measure.LOCATION in include:
             wantLocs = True
-            latCol = numCol  # in ddmm.mmmm
+            latCol = len(colnames)  # in ddmm.mmmm
             lonCol = latCol + 1
-            numCol += 2
             colnames.append("latitude")
             colnames.append("longitude")
         if measure.SPEED in include:
             wantSpds = True
-            spdCol = numCol  # in km/h
-            numCol += 1
+            spdCol = len(colnames)   # in km/h
             colnames.append("speed")
-        qualCol = numCol     # number of satellites in use
-        numCol += 1
+        qualCol = len(colnames)     # number of satellites in use
         colnames.append("quality")
 
     collecting = False  # signifies that we're building the block
@@ -130,7 +124,7 @@ def get_nmea_measurement(data: [NMEAMessage], measure_type, filter_level: int = 
             block.append(sentence)
         if processing:
             quality = -1
-            row = [None] * numCol   # holds one row, used to store data before filter_level validation
+            row = [None] * len(colnames)   # holds one row, used to store data before filter_level validation
             timestamp = None
             for message in block:   # any updates please follow below format
                 if message.msgID == "RMC":

@@ -76,16 +76,16 @@ def test_get_nmea(junk, single_msg, multi_msg):
 def test_get_nmea_sentence(junk, ide_doc):
     # bad data
     with pytest.raises(ValueError) as excInfo1:
-        nmea.get_nmea_sentence(None)
+        nmea.get_nmea_sentences(None)
     with pytest.raises(ValueError) as excInfo2:
-        nmea.get_nmea_sentence("hello")
+        nmea.get_nmea_sentences("hello")
     assert(excInfo1.type is ValueError)
     assert(excInfo2.type is ValueError)
     # single line
-    dataset = nmea.get_nmea_sentence(ide_doc)
-    rdataset = nmea.get_nmea_sentence(ide_doc, raw=True)
-    cdataset = nmea.get_nmea_sentence(ide_doc, channel=100)
-    rcdataset = nmea.get_nmea_sentence(ide_doc, channel=100, raw=True)
+    dataset = nmea.get_nmea_sentences(ide_doc)
+    rdataset = nmea.get_nmea_sentences(ide_doc, raw=True)
+    cdataset = nmea.get_nmea_sentences(ide_doc, channel=100)
+    rcdataset = nmea.get_nmea_sentences(ide_doc, channel=100, raw=True)
     assert(str(dataset[944]) == str(NMEAMessage('GN','RMC', 0,
                                     payload=['171800.00', 'A', '4229.72940', 'N', '07108.37734', 'W', '0.305', '',
                                              '100622', '', '', 'A'])))
@@ -103,13 +103,13 @@ def test_get_nmea_measurement(junk, ide_doc):
     with pytest.raises(ValueError) as excInfo2:
         nmea.get_nmea_measurement("hello", measure.ANY)
     # passing raw data
-    itsBloodyRaw = nmea.get_nmea_sentence(ide_doc, raw=True)
+    itsBloodyRaw = nmea.get_nmea_sentences(ide_doc, raw=True)
     with pytest.raises(ValueError) as excInfo3:
         nmea.get_nmea_measurement(itsBloodyRaw, measure.ANY)
     assert(excInfo1.type is ValueError)
     assert(excInfo2.type is ValueError)
     assert(excInfo3.type is ValueError)
-    # good data
+    #passing dataset and sentences
     timestamps = [datetime.datetime(2022,6,10,17,18,s) for s in range(39, 44)]
     singledf = pandas.DataFrame({
         "speed": [0.228, 0.136, 0.146, 0.186, 0.072],
@@ -122,11 +122,15 @@ def test_get_nmea_measurement(junk, ide_doc):
         "speed": [0.228,0.136,0.146,0.186,0.072],
         "quality": [8]*5
     }, index=timestamps)
-    dataset = nmea.get_nmea_sentence(ide_doc)
-    testsingledf = nmea.get_nmea_measurement(dataset, measure.SPEED, 8)
-    testfulldf = nmea.get_nmea_measurement(dataset, measure.ANY, 8)
+    testsingledoc = nmea.get_nmea_measurement(ide_doc, measure.SPEED, 8)
+    testfulldoc = nmea.get_nmea_measurement(ide_doc, measure.ANY, 8)
+    sentences = nmea.get_nmea_sentences(ide_doc)
+    testsingledf = nmea.get_nmea_measurement(sentences, measure.SPEED, 8)
+    testfulldf = nmea.get_nmea_measurement(sentences, measure.ANY, 8)
     # the below *ARE* tests
     # need approx because float stuff, need dict conversion because pandas isn't supported
+    _ = testsingledoc.to_dict("list") == pytest.approx(singledf.to_dict("list"))
+    _ = testfulldoc.to_dict("list") == pytest.approx(fulldf.to_dict("list"))
     _ = testsingledf.to_dict("list") == pytest.approx(singledf.to_dict("list"))
     _ = testfulldf.to_dict("list") == pytest.approx(fulldf.to_dict("list"))
 
