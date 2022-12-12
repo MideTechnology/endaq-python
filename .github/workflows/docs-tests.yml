@@ -20,7 +20,7 @@ jobs:
     steps:
 
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: "3.9"
 
@@ -31,7 +31,7 @@ jobs:
         run: python -m pip install --upgrade pip
 
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Get pip cache location
         id: pip-cache
@@ -46,7 +46,7 @@ jobs:
           print(f'::set-output name=text::{now.year}/{now.month}-part{1 + now.day // 8}')"
 
       - name: Load pip cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
           key: doctests-${{ runner.os }}-Python3.9-${{ steps.date.outputs.text }}-pip-${{ hashFiles('**/setup.py', './.github/workflows/unit-tests.yml') }}
