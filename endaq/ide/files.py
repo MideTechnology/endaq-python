@@ -74,7 +74,9 @@ def normalized_path(
 # ============================================================================
 
 
-def _get_url(url, localfile=None, headers=None, params=None, cookies=None):
+def _get_url(url, localfile=None, headers=None, params=None, cookies=None,
+             timeout=60):
+
     """
     Retrieve an IDE from a (HTTP/HTTPS) URL, including Google Drive shared
     links.
@@ -84,6 +86,7 @@ def _get_url(url, localfile=None, headers=None, params=None, cookies=None):
     :param headers: Additional (optional) request headers.
     :param params: Additional (optional) request parameters.
     :param cookies: Optional browser cookies for the session.
+    :param timeout: Seconds to wait for a response.
     :return: An open file stream containing the IDE data and the number of
         bytes downloaded.
     """
@@ -93,10 +96,11 @@ def _get_url(url, localfile=None, headers=None, params=None, cookies=None):
     netloc = parsed_url.netloc.lower()
     if netloc.endswith('.google.com') or netloc == "google.com":
         response, filename = gdrive_download(url, localfile, params=params,
-                                             cookies=cookies)
+                                             cookies=cookies, timeout=timeout)
     else:
         response = session.get(parsed_url.geturl(), headers=headers,
-                               params=params, cookies=cookies)
+                               params=params, cookies=cookies,
+                               timeout=timeout)
         filename = None
 
     if not response.ok:
@@ -133,7 +137,8 @@ def _get_url(url, localfile=None, headers=None, params=None, cookies=None):
 # ============================================================================
 
 def get_doc(name=None, filename=None, url=None, parsed=True, start=0, end=None,
-            localfile=None, params=None, headers=None, cookies=None, **kwargs):
+            localfile=None, params=None, headers=None, cookies=None,
+            timeout=60, **kwargs):
     """
     Retrieve an IDE file from either a file or URL.
 
@@ -189,6 +194,8 @@ def get_doc(name=None, filename=None, url=None, parsed=True, start=0, end=None,
         opening a URL.
     :param cookies: Additional browser cookies for use in the URL request.
         Only applicable when opening a URL.
+    :param timeout: Seconds to wait for a response to the URL request. Only
+        applicable when opening a URL.
     :return: The fetched IDE data.
 
     Additionally, `get_doc()` will accept the keyword arguments for
@@ -213,7 +220,7 @@ def get_doc(name=None, filename=None, url=None, parsed=True, start=0, end=None,
         parsed_url = path_formatted
         if parsed_url.scheme.startswith('http'):
             stream, _total = _get_url(parsed_url.geturl(), localfile=localfile, headers=headers,
-                                      params=params, cookies=cookies)
+                                      params=params, cookies=cookies, timeout=timeout)
         else:
             # future: more fetching schemes before this `else` (ftp, etc.)?
             raise ValueError(f"Unsupported transfer scheme: {parsed_url.scheme}")

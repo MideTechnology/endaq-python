@@ -540,7 +540,7 @@ class GetDataBuilder:
     def _make_calc_params(self) -> analyzer.CalcParams:
         return analyzer.CalcParams(
             **self._ch_data_cache_kwargs,
-            psd_window=self._psd_window or "hanning",
+            psd_window=self._psd_window or "hann",
             psd_freq_bin_width=self._psd_freq_bin_width or self._psd_freq_bin_width_oct,
             pvss_init_freq=self._pvss_init_freq,
             pvss_bins_per_octave=self._pvss_bins_per_octave,

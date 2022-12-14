@@ -1,7 +1,9 @@
+import json
 import requests
 from types import FunctionType
+from typing import Union
+
 import plotly.io as pio
-import json
 
 from .core import EndaqCloud, ENV_PRODUCTION, ENV_STAGING, ENV_DEVELOP
 
@@ -35,7 +37,8 @@ def create_cloud_dashboard_output(name_to_fig: dict) -> str:
 
 
 def produce_dashboard_plots(dashboard_script_fn: FunctionType, api_key: str, max_num_files: int = 100,
-                            environment: str = 'production', display_plots: bool = True) -> list:
+                            environment: str = 'production', display_plots: bool = True,
+                            timeout: Union[int, float] = 60) -> list:
     """
     A function used to simulate a run of a desired enDAQ Cloud custom report script without needing to use
     ``cloud.endaq.com``.
@@ -50,6 +53,7 @@ def produce_dashboard_plots(dashboard_script_fn: FunctionType, api_key: str, max
     :param environment: The version of the enDAQ Cloud to communicate with, the options are 'production', 'staging',
      or 'develop'.  This should only be used internally at Mide
     :param display_plots: If the plots being produced should be displayed
+    :param timeout: The maximum time (in seconds) to wait for a response from the environment.
     :return: A list of the 4 plotly figures produced
     """
     if environment == 'production':
@@ -60,7 +64,7 @@ def produce_dashboard_plots(dashboard_script_fn: FunctionType, api_key: str, max
         api_access_url = ENV_DEVELOP
     else:
         raise ValueError("Only 'production', 'staging', and 'develop' may be given for the 'environment' parameter, "
-                         f" but {environment} was given instead.")
+                         f" but {environment!r} was given instead.")
 
     parameters = {"x-api-key": api_key}
 
@@ -72,7 +76,7 @@ def produce_dashboard_plots(dashboard_script_fn: FunctionType, api_key: str, max
 
     file_download_url = requests.get(
         api_access_url + '/api/v1/files/download/' + most_recent_file_id,
-        headers=parameters
+        headers=parameters, timeout=timeout
     ).json()['url']
 
     output = dashboard_script_fn(files=files, file_download_url=file_download_url)

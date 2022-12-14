@@ -10,6 +10,11 @@ from scipy import signal
 
 from endaq.calc import stats, utils, filters, integrate, psd, shock
 
+# If `True`, tests will display plots in the browser. Causes issues
+# with Windows tests in GitHub Actions (possibly temporary).
+# TODO: Make this based on whether test is running locally or in a GHA.
+DISPLAY_PLOTS = False
+
 @hyp.given(
     df=hyp_np.arrays(
         dtype=np.float64,
@@ -50,8 +55,9 @@ def test_shock_vibe_metrics(generate_time_dataframe):
     # Calculate Metrics Using Function
     metrics = stats.shock_vibe_metrics(
         generate_time_dataframe, include_resultant=True, include_pseudo_velocity=True,
-        tukey_percent=tukey_percent, highpass_cutoff=highpass_cutoff, display_plots=True, damp=damp,
-        init_freq=init_freq, bins_per_octave=bins_per_octave, accel_units=accel_units, disp_units=disp_units)
+        tukey_percent=tukey_percent, highpass_cutoff=highpass_cutoff,
+        display_plots=DISPLAY_PLOTS, damp=damp, init_freq=init_freq,
+        bins_per_octave=bins_per_octave, accel_units=accel_units, disp_units=disp_units)
 
     # Do Integration Related Calculations
     df = filters.butterworth(
@@ -72,7 +78,8 @@ def test_shock_vibe_metrics(generate_time_dataframe):
 
     np.testing.assert_almost_equal(
         disp.pow(2).sum(axis=1).pow(0.5).abs().max(),
-        metrics[(metrics.variable == 'Resultant') & (metrics.calculation == 'Peak Absolute Displacement')].value[0]
+        metrics[(metrics.variable == 'Resultant') & (metrics.calculation == 'Peak Absolute Displacement')
+                ].value[0]
     )
 
     # Do Frequency Related Calculations
@@ -83,17 +90,19 @@ def test_shock_vibe_metrics(generate_time_dataframe):
 
     np.testing.assert_almost_equal(
         rms_psd_breaks['B'].to_numpy()[0],
-        metrics[(metrics.variable == 'B') & (metrics.calculation == 'RMS from 0 to 65')].value.to_numpy()[0]
+        metrics[(metrics.variable == 'B') & (metrics.calculation == 'RMS from 0 to 65')
+                ].value.to_numpy()[0]
     )
 
     # Do PVSS
-    pvss = shock.shock_spectrum(df * accel_2_disp, init_freq=init_freq, bins_per_octave=bins_per_octave, damp=damp,
-                                mode='pvss', aggregate_axes=True)[
-        'Resultant']
+    pvss = shock.shock_spectrum(df * accel_2_disp, init_freq=init_freq,
+                                bins_per_octave=bins_per_octave, damp=damp,
+                                mode='pvss', aggregate_axes=True)['Resultant']
 
     np.testing.assert_almost_equal(
         pvss.max(),
-        metrics[(metrics.variable == 'Resultant') & (metrics.calculation == 'Peak Pseudo Velocity')].value.to_numpy()[0]
+        metrics[(metrics.variable == 'Resultant') & (metrics.calculation == 'Peak Pseudo Velocity')
+                ].value.to_numpy()[0]
     )
 
 
@@ -110,7 +119,8 @@ def test_find_peak(generate_time_dataframe):
             height=resultant*0.1,
         )[0],
         stats.find_peaks(
-            df, display_plots=True,
+            df,
+            display_plots=DISPLAY_PLOTS,  # Was True, but hangs Windows GHA tests
             time_distance=time_distance,
             threshold_multiplier=0.1,
             threshold_reference="peak",
@@ -127,7 +137,7 @@ def test_find_peak(generate_time_dataframe):
         )[0],
         stats.find_peaks(
             df,
-            display_plots=True,
+            display_plots=DISPLAY_PLOTS,  # Was True, but hangs Windows GHA tests
             time_distance=time_distance,
             threshold_multiplier=4.0,
             threshold_reference="rms",
