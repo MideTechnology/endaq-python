@@ -35,7 +35,7 @@ jobs:
 
       - name: Get pip cache location
         id: pip-cache
-        run: echo "::set-output name=dir::$(pip cache dir)"
+        run: echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
 
       - name: Get date
         id: date
@@ -43,7 +43,7 @@ jobs:
           python -c
           "import datetime;
           now = datetime.datetime.now();
-          print(f'::set-output name=text::{now.year}/{now.month}-part{1 + now.day // 8}')"
+          print(f'text={now.year}/{now.month}-part{1 + now.day // 8}')" >> $GITHUB_OUTPUT
 
       - name: Load pip cache
         uses: actions/cache@v3
