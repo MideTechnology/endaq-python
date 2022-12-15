@@ -26,7 +26,7 @@ jobs:
     steps:
 
       - name: Setup Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -36,17 +36,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Get pip Cache Location
+      - name: Get pip cache location
         id: pip-cache
-        run: echo "::set-output name=dir::$(pip cache dir)"
+        shell: bash
+        run: echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
 
       - name: Get date
         id: date
+        shell: bash
         run: >
           python -c
           "import datetime;
           now = datetime.datetime.now();
-          print(f'::set-output name=text::{now.year}/{now.month}-part{1 + now.day // 8}')"
+          print(f'text={now.year}/{now.month}-part{1 + now.day // 8}')" >> $GITHUB_OUTPUT
 
       - name: Load pip Cache
         uses: actions/cache@v3
