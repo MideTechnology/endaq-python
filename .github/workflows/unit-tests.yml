@@ -39,10 +39,7 @@ jobs:
       - name: Get pip cache location
         id: pip-cache
         shell: bash
-        run: |
-          echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
-          echo "dir=$(pip cache dir)" 
-          
+        run: echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
 
       - name: Get date
         id: date
