@@ -38,18 +38,20 @@ jobs:
 
       - name: Get pip cache location
         id: pip-cache
+        shell: bash
         run: |
-          echo "dir=$(pip cache dir)" >> $env:GITHUB_OUTPUT
+          echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
           echo "dir=$(pip cache dir)" 
           
 
       - name: Get date
         id: date
+        shell: bash
         run: >
           python -c
           "import datetime;
           now = datetime.datetime.now();
-          print(f'text={now.year}/{now.month}-part{1 + now.day // 8}')" >> $env:GITHUB_OUTPUT
+          print(f'text={now.year}/{now.month}-part{1 + now.day // 8}')" >> $GITHUB_OUTPUT
 
       - name: Load pip Cache
         uses: actions/cache@v3
