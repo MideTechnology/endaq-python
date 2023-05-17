@@ -206,7 +206,7 @@ def rolling_enveloped_dashboard(
 
 
         # Loop through each of the sub-channels, and their respective '0-height rectangle mask'
-        for subchannel_name, cur_min_max_equal in min_max_equal[channel_data.columns].iteritems():
+        for subchannel_name, cur_min_max_equal in min_max_equal[channel_data.columns].items():
 
             traces = []
             cur_color = colorway[subplot_num % len(colorway)]
@@ -396,7 +396,7 @@ def rolling_metric_dashboard(channel_df_dict: dict, desired_num_points: int = 25
         else:
             time = channel_data.index
 
-        for c_i, (subchannel_name, subchannel_data) in enumerate(channel_data.iteritems()):
+        for c_i, (subchannel_name, subchannel_data) in enumerate(channel_data.items()):
             for metric in rolling_metrics_to_plot:
                 if n == 0:
                     data = subchannel_data.values
