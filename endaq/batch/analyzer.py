@@ -112,8 +112,8 @@ class CalcCache:
                 timedelta=(pd.TimedeltaIndex, "TimedeltaIndex"),
                 datetime=(pd.DatetimeIndex, "DatetimeIndex"),
                 seconds=(
-                    (pd.Float64Index, pd.Int64Index, pd.UInt64Index, pd.RangeIndex),
-                    "{Float64/Int64/UInt64/Range}Index",
+                    (pd.Index, pd.RangeIndex),
+                    "{Numeric/Range}Index",
                 ),
             )
             if not isinstance(self.data.index, expected_index_types[time_mode][0]):
