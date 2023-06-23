@@ -24,7 +24,7 @@ with open('README.md', 'r', encoding='utf-8') as fh:
 INSTALL_REQUIRES = [
     "backports.cached-property; python_version<'3.8'",
     "ebmlite>=3.2.0",
-    "idelib>=3.2.3",
+    "idelib>=3.2.8",
     "jinja2",
     "numpy>=1.19.5",
     "pandas>=1.3",
