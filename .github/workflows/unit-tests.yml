@@ -49,14 +49,12 @@ jobs:
 
       - name: Get date
         id: date
+        shell: bash
         run: >
           python -c
           "import datetime;
-          import os;
           now = datetime.datetime.now();
-          fh = open(os.environ['GITHUB_OUTPUT'], 'a');
-          print(f'text={now.year}/{now.month}-part{1 + now.day // 8}', file=fh);
-          fh.close()"
+          print(f'text={now.year}/{now.month}-part{1 + now.day // 8}', file=fh)" >> $GITHUB_OUTPUT
 
       - name: Load pip Cache
         uses: actions/cache@v3
