@@ -54,7 +54,7 @@ jobs:
           "import datetime;
           import os;
           now = datetime.datetime.now();
-          fh = open(os.environ['GITHUB_OUTPUT], 'a');
+          fh = open(os.environ['GITHUB_OUTPUT'], 'a');
           print(f'{now.year}/{now.month}-part{1 + now.day // 8}', file=fh);
           fh.close()"
 
