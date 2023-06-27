@@ -6,10 +6,7 @@ from typing import List, Tuple, Optional
 import sys
 import warnings
 
-if sys.version_info[:2] >= (3, 8):
-    from functools import cached_property
-else:
-    from backports.cached_property import cached_property
+from functools import cached_property
 
 import numpy as np
 import pandas as pd
