@@ -1,7 +1,16 @@
 name: Unit test on push and PR
 
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches:
+      - main
+      - development
+  pull_request:
+    branches:
+      - main
+      - development
+  workflow_dispatch:
 
 
 jobs:
@@ -12,10 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
-        python-version: ['3.7', '3.8', '3.9', '3.10', '3.11']
-        exclude:
-          - os: ubuntu-latest
-            python-version: '3.6'
+        python-version: ['3.8', '3.9', '3.10', '3.11']
 
     env:
       OS: ${{ matrix.os }}
@@ -26,7 +32,7 @@ jobs:
     steps:
 
       - name: Setup Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -38,7 +44,7 @@ jobs:
 
       - name: Get pip Cache Location
         id: pip-cache
-        run: echo "::set-output name=dir::$(pip cache dir)"
+        run: echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
 
       - name: Get date
         id: date
@@ -46,7 +52,8 @@ jobs:
           python -c
           "import datetime;
           now = datetime.datetime.now();
-          print(f'::set-output name=text::{now.year}/{now.month}-part{1 + now.day // 8}')"
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+            print(f'text={now.year}/{now.month}-part{1 + now.day // 8}', file=fh)"
 
       - name: Load pip Cache
         uses: actions/cache@v3
