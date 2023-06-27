@@ -51,10 +51,9 @@ jobs:
         run: >
           python -c
           "import datetime;
+          import os;
           now = datetime.datetime.now();
-          fh = open(os.environ['GITHUB_OUTPUT'], 'a');
-          print(f'text={now.year}/{now.month}-part{1 + now.day // 8}', file=fh);
-          fh.close()"
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as fh: print(f'text={now.year}/{now.month}-part{1 + now.day // 8}', file=fh)"
 
       - name: Load pip Cache
         uses: actions/cache@v3
