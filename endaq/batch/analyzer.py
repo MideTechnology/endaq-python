@@ -6,10 +6,7 @@ from typing import List, Tuple, Optional
 import sys
 import warnings
 
-if sys.version_info[:2] >= (3, 8):
-    from functools import cached_property
-else:
-    from backports.cached_property import cached_property
+from functools import cached_property
 
 import numpy as np
 import pandas as pd
@@ -112,8 +109,8 @@ class CalcCache:
                 timedelta=(pd.TimedeltaIndex, "TimedeltaIndex"),
                 datetime=(pd.DatetimeIndex, "DatetimeIndex"),
                 seconds=(
-                    (pd.Float64Index, pd.Int64Index, pd.UInt64Index, pd.RangeIndex),
-                    "{Float64/Int64/UInt64/Range}Index",
+                    (pd.Index, pd.RangeIndex),
+                    "{Numeric/Range}Index",
                 ),
             )
             if not isinstance(self.data.index, expected_index_types[time_mode][0]):
