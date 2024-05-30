@@ -43,6 +43,11 @@ Summarizing IDE files: :py:func:`endaq.ide.get_channel_table()`
 Once an IDE file has been loaded, :py:func:`~endaq.ide.get_channel_table()` will
 retrieve basic summary information about its contents.
 
+Some environments, such as `Jupyter Notebook <https://jupyter.org/>`_ or `Colab <https://colab.research.google.com/>`_,
+will automatically render and display the channel table data. From inside the standard Python interactive interpreter,
+use `get_channel_table(doc).data` to display the raw information, or to access the table's contents directly as a
+Pandas `DataFrame`.
+
 .. code:: python3
 
     get_channel_table(doc)
