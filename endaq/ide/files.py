@@ -11,7 +11,7 @@ from __future__ import annotations
 import typing
 from typing import Union, Tuple
 
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 from pathlib import Path
 import tempfile
@@ -249,7 +249,7 @@ def get_doc(name=None, filename=None, url=None, parsed=True, start=0, end=None,
 
             session_start = doc.lastSession.utcStartTime
             if session_start:
-                session_start = datetime.utcfromtimestamp(session_start)
+                session_start = datetime.fromtimestamp(session_start, tz=timezone.utc)
 
             if start:
                 read_kwargs['startTime'] = parse_time(start, session_start)
@@ -303,7 +303,7 @@ def extract_time(doc, out, start=0, end=None, channels=None, **kwargs):
 
     session_start = doc.lastSession.utcStartTime
     if session_start:
-        session_start = datetime.utcfromtimestamp(session_start)
+        session_start = datetime.fromtimestamp(session_start, tz=timezone.utc)
 
     if start:
         kwargs['startTime'] = parse_time(start, session_start)

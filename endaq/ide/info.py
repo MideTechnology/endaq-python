@@ -179,7 +179,7 @@ def get_channel_table(dataset: typing.Union[idelib.dataset.Dataset, list],
 
         data = source.getSession(session)
         if data.session.utcStartTime:
-            session_start = datetime.datetime.utcfromtimestamp(data.session.utcStartTime)
+            session_start = datetime.datetime.fromtimestamp(data.session.utcStartTime, tz=datetime.timezone.utc)
         start = parse_time(start, session_start)
         end = parse_time(end, session_start)
 
