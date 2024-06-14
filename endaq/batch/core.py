@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from functools import partial
 import warnings
 import os
+import sys
 
 import numpy as np
 import pandas as pd
@@ -206,9 +207,13 @@ def _make_peak_windows(ch_data_cache: analyzer.CalcCache, margin_len):
         )
     )
 
+    # minor version of python 3.x
+    minor_version = sys.version_info.minor
+
     # Format results
+    # Use new implementation of future_stack if Python version >= 3.9
     result = (
-        aligned_peak_data.stack(future_stack=True)
+        aligned_peak_data.stack(future_stack=minor_version>=9)
         .stack()
         .reorder_levels(["axis", "peak time", "peak offset"])
     )
