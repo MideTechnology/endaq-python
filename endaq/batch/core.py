@@ -207,13 +207,10 @@ def _make_peak_windows(ch_data_cache: analyzer.CalcCache, margin_len):
         )
     )
 
-    # minor version of python 3.x
-    minor_version = sys.version_info.minor
-
     # Format results
     # Use new implementation of future_stack if Python version >= 3.9
     levels = ["axis", "peak time", "peak offset"]
-    if sys.version_info< (3, 9):
+    if sys.version_info < (3, 9):
         return aligned_peak_data.stack().stack().reorder_levels(levels)
 
     return aligned_peak_data.stack(future_stack=True).stack().reorder_levels(levels)
