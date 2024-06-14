@@ -212,13 +212,11 @@ def _make_peak_windows(ch_data_cache: analyzer.CalcCache, margin_len):
 
     # Format results
     # Use new implementation of future_stack if Python version >= 3.9
-    result = (
-        aligned_peak_data.stack(future_stack=minor_version>=9)
-        .stack()
-        .reorder_levels(["axis", "peak time", "peak offset"])
-    )
+    levels = ["axis", "peak time", "peak offset"]
+    if minor_version < 9:
+        return aligned_peak_data.stack().stack().recorder_levels(levels)
 
-    return result
+    return aligned_peak_data.stack(future_stack=True).stack().reorder_levels(levels)
 
 
 def _make_vc_curves(ch_data_cache: analyzer.CalcCache):
