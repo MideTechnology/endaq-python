@@ -1,4 +1,4 @@
-![unit tests](https://github.com/midetechnology/endaq-python/actions/workflows/unit-tests.yml/badge.svg) [![codecov](https://codecov.io/gh/MideTechnology/endaq-python/branch/develop/graph/badge.svg)](https://codecov.io/gh/MideTechnology/endaq-python)
+[![PyPI Latest Release](https://img.shields.io/pypi/v/endaq-python.svg)](https://pypi.org/project/endaq-python/) ![example workflow](https://github.com/MideTechnology/endaq-python/actions/workflows/unit-tests.yml/badge.svg)
 
 # `endaq-python`: A comprehensive, user-centric Python API for working with enDAQ data and devices
 
