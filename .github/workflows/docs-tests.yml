@@ -1,7 +1,16 @@
 name: Docs test on push and PR
 
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches:
+      - main
+      - development
+  pull_request:
+    branches:
+      - main
+      - development
+  workflow_dispatch:
 
 
 jobs:
@@ -35,10 +44,12 @@ jobs:
 
       - name: Get pip cache location
         id: pip-cache
+        shell: bash
         run: echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
 
       - name: Get date
         id: date
+        shell: bash
         run: >
           python -c
           "import datetime;
