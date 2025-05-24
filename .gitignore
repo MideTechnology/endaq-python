@@ -179,6 +179,7 @@ cython_debug/
 .idea/**/usage.statistics.xml
 .idea/**/dictionaries
 .idea/**/shelf
+.vscode/*
 
 # Generated files
 .idea/**/contentModel.xml
@@ -244,3 +245,6 @@ fabric.properties
 
 # Test files
 *_scratch.ipynb
+
+# Backup files
+*.bak

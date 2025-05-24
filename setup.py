@@ -65,7 +65,7 @@ setuptools.setup(
         long_description_content_type='text/markdown',
         url='https://github.com/MideTechnology/endaq-python',
         license='MIT',
-        classifiers=['Development Status :: 4 - Beta',
+        classifiers=['Development Status :: 5 - Production/Stable',
                      'License :: OSI Approved :: MIT License',
                      'Natural Language :: English',
                      'Programming Language :: Python :: 3.9',

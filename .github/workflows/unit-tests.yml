@@ -5,11 +5,11 @@ on:
   push:
     branches:
       - main
-#      - development
+      - development
   pull_request:
     branches:
       - main
-#      - development
+      - development
   workflow_dispatch:
 
 

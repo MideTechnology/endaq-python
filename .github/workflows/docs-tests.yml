@@ -76,13 +76,3 @@ jobs:
 
       - name: Run docs spell checker
         run: sphinx-build -b spelling docs docs/_spellcheck
-
-      - name: print debug info
-        if: ${{ always() }}
-        run: |
-          ls /tmp/
-          for file in /tmp/*.log; do
-            echo "---- Contents of $file ----"
-            cat "$file"
-            echo "" # extra newline between files
-          done 
