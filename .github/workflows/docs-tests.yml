@@ -79,7 +79,10 @@ jobs:
 
       - name: print debug info
         if: ${{ always() }}
-        run: 
+        run: |
           ls /tmp/
-          ls ./tmp/
-          cat /tmp/sphinx-err-975cxlqc.log
+          for file in /tmp/*.log; do
+            echo "---- Contents of $file ----"
+            cat "$file"
+            echo "" # extra newline between files
+          done 
