@@ -13,7 +13,7 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 
-import pkg_resources
+from importlib import metadata
 
 import endaq
 
@@ -24,7 +24,7 @@ copyright = '2021, Mide Technology Corp.'
 author = ''
 
 # The full version, including alpha/beta/rc tags
-release = pkg_resources.get_distribution("endaq").version
+release = metadata.version("endaq")
 # The short X.Y version
 version = '.'.join(release.split(".")[:2])
 
