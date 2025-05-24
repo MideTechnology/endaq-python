@@ -4,7 +4,8 @@ import plotly.io as pio
 import plotly.graph_objects as go
 import numpy as np
 import typing
-from typing import Union
+from typing import Union, Optional
+import copy
 
 
 def define_theme(template_name: str = "endaq_cloud", default_plotly_template: str = 'plotly_dark',
@@ -44,7 +45,7 @@ def define_theme(template_name: str = "endaq_cloud", default_plotly_template: st
     pio.templates[template_name]['layout']['colorscale']['diverging'] = [[0.0, '#6914F0'],
                                                                          [0.5, '#f7f7f7'],
                                                                          [1.0, '#EE7F27']]
-    plot_types = ['contour', 'heatmap', 'heatmapgl', 'histogram2d', 'histogram2dcontour', 'surface']
+    plot_types = ['contour', 'heatmap', 'histogram2d', 'histogram2dcontour', 'surface']
     for p in plot_types:
         pio.templates[template_name]['data'][p][0].colorscale = colorbar
 
@@ -151,8 +152,8 @@ def get_center_of_coordinates(lats: np.ndarray, lons: np.ndarray, as_list: bool 
      on the formatting of this return value
     """
     # Create Copy to Not Change Source Data
-    lats = np.copy(lats)
-    lons = np.copy(lons)
+    lats = copy.deepcopy(lats)
+    lons = copy.deepcopy(lons)
 
     # Convert coordinates to radians if given in degrees
     if as_degrees:
@@ -197,7 +198,7 @@ def determine_plotly_map_zoom(
         margin: float = 1.2,
 ) -> float:
     """
-    Finds optimal zoom for a plotly mapbox. Must be passed (``lons`` & ``lats``) or ``lonlats``.
+    Finds optimal zoom for a plotly map. Must be passed (``lons`` & ``lats``) or ``lonlats``.
 
     Originally based on the following post:
     https://stackoverflow.com/questions/63787612/plotly-automatic-zooming-for-mapbox-maps
