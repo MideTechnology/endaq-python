@@ -31,7 +31,7 @@ def _validate_euler_mode(mode: str) -> Tuple[str, List[str]]:
         if not set(_mode).issubset({'x', 'y', 'z'}):
             raise ValueError(f'Modes other than xyz (such as xyz, xyx, zxz) must '
                              f'separated with one of " ", "-" or "_".  Mode '
-                             f'{mode} is not a valid euler angle mode.')
+                             f'{mode} is not a valid Euler angle mode.')
         mode_list = list(_mode)
 
     if not (
@@ -63,18 +63,18 @@ def _validate_euler_mode(mode: str) -> Tuple[str, List[str]]:
 
 def quaternion_to_euler(df: pd.DataFrame, mode: str = 'x-y-z') -> pd.DataFrame:
     """
-    Convert quaternion data in the dataframe ``df`` to euler angles.  This can
+    Convert quaternion data in the dataframe ``df`` to Euler angles.  This can
     be done with either intrinsic or extrinsic rotations, determined
     automatically based on ``mode``.
 
-    :param df:  The input quaternions to convert.  Must have columns labelled
+    :param df:  The input quaternions to convert.  Must have columns labeled
                 'X', 'Y', 'Z', and 'W'.
     :param mode: The order of the axes to rotate.  The default is intrinsic
                  rotation about x-y-z.
-    :return:  A dataframe with the euler-angles of the quaternion data.
+    :return:  A dataframe with the Euler-angles of the quaternion data.
 
     .. seealso::
-        - `SciPy's documentation on converting into euler angles <https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.as_euler.html>`_
+        - `SciPy's documentation on converting into Euler angles <https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.as_euler.html>`_
         - `Wikipedia's article on Euler angles <https://en.wikipedia.org/wiki/Euler_angles>`_
     """
 

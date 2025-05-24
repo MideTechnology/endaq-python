@@ -259,7 +259,7 @@ def gen_map(df_map: pd.DataFrame,
         (defaults to ground speed).
     
     :param df_map: The pandas dataframe containing the recording data.
-    :param mapbox_access_token: Deprecated, the access token is nolonger needed, plots are now made through MapLibre,
+    :param mapbox_access_token: Deprecated, the access token is no longer needed, plots are now made through MapLibre,
         `to learn more, see <https://www.maplibre.org/>`_
         `see Plotly for more information <https://plotly.com/python/tile-map-layers/>`_
     :param lat: The dataframe column title to use for latitude
@@ -651,7 +651,7 @@ def spectrum_over_time(
         *  `Peak`: per timestamp the peak frequency is determined and plotted against time
         *  `Lines`: the value in each frequency bin is plotted against time
     :param var_column: the column name in the dataframe that defines the different variables, default is `"variable"`
-    :param var_to_process: the variable value in the `var_column` to filter the input df down to,
+    :param var_to_process: the variable value in the `var_column` to filter the input `df` down to,
         if none is provided (the default) this function will filter to the first value
     :param time_column: the column name in the dataframe that defines the timestamps, default is `"timestamp"`
     :param freq_column: the column name in the dataframe that defines the frequency, default is `"frequency (Hz)"`

@@ -13,6 +13,15 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 
+import sys
+print(f"{sys.path=}")
+print(f"{__file__=}")
+# go up a dir and include that guy = 
+p = "/".join(__file__.split("/")[:-2])
+sys.path.append(p)
+print(f"{sys.path=}")
+
+
 from importlib import metadata
 
 import endaq
@@ -24,7 +33,8 @@ copyright = '2021, Mide Technology Corp.'
 author = ''
 
 # The full version, including alpha/beta/rc tags
-release = metadata.version("endaq")
+# release = metadata.version("endaq")
+release = '1.5.3'
 # The short X.Y version
 version = '.'.join(release.split(".")[:2])
 
@@ -44,6 +54,7 @@ extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.githubpages',
     'sphinx_plotly_directive',
+    'sphinxcontrib.spelling',
     'nbsphinx',
 ]
 
@@ -64,7 +75,7 @@ master_doc = 'index'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
