@@ -37,6 +37,68 @@ parameters:
 
     doc3 = get_doc("tests/test.ide", start="5s", end="10s")
 
+Accessing measurement data in a doc
+-----------------------------------
+An enDAQ consists of many different sensors, and the enDAQ devices separate their measurement data into separate
+Channels that correspond to the sensor taking the measurement. This is done because each Channel samples at a different
+rate, so while Channel 59 (the Control Pad Pressure/Temperature/Humidity sensor) samples at 10 Hz, Channel 8 (the main
+accelerometer channel) may sample at 20000 Hz. Channels themselves consist of different subchannels, which may be
+different axes (X, Y, Z) or completely different measurements like temperature and pressire. All subchannels in a
+channel are sampled at approximately the same time.
+
+The Channel data are stored in the ``channels`` property of a doc. The easiest way to access this is to convert it to a
+Pandas DataFrame using :py:func:`~endaq.ide.to_pandas(doc)`. Visit `our internal documentation <https://docs.endaq.com/en/latest/webinars/Webinar_Introduction_NumPy_and_Pandas.html#Pandas>`_
+for some quick tips on Pandas, or go `straight to the source <https://pandas.pydata.org/docs/>`_.
+
+.. code:: python3
+
+    import endaq.ide
+    # Read in a doc
+    doc2 = endaq.ide.get_doc("https://drive.google.com/file/d/1t3JqbZGhuZbIK9agH24YZIdVE26-NOF5/view?usp=sharing")
+    # List the available Channels
+    print(f"{doc2.channels=}")
+    # Convert the Control Pad Pressure/Temperature/Humidity Channel (Channel 59) to a Pandas DataFrame
+    control_pad_data = endaq.ide.to_pandas(doc2.channels[59])
+    # Print the subchannel names
+    print(f"{control_pad_data.columns=}")
+    # Print the max and min temperatures seen
+    print(f"Max Temp={control_pad_data['Control Pad Temperature'].max()}, Min Temp={control_pad_data['Control Pad Temperature'].min()}")
+
+The output of the above code is:
+
+.. code-block::
+
+    doc2.channels={32: <Channel 32 '16g DC Acceleration': Acceleration (g)>, 80: <Channel 80 '8g DC Acceleration': Acceleration (g)>, 36: <Channel 36 'Pressure/Temperature': Pressure (Pa), Temperature (°C)>, 70: <Channel 70 'Relative Orientation': Quaternion (q)>, 59: <Channel 59 'Control Pad Pressure/Temperature/Humidity': Pressure (Pa), Temperature (°C)>, 76: <Channel 76 'Light Sensor': Light (Ill), Light (Index)>}
+    control_pad_data.columns=Index(['Control Pad Pressure', 'Control Pad Temperature'], dtype='object')
+    Max Temp=24.899999618530273, Min Temp=24.260000228881836
+
+Note that by default, :py:func:`~endaq.ide.to_pandas(doc)` uses ``datetime`` for the index format, meaning the
+measurements are accessed based on the absolute time they were recorded. Users often prefer to access the data using
+``timedelta``, the amount of time since the recording started. Using this, to get the duration of the Control Pad data
+and the average of the first 5 seconds, we could use:
+
+.. code:: python3
+
+    import endaq.ide
+    import pandas as pd
+    # Read in a doc
+    doc2 = endaq.ide.get_doc("https://drive.google.com/file/d/1t3JqbZGhuZbIK9agH24YZIdVE26-NOF5/view?usp=sharing")
+    # Convert the Control Pad Pressure/Temperature/Humidity Channel (Channel 59) to a Pandas DataFrame
+    control_pad_data = endaq.ide.to_pandas(doc2.channels[59], time_mode='timedelta')
+    # Print the time duration
+    print(f"Duration={control_pad_data.index[-1]-control_pad_data.index[0]}")
+    # Print the mean of the first 5 seconds
+    print(f"{control_pad_data[pd.Timedelta(seconds=0):pd.Timedelta(seconds=5)].mean()}")
+
+The output of the above code is:
+
+.. code-block::
+
+    Duration=0 days 00:00:17.931518
+    Control Pad Pressure       101728.414991
+    Control Pad Temperature        24.607073
+    dtype: float64
+
 Summarizing IDE files: :py:func:`endaq.ide.get_channel_table()`
 ---------------------------------------------------------------
 
