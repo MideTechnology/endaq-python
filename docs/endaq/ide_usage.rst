@@ -37,16 +37,16 @@ parameters:
 
     doc3 = get_doc("tests/test.ide", start="5s", end="10s")
 
-Accessing measurement data in a doc
------------------------------------
-An enDAQ consists of many different sensors, and the enDAQ devices separate their measurement data into separate
+Accessing measurement data in a Dataset/IDE file
+------------------------------------------------
+An enDAQ device consists of many different sensors, and enDAQ devices record their measurement data into separate
 Channels that correspond to the sensor taking the measurement. This is done because each Channel samples at a different
 rate, so while Channel 59 (the Control Pad Pressure/Temperature/Humidity sensor) samples at 10 Hz, Channel 8 (the main
-accelerometer channel) may sample at 20000 Hz. Channels themselves consist of different subchannels, which may be
-different axes (X, Y, Z) or completely different measurements like temperature and pressire. All subchannels in a
+analog accelerometer channel) may sample at 20000 Hz. Channels themselves consist of different subchannels, which may be
+different axes (X, Y, Z) or completely different measurements like temperature and pressure. All subchannels in a
 channel are sampled at approximately the same time.
 
-The Channel data are stored in the ``channels`` property of a doc. The easiest way to access this is to convert it to a
+The Channel data are stored in the ``channels`` property of a Dataset. The easiest way to access this is to convert it to a
 Pandas DataFrame using :py:func:`~endaq.ide.to_pandas(doc)`. Visit `our internal documentation <https://docs.endaq.com/en/latest/webinars/Webinar_Introduction_NumPy_and_Pandas.html#Pandas>`_
 for some quick tips on Pandas, or go `straight to the source <https://pandas.pydata.org/docs/>`_.
 
