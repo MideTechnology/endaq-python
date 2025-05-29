@@ -46,7 +46,7 @@ analog accelerometer channel) may sample at 20000 Hz. Channels themselves consis
 different axes (X, Y, Z) or completely different measurements like temperature and pressure. All subchannels in a
 channel are sampled at approximately the same time.
 
-The Channel data are stored in the ``channels`` property of a Dataset. The easiest way to access this is to convert it to a
+The Channel data are stored in the ``channels`` property of a Dataset, which is returned from the :py:func:`~endaq.ide.get_doc() function. The easiest way to access this is to convert it to a
 Pandas DataFrame using :py:func:`~endaq.ide.to_pandas(doc)`. Visit `our internal documentation <https://docs.endaq.com/en/latest/webinars/Webinar_Introduction_NumPy_and_Pandas.html#Pandas>`_
 for some quick tips on Pandas, or go `straight to the source <https://pandas.pydata.org/docs/>`_.
 
