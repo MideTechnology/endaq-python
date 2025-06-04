@@ -22,16 +22,16 @@ jobs:
 
     env:
       OS: ubuntu-latest
-      PYTHON-VERSION: "3.9"
+      PYTHON-VERSION: "3.13"
 
     runs-on: ubuntu-latest
 
     steps:
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: "3.13"
 
       - name: Install Pandoc
         run: sudo apt-get install pandoc
@@ -40,7 +40,7 @@ jobs:
         run: python -m pip install --upgrade pip
 
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Get pip cache location
         id: pip-cache
@@ -57,10 +57,10 @@ jobs:
           print(f'text={now.year}/{now.month}-part{1 + now.day // 8}')" >> $GITHUB_OUTPUT
 
       - name: Load pip cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
-          key: doctests-${{ runner.os }}-Python3.9-${{ steps.date.outputs.text }}-pip-${{ hashFiles('**/setup.py', './.github/workflows/unit-tests.yml') }}
+          key: doctests-${{ runner.os }}-Python3.13-${{ steps.date.outputs.text }}-pip-${{ hashFiles('**/setup.py', './.github/workflows/unit-tests.yml') }}
 
       - name: Install spellcheck library
         run: sudo apt-get install libenchant-2-2

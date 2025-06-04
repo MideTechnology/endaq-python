@@ -259,11 +259,9 @@ def gen_map(df_map: pd.DataFrame,
         (defaults to ground speed).
     
     :param df_map: The pandas dataframe containing the recording data.
-    :param mapbox_access_token: The access token (or API key) needed to be able to plot against a map using Mapbox,
-        `create a free account here <https://www.mapbox.com/pricing>`_
-
-        * If no access token is provided, a `"stamen-terrain"` tile will be used,
-            `see Plotly for more information <https://plotly.com/python/mapbox-layers/>`_
+    :param mapbox_access_token: Deprecated, the access token is no longer needed, plots are now made through MapLibre,
+        `to learn more, see <https://www.maplibre.org/>`_
+        `see Plotly for more information <https://plotly.com/python/tile-map-layers/>`_
     :param lat: The dataframe column title to use for latitude
     :param lon: The dataframe column title to use for longitude
     :param color_by_column: The dataframe column title to color the plotted points by.
@@ -321,21 +319,16 @@ def gen_map(df_map: pd.DataFrame,
     zoom = determine_plotly_map_zoom(lats=df_map[lat], lons=df_map[lon])
     center = get_center_of_coordinates(lats=df_map[lat], lons=df_map[lon])
     
-    px.set_mapbox_access_token(mapbox_access_token)
-    
-    fig = px.scatter_mapbox(
+    fig = px.scatter_map(
         df_map,
         lat=lat,
         lon=lon,
         color=color_by_column,
         hover_data=hover_data,
         size_max=size_max,
-        zoom=zoom + zoom_offset,
+        zoom=int(zoom + zoom_offset),
         center=center,
     )
-
-    if mapbox_access_token is None:
-        fig.update_layout(mapbox_style="stamen-terrain")
 
     return fig.update_layout(margin={"r": 20, "t": 20, "l": 20, "b": 0})
     
@@ -658,7 +651,7 @@ def spectrum_over_time(
         *  `Peak`: per timestamp the peak frequency is determined and plotted against time
         *  `Lines`: the value in each frequency bin is plotted against time
     :param var_column: the column name in the dataframe that defines the different variables, default is `"variable"`
-    :param var_to_process: the variable value in the `var_column` to filter the input df down to,
+    :param var_to_process: the variable value in the `var_column` to filter the input `df` down to,
         if none is provided (the default) this function will filter to the first value
     :param time_column: the column name in the dataframe that defines the timestamps, default is `"timestamp"`
     :param freq_column: the column name in the dataframe that defines the frequency, default is `"frequency (Hz)"`

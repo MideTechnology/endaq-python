@@ -5,14 +5,29 @@ sinusoids
 centric
 
 enDAQ
+Mide
 NumPy
 SciPy
 Pandas
 Plotly
+Matplotlib
+Colab
+Jupyter
+Seaborn
 Tukey
 Chebyshev
 Butterworth
 Fourier
+Heatmaps
+ide
+calc
+endaq
+accel
+str
+psd
+pkl
+kth
+GetDataBuilder
 
 basename
 pathname
@@ -24,6 +39,7 @@ subchannel
 subchannels
 DataFrame
 dataframe
+dataframes
 ndarray
 dropdown
 iterable
@@ -36,6 +52,7 @@ periodogram
 periodograms
 spectrogram
 spectrograms
+spectrums
 resample
 resampled
 resampling
@@ -43,3 +60,5 @@ SNE
 integrations
 quaternion
 quaternions
+Welch
+kurtosis
