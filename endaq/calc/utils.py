@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import typing
-from typing import Optional, Union
+from typing import Optional, Union, Literal
 import warnings
 
 import numpy as np
@@ -161,9 +161,9 @@ def resample(df: pd.DataFrame, sample_rate: Optional[float] = None) -> pd.DataFr
         index=resampled_time.astype(df.index.dtype),
         columns=df.columns,
     )
-    
+
     resampled_df.index.name = df.index.name
-    
+
     return resampled_df
 
 
@@ -343,3 +343,98 @@ def convert_units(
         for i, c in enumerate(df.columns):
             converted_df[c] = vals[:, i]
         return converted_df
+
+
+def to_altitude(df: pd.DataFrame,
+                base_altitude: float = 0,
+                base_press: Optional[float] = 101325,
+                base_temp: Optional[float] = 15,
+                units: Literal['m', 'ft'] = 'm') -> pd.DataFrame:
+    """
+    Converts pressure (Pascals) to altitude (feet or meters).
+
+    :param df: pandas DataFrame of one of the temperature/pressure channels. 
+        The pressure column (named "Pressure (Pa)") should be present, if not 
+        raise an error listing the expected column name that is absent
+    :param base_altitude: H_b; Height at the bottom of atmospheric layer in 
+        meters [m]
+    :param base_press: P_b; static pressure (pressure at sea level) in Pascals 
+        [Pa]. If set to None, use the first pressure measurement
+    :param base_temp: T_b standard temperature (temperature at sea level) in 
+        Celsius [C]. If set to None and a Temperature column (named 
+        "Temperature (C)") exists, use the first temperature value. If set to 
+        None and no temperature column exists, error out
+    :param units: determines if altitude is represented in meters ('m') or feet 
+        ('ft')
+    :returns: a pandas DataFrame with the same Index values as the 
+        input, and a column of “Altitude (m)” or “Altitude (ft)” data.
+    """
+    # Initial Check for Necessary Data
+    if "Pressure (Pa)" not in df.columns:
+        raise TypeError("'Pressure' column does not exist.")
+
+    # Conversion Constants
+    C_K = 273.15 # Celsius to Kelvin Constant (C + 273.15 = K)
+    ft_m = 0.3048 # Feet to Meters Constant (ft * 0.3048 = m) & (m / 0.3048 = ft)
+
+    # Constants
+    h_s = 11000 # Height at the Start of the Stratosphere (meters)
+    L_b = -0.0065 # Standard Temperature Lapse Rate [K/m]
+    g_0 = 9.80665 # Gravitational Acceleration Constant [m/s^2]
+    R = 8.31432 # Universal Gas Constant [N*m/mol*K]
+    M = 0.0289644 # Molar Mass of Earth's Air [kg/mol]
+
+    # Constants from Parameters
+    press_col_index = df.columns.get_loc("Pressure (Pa)")
+
+    if base_temp == None:
+        if "Temperature (C)" not in df.columns:
+            raise TypeError("Temp set to None with no existing temperature column.")
+        else:
+            temp_col_index = df.columns.get_loc("Temperature (C)")
+            T_b = df.iloc[0, temp_col_index] + C_K # Standard Temperature in Kelvin
+    else:
+        T_b = base_temp + C_K # Standard Temperature in Kelvin
+
+    if base_press == None:
+        # Set to first pressure recording in the dataframe
+        P_b = df.iloc[0, press_col_index] # Static Pressure in Pascals
+    else:
+        P_b = base_press # Static Pressure in Pascals
+
+    if units == "ft":
+        h_b = base_altitude * ft_m # Height at Bottom of Atmospheric Layer in Meters
+    else:
+        h_b = base_altitude # Height at Bottom of Atmospheric Layer in Meters
+
+    # List of Altitudes to be added to Dataframe
+    altitude_column = []
+
+    # Pressure at base of stratosphere
+    stratosphere_pressure = (P_b * ((L_b * ((T_b / L_b) - h_b + h_s) / T_b) **
+                                    ((-g_0 * M) / (R * L_b))))
+
+    # Calculate Altitude for the DataFrame
+    for index, row in df.iterrows():
+        P = row["Pressure (Pa)"]
+        if P > stratosphere_pressure:
+            h = h_b + (T_b / L_b) * (((P / P_b) ** ((-R * L_b) / (g_0 * M))) - 1)
+            altitude_column.append(h)
+        else:
+            h = h_b + ((R * T_b * np.log(P / P_b)) / (-g_0 * M))
+            altitude_column.append(h)
+
+    # Convert Altitude back to feet if specified
+    if units == 'ft':
+        altitude_column = [x / ft_m for x in altitude_column]
+        # Add "Altitude (ft)" Column to Copy of Original Dataframe
+        alt_df = df.copy()
+        alt_df["Altitude (ft)"] = altitude_column
+
+    # Add "Altitude (m)" Column to Copy of Original Dataframe
+    if units == 'm':
+        alt_df = df.copy()
+        alt_df["Altitude (m)"] = altitude_column
+
+    # Return DataFrame with New Altitude Column
+    return alt_df
