@@ -411,8 +411,8 @@ def to_altitude(df: pd.DataFrame,
     altitude_column = []
 
     # Pressure at base of stratosphere
-    stratosphere_pressure = (P_b * ((L_b * ((T_b / L_b) - h_b + h_s) / T_b) **
-                                    ((-g_0 * M) / (R * L_b))))
+    stratosphere_pressure = (P_b * (1 + (L_b / T_b) * (h_s - h_b)) **
+                             ((-g_0 * M) / (R * L_b)))
 
     # Calculate Altitude for the DataFrame
     for index, row in df.iterrows():
