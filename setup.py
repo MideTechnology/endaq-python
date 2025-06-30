@@ -26,7 +26,7 @@ INSTALL_REQUIRES = [
     "ebmlite>=3.2.0",
     "idelib>=3.2.8",
     "jinja2",
-    "numpy>1.19.5,<=2.3.0",
+    "numpy>1.19.5,<2.3.0",
     "pandas>=1.3",
     "plotly>=5.3.1",
     "pynmeagps",
