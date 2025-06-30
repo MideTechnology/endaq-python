@@ -175,3 +175,24 @@ def test_to_altitude():
     altitude_list_default = [round(num, 2) for num in altitude_list_default]
     assert (altitude_list_default == def_key
             ), "Equation is not accurate for units='ft'."
+
+    # Base Values = None
+    base_none_df =  utils.to_altitude(df=df, base_press=None, base_temp=None)
+    altitude_list_none = base_none_df['Altitude (m)'].tolist()
+    altitude_list_none = [round(num, 2) for num in altitude_list_default]
+    assert (altitude_list_none == def_key
+            ), "Equation is not accurate with base settings = None."
+
+    # Errors
+    temp_df = pd.read_csv("tests/calc/csv_to_df/temp_error.csv")
+    press_df = df = pd.read_csv("tests/calc/csv_to_df/press_error.csv")
+
+    # No temperature column
+    with pytest.raises(TypeError) as exc_info:
+        test_to_altitude(df=temp_df, base_temp=None)
+    assert (exc_info.type == TypeError), "Error not raised for missing temperature column."
+
+    # No pressure column
+    with pytest.raises(TypeError) as exc_info:
+        test_to_altitude(df=press_df, base_press=None)
+    assert (exc_info.type == TypeError), "Error not raised for missing pressure column."
