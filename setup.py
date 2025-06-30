@@ -32,7 +32,7 @@ INSTALL_REQUIRES = [
     "pynmeagps",
     "python-dotenv>=0.18.0",
     "requests>=2.25.1",
-    "scipy>=1.7.1",
+    "scipy>=1.7.1,<1.16.0",
     "pint>=0.18"
     ]
 
