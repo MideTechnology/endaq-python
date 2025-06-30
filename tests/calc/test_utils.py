@@ -167,32 +167,48 @@ def test_to_altitude():
 
     # Feet --> Meters --> Feet
     # DataFrame 1; Default settings; Units = Feet:
-    def_key = [0.00, 363.79, 1772.76, 3243.11, 4781.17, 6394.32, 8091.29,
+    def_ft_key = [0.00, 363.79, 1772.76, 3243.11, 4781.17, 6394.32, 8091.29,
                9882.49, 11780.47, 13800.61, 15962.0, 18288.84, 20812.4,
                23574.27, 26631.46, 30065.48, 33999.16]
     default_df = utils.to_altitude(df=df, units='ft')
     altitude_list_default = default_df['Altitude (ft)'].tolist()
     altitude_list_default = [round(num, 2) for num in altitude_list_default]
-    assert (altitude_list_default == def_key
+    assert (altitude_list_default == def_ft_key
             ), "Equation is not accurate for units='ft'."
 
     # Base Values = None
     base_none_df =  utils.to_altitude(df=df, base_press=None, base_temp=None)
     altitude_list_none = base_none_df['Altitude (m)'].tolist()
-    altitude_list_none = [round(num, 2) for num in altitude_list_default]
+    altitude_list_none = [round(num, 2) for num in altitude_list_none]
     assert (altitude_list_none == def_key
             ), "Equation is not accurate with base settings = None."
 
-    # Errors
+    # Error test dfs
     temp_df = pd.read_csv("tests/calc/csv_to_df/temp_error.csv")
     press_df = df = pd.read_csv("tests/calc/csv_to_df/press_error.csv")
+    beyond_strat_df = pd.read_csv("tests/calc/csv_to_df/beyond_stratosphere.csv")
 
     # No temperature column
     with pytest.raises(TypeError) as exc_info:
-        test_to_altitude(df=temp_df, base_temp=None)
+        utils.to_altitude(df=temp_df, base_temp=None)
     assert (exc_info.type == TypeError), "Error not raised for missing temperature column."
 
     # No pressure column
     with pytest.raises(TypeError) as exc_info:
-        test_to_altitude(df=press_df, base_press=None)
+        utils.to_altitude(df=press_df, base_press=None)
     assert (exc_info.type == TypeError), "Error not raised for missing pressure column."
+
+    # Beyond stratosphere (50km)
+    with pytest.raises(ValueError) as exc_info:
+        utils.to_altitude(df=beyond_strat_df)
+    assert(exc_info.type == ValueError), "Error not raised when above stratosphere."
+
+    # Stratosphere Tests
+    df_2 = pd.read_csv("tests/calc/csv_to_df/stratosphere.csv")
+    strat_key = [11784.05, 12452.21, 13199.14, 14045.95, 15023.51, 16179.72,
+                 17594.82, 19419.19, 21990.49, 26386.17, 35177.52]
+    strat_df = utils.to_altitude(df=df_2)
+    altitude_list_strat = strat_df['Altitude (m)'].tolist()
+    altitude_list_strat = [round(num, 2) for num in altitude_list_strat]
+    assert (altitude_list_strat == strat_key
+            ), "Equation is not accurate in the Stratosphere."
