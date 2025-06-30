@@ -119,7 +119,7 @@ def test_to_altitude():
     to altitude. These tests only cover measurements BELOW the stratosphere.
     """
     # Pressure Data CSV File --> DataFrame
-    df = pd.read_csv("./csv_to_df/default_sea_lvl.csv")
+    df = pd.read_csv("tests/calc/csv_to_df/default_sea_lvl.csv")
 
     # Meters
     # DataFrame 1; Default settings:
