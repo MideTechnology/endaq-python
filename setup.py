@@ -42,6 +42,7 @@ TEST_REQUIRES = [
     "pytest-cov",
     "pytest-xdist[psutil]",
     "sympy",
+    "numpy<=2.3.0"
     ]
 
 DOCS_REQUIRES = [
