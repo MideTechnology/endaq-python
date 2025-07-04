@@ -292,7 +292,7 @@ def assert_output_is_valid(output: endaq.batch.core.OutputStruct):
 @pytest.mark.filterwarnings("ignore:no acceleration channel in:UserWarning")
 @pytest.mark.filterwarnings(
     "ignore"
-    ":nperseg .* is greater than input length .*, using nperseg .*"
+    ":.*nperseg.* is greater than (signal|input) length.*, using nperseg .*"
     ":UserWarning"
 )
 def test_aggregate_data(getdata_builder):
