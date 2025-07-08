@@ -1,6 +1,6 @@
 ``endaq``: the Python library for enDAQ sensors
 ===============================================
-The ``endaq`` package is a comprehensive, user-centric Python API for working with enDAQ™ data and devices.
+The ``endaq`` package is a comprehensive, user-centric Python API for working with data recorded by enDAQ™ devices.
 
 .. toctree::
    :maxdepth: 2

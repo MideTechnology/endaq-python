@@ -6,3 +6,4 @@ import endaq.batch
 
 
 __version__ = "1.5.3"
+__copyright__ = "Copyright 2025 Midé Technology Corporation"

@@ -24,23 +24,25 @@ sys.path.insert(0, p)
 
 # -- Project information -----------------------------------------------------
 
-def get_version(rel_path):
-    """ Read the version number directly from the source. """
+def get_info(rel_path, name, default=None):
     with codecs.open(rel_path, 'r') as fp:
         for line in fp:
-            if line.startswith('__version__'):
+            if line.startswith(name):
                 delim = '"' if '"' in line else "'"
                 return line.split(delim)[1]
         else:
-            raise RuntimeError("Unable to find version string.")
+            if default is not None:
+                return default
+            raise RuntimeError(f"Unable to find {name!r} in {rel_path}.")
 
 
 project = 'enDAQ'
-copyright = '2021, Mide Technology Corp.'
-author = ''
 
 # The full version, including alpha/beta/rc tags
-release = get_version(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'endaq', '__init__.py')))
+init_name = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'endaq', '__init__.py'))
+release = get_info(init_name, '__version__')
+copyright = get_info(init_name, '__copyright__')
+author = get_info(init_name, '__author__', '')
 
 # The short X.Y version
 version = '.'.join(release.split(".")[:2])
@@ -224,7 +226,12 @@ epub_exclude_files = ['search.html']
 # -- Options for intersphinx extension ---------------------------------------
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'python': ('https://docs.python.org/2', None)}
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'ebmlite': ('https://mide-technology-ebmlite.readthedocs-hosted.com/en/latest/', None),
+    'idelib': ('https://mide-technology-idelib.readthedocs-hosted.com/en/develop/', None),
+    'endaq-device': ('https://mide-technology-endaq-device.readthedocs-hosted.com/en/latest/', None),
+    }
 
 # -- Options for spellchecker ------------------------------------------------
 
