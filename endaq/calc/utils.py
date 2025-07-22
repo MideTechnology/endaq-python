@@ -346,38 +346,42 @@ def convert_units(
 
 
 def to_altitude(df: pd.DataFrame,
-                base_altitude: float = 0,
                 base_press: Optional[float] = 101325,
                 base_temp: Optional[float] = 15,
+                temp_col_index: Optional[int] = None,
+                press_col_index: Optional[int] = None,
                 units: Literal['m', 'ft'] = 'm') -> pd.DataFrame:
     """
     Converts pressure (Pascals) to altitude (feet or meters) up to 50km.
 
     :param df: pandas DataFrame of one of the temperature/pressure channels. 
-        The pressure column (named "Pressure (Pa)") should be present, if not 
-        raise an error listing the expected column name that is absent
-    :param base_altitude: h_b; Height at the bottom of atmospheric layer in 
-        meters (m)
-    :param base_press: P_b; static pressure (pressure at sea level) in Pascals 
-        (Pa). If set to None, use the first pressure measurement
-    :param base_temp: T_b standard temperature (temperature at sea level) in 
-        Celsius (C). If set to None and a Temperature column (named 
-        "Temperature (C)") exists, use the first temperature value. If set to 
-        None and no temperature column exists, error out
+        A pressure column should be present, if not, raise an error
+    :param base_press: P_b; reference pressure (pressure at sea level) in
+        Pascals (Pa). If set to None, use the first pressure measurement
+        included in the dataframe (df)
+    :param base_temp: T_b reference temperature (temperature at sea level) in 
+        Celsius (C). If set to None and a Temperature column exists in the
+        dataframe (df), use the first listed temperature value. If set to None
+        and no temperature column exists, error out
+    :param temp_col_index: the index (starting at 0) in the dataframe (df) of
+        the temperature column to pull data from.
+    :param press_col_index: the index (starting at 0) in the dataframe (df) of
+        the pressure column to pull data from
     :param units: determines if altitude is represented in meters ('m') or feet 
-        ('ft')
+        ('ft') in both the input and output dataframes
     :returns: a pandas DataFrame with the same Index values as the 
-        input, and a column of “Altitude (m)” or “Altitude (ft)” data.
+        input, and an added column of “Altitude (m)” or “Altitude (ft)” data
     """
-    # Initial Check for Necessary Data
-    if "Pressure (Pa)" not in df.columns:
-        raise TypeError("'Pressure' column does not exist.")
+    # Column Name Placeholders
+    temp_col = None
+    press_col = None
 
     # Conversion Constants
     C_K = 273.15 # Celsius to Kelvin Constant (C + 273.15 = K)
     ft_m = 0.3048 # Feet to Meters Constant (ft * 0.3048 = m) & (m / 0.3048 = ft)
 
     # Constants
+    h_b = 0 # Reference Height of Sea Level (m)
     h_sb = 11000 # Height at the Base of the Stratosphere (meters)
     h_st = 50000 # Height at the Top of the Stratosphere (meters)
     L_b = -0.0065 # Standard Temperature Lapse Rate [K/m]
@@ -386,30 +390,40 @@ def to_altitude(df: pd.DataFrame,
     M = 0.0289644 # Molar Mass of Earth's Air [kg/mol]
     top_stratosphere_pressure = 100 # Air Pressure at Stratopause (1mb)=[100 Pa]
 
-    # Constants from Parameters
-    press_col_index = df.columns.get_loc("Pressure (Pa)")
+    # Finding pressure column
+    if press_col_index is None:
+        for col in df.columns:
+            if "press" in col.lower():
+                press_col = col
+                press_col_index = df.columns.get_loc(press_col)
+                break
+        if press_col is None:
+            raise ValueError("Pressure column not found.")
+    else:
+        press_col = df.columns[press_col_index]
 
+    # Checking for base temp and converting to K
     if base_temp == None:
-        if "Temperature (C)" not in df.columns:
-            raise TypeError("Temp set to None with no existing temperature column.")
-        else:
-            temp_col_index = df.columns.get_loc("Temperature (C)")
-            T_b = df.iloc[0, temp_col_index] + C_K # Standard Temperature in Kelvin
-            T_bS = T_b -71.5 # Temperature at start of Stratosphere
+        if temp_col_index is None:
+            for col in df.columns:
+                if "temp" in col.lower():
+                    temp_col = col
+                    temp_col_index = df.columns.get_loc(temp_col)
+                    break
+            if temp_col is None:
+                raise ValueError('Temperature column not found.')
+        T_b = df.iloc[0, temp_col_index] + C_K # Standard Temperature in Kelvin
+        T_bS = T_b -71.5 # Temperature at start of Stratosphere
     else:
         T_b = base_temp + C_K # Standard Temperature in Kelvin
         T_bS = T_b -71.5 # Temperature at start of Stratosphere
 
+    # Checking for base pressure
     if base_press == None:
         # Set to first pressure recording in the dataframe
         P_b = df.iloc[0, press_col_index] # Static Pressure in Pascals
     else:
         P_b = base_press # Static Pressure in Pascals
-
-    if units == "ft":
-        h_b = base_altitude * ft_m # Height at Bottom of Atmospheric Layer in Meters
-    else:
-        h_b = base_altitude # Height at Bottom of Atmospheric Layer in Meters
 
     # Pressure at base of Stratosphere
     base_stratosphere_pressure = (P_b * (1 + (L_b / T_b) * (h_sb - h_b)) **
@@ -420,7 +434,7 @@ def to_altitude(df: pd.DataFrame,
 
     # Calculate Altitude for the DataFrame
     for index, row in df.iterrows():
-        P = row["Pressure (Pa)"]
+        P = row[press_col]
         if P > base_stratosphere_pressure:
             h = h_b + (T_b / L_b) * (((P / P_b) ** ((-R * L_b) / (g_0 * M))) - 1)
             altitude_column.append(h)

@@ -116,7 +116,7 @@ def test_convert_units():
 def test_to_altitude():
     """
     Tests the accuracy of the to_altitude function, which converts air pressure
-    to altitude. These tests only cover measurements BELOW the stratosphere.
+    to altitude. 
     """
     # Pressure Data CSV File --> DataFrame
     df = pd.read_csv("tests/calc/csv_to_df/default_sea_lvl.csv")
@@ -189,14 +189,14 @@ def test_to_altitude():
     beyond_strat_df = pd.read_csv("tests/calc/csv_to_df/beyond_stratosphere.csv")
 
     # No temperature column
-    with pytest.raises(TypeError) as exc_info:
+    with pytest.raises(ValueError) as exc_info:
         utils.to_altitude(df=temp_df, base_temp=None)
-    assert (exc_info.type == TypeError), "Error not raised for missing temperature column."
+    assert (exc_info.type == ValueError), "Error not raised for missing temperature column."
 
     # No pressure column
-    with pytest.raises(TypeError) as exc_info:
+    with pytest.raises(ValueError) as exc_info:
         utils.to_altitude(df=press_df, base_press=None)
-    assert (exc_info.type == TypeError), "Error not raised for missing pressure column."
+    assert (exc_info.type == ValueError), "Error not raised for missing pressure column."
 
     # Beyond stratosphere (50km)
     with pytest.raises(ValueError) as exc_info:
