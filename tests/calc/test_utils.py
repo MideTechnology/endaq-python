@@ -113,102 +113,59 @@ def test_convert_units():
     np.testing.assert_allclose(utils.convert_units('degC', 'degF', df).Val[1], 32)
 
 
-def test_to_altitude():
+# Dataframes for the following altitude test
+df_1 = pd.read_csv("tests/calc/csv_to_df/default_sea_lvl.csv")
+df_strat = pd.read_csv("tests/calc/csv_to_df/stratosphere.csv")
+
+@pytest.mark.parametrize("kwargs, key", [
+    ({"df": df_1}, "default_settings.csv"),
+    ({"df": df_1, "base_temp": 30}, "diff_base_temp.csv"),
+    ({"df": df_1, "base_press": 100000}, "diff_base_pressure.csv"),
+    ({"df": df_1, "base_temp": 30, "base_press": 100000}, "diff_temp_and_pressure.csv"),
+    ({"df": df_1, "units":'ft'}, "units_feet.csv"),
+    ({"df": df_1, "base_press": None, "base_temp": None}, "base_values_none.csv"),
+    ({"df": df_strat}, "stratosphere.csv"),
+    ])
+def test_to_altitude(kwargs, key):
     """
     Tests the accuracy of the to_altitude function, which converts air pressure
     to altitude. 
     """
-    # Pressure Data CSV File --> DataFrame
-    df = pd.read_csv("tests/calc/csv_to_df/default_sea_lvl.csv")
+    possible_altitude_cols = ['Altitude (m)', 'Altitude (ft)']
+    altitude_col = None
 
-    # Meters
-    # DataFrame 1; Default settings:
-    def_key = [0.00, 110.88, 540.34, 988.50, 1457.30, 1948.99, 2466.23,
-                3012.18, 3590.69, 4206.43, 4865.22, 5574.44, 6343.62, 7185.44,
-                8117.27, 9163.96, 10362.95]
-    default_df = utils.to_altitude(df=df)
-    altitude_list_default = default_df['Altitude (m)'].tolist()
-    altitude_list_default = [round(num, 2) for num in altitude_list_default]
-    assert (altitude_list_default == def_key
-            ), "Equation is not accurate with default settings."
+    key_df = pd.read_csv("tests/calc/csv_to_df/keys/" + key)
+    key_list = key_df['Key'].tolist()
+
+    to_alt_df = utils.to_altitude(**kwargs)
+    for col in possible_altitude_cols:
+        if col in to_alt_df.columns:
+            altitude_col = col
+            break
+
+    to_alt_list = to_alt_df[altitude_col].tolist()
+    to_alt_list = [round(num, 2) for num in to_alt_list]
+    assert (to_alt_list == key_list
+            ), f"Equation is not accurate when {key_df.columns[1]}."
 
 
-    # DataFrame 2; Different base temperature:
-    temp_key = [0.00, 116.66, 568.47, 1039.96, 1533.16, 2050.45, 2594.61,
-                3168.99, 3777.61, 4425.40, 5118.48, 5864.62, 6673.85, 7559.48,
-                8539.82, 9641.00, 10902.40]
-    diff_temp_df = utils.to_altitude(df=df, base_temp=30)
-    altitude_list_diff_temp = diff_temp_df['Altitude (m)'].tolist()
-    altitude_list_diff_temp = [round(num, 2) for num in altitude_list_diff_temp]
-    assert (altitude_list_diff_temp == temp_key
-            ), "Equation is not accurate with non-default base temperature."
+# Dataframes for the following altitude error test
+df_err_temp = pd.read_csv("tests/calc/csv_to_df/temp_error.csv")
+df_err_press = pd.read_csv("tests/calc/csv_to_df/press_error.csv")
+df_err_strat = pd.read_csv("tests/calc/csv_to_df/beyond_stratosphere.csv")
 
-    # DataFrame 3: Different base pressure:
-    press_key = [-111.16, 0, 430.53, 879.82, 1349.79, 1842.71, 2361.25, 2908.57,
-                 3488.53, 4105.81, 4766.26, 5477.25, 6248.37, 7092.29, 8026.46,
-                 9075.77, 10277.77]
-    diff_press_df = utils.to_altitude(df=df, base_press=100000)
-    altitude_list_diff_press = diff_press_df['Altitude (m)'].tolist()
-    altitude_list_diff_press = [round(num, 2) for num in altitude_list_diff_press]
-    assert (altitude_list_diff_press == press_key
-            ), "Equation is not accurate with non-default base pressure."
-
-    # DataFrame 4: Different base temperature and pressure:
-    temp_press_key = [-116.95, 0.00, 452.94, 925.62, 1420.06, 1938.64, 2484.17,
-                      3059.98, 3670.13, 4319.54, 5014.37, 5762.38, 6573.63,
-                      7461.49, 8444.29, 9548.22, 10812.79]
-    diff_temp_and_press_df = utils.to_altitude(df=df, base_temp=30,
-                                               base_press=100000)
-    altitude_list_diff_temp_press = diff_temp_and_press_df['Altitude (m)'].tolist()
-    altitude_list_diff_temp_press = [round(num, 2) for num in 
-                                     altitude_list_diff_temp_press]
-    assert (altitude_list_diff_temp_press == temp_press_key
-            ), "Equation is not accurate with non-default base temperature and pressure."
-
-    # Feet --> Meters --> Feet
-    # DataFrame 1; Default settings; Units = Feet:
-    def_ft_key = [0.00, 363.79, 1772.76, 3243.11, 4781.17, 6394.32, 8091.29,
-               9882.49, 11780.47, 13800.61, 15962.0, 18288.84, 20812.4,
-               23574.27, 26631.46, 30065.48, 33999.16]
-    default_df = utils.to_altitude(df=df, units='ft')
-    altitude_list_default = default_df['Altitude (ft)'].tolist()
-    altitude_list_default = [round(num, 2) for num in altitude_list_default]
-    assert (altitude_list_default == def_ft_key
-            ), "Equation is not accurate for units='ft'."
-
-    # Base Values = None
-    base_none_df =  utils.to_altitude(df=df, base_press=None, base_temp=None)
-    altitude_list_none = base_none_df['Altitude (m)'].tolist()
-    altitude_list_none = [round(num, 2) for num in altitude_list_none]
-    assert (altitude_list_none == def_key
-            ), "Equation is not accurate with base settings = None."
-
-    # Error test dfs
-    temp_df = pd.read_csv("tests/calc/csv_to_df/temp_error.csv")
-    press_df = df = pd.read_csv("tests/calc/csv_to_df/press_error.csv")
-    beyond_strat_df = pd.read_csv("tests/calc/csv_to_df/beyond_stratosphere.csv")
-
-    # No temperature column
+@pytest.mark.parametrize("kwargs, error_message", [
+    ({"df": df_err_temp, "base_temp": None},
+     "there's no temperature column and base_temp = None"),
+    ({"df": df_err_press, "base_press": None},
+     "there's no pressure column and base_press = None"),
+    ({"df": df_err_strat},
+     "altitude is above the stratosphere (50km)"),
+    ])
+def test_to_altitude_errors(kwargs, error_message):
+    """
+    Tests that the to_altitude function raises errors when expected to.
+    """
     with pytest.raises(ValueError) as exc_info:
-        utils.to_altitude(df=temp_df, base_temp=None)
-    assert (exc_info.type == ValueError), "Error not raised for missing temperature column."
-
-    # No pressure column
-    with pytest.raises(ValueError) as exc_info:
-        utils.to_altitude(df=press_df, base_press=None)
-    assert (exc_info.type == ValueError), "Error not raised for missing pressure column."
-
-    # Beyond stratosphere (50km)
-    with pytest.raises(ValueError) as exc_info:
-        utils.to_altitude(df=beyond_strat_df)
-    assert(exc_info.type == ValueError), "Error not raised when above stratosphere."
-
-    # Stratosphere Tests
-    df_2 = pd.read_csv("tests/calc/csv_to_df/stratosphere.csv")
-    strat_key = [11784.05, 12452.21, 13199.14, 14045.95, 15023.51, 16179.72,
-                 17594.82, 19419.19, 21990.49, 26386.17, 35177.52]
-    strat_df = utils.to_altitude(df=df_2)
-    altitude_list_strat = strat_df['Altitude (m)'].tolist()
-    altitude_list_strat = [round(num, 2) for num in altitude_list_strat]
-    assert (altitude_list_strat == strat_key
-            ), "Equation is not accurate in the Stratosphere."
+        utils.to_altitude(**kwargs)
+    assert (exc_info.type == ValueError), f"Error not raised when {error_message}."
