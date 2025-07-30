@@ -5,6 +5,10 @@ import hypothesis.strategies as hyp_st
 import numpy as np
 import pandas as pd
 
+import sys
+import os
+sys.path.insert(0, os.path.realpath(os.path.join(__file__, '..', '..', '..')))
+
 from endaq.calc import utils
 
 
@@ -107,3 +111,61 @@ def test_convert_units():
     df = pd.DataFrame({'Val': [-40, 0, 10]})
     np.testing.assert_allclose(utils.convert_units('degC', 'degF', df).Val[0], -40)
     np.testing.assert_allclose(utils.convert_units('degC', 'degF', df).Val[1], 32)
+
+
+# Dataframes for the following altitude test
+df_1 = pd.read_csv("tests/calc/csv_to_df/default_sea_lvl.csv")
+df_strat = pd.read_csv("tests/calc/csv_to_df/stratosphere.csv")
+
+@pytest.mark.parametrize("kwargs, key", [
+    ({"df": df_1}, "default_settings.csv"),
+    ({"df": df_1, "base_temp": 30}, "diff_base_temp.csv"),
+    ({"df": df_1, "base_press": 100000}, "diff_base_pressure.csv"),
+    ({"df": df_1, "base_temp": 30, "base_press": 100000}, "diff_temp_and_pressure.csv"),
+    ({"df": df_1, "units":'ft'}, "units_feet.csv"),
+    ({"df": df_1, "base_press": None, "base_temp": None}, "base_values_none.csv"),
+    ({"df": df_strat}, "stratosphere.csv"),
+    ])
+def test_to_altitude(kwargs, key):
+    """
+    Tests the accuracy of the to_altitude function, which converts air pressure
+    to altitude. 
+    """
+    possible_altitude_cols = ['Altitude (m)', 'Altitude (ft)']
+    altitude_col = None
+
+    key_df = pd.read_csv("tests/calc/csv_to_df/keys/" + key)
+    key_list = key_df['Key'].tolist()
+
+    to_alt_df = utils.to_altitude(**kwargs)
+    for col in possible_altitude_cols:
+        if col in to_alt_df.columns:
+            altitude_col = col
+            break
+
+    to_alt_list = to_alt_df[altitude_col].tolist()
+    to_alt_list = [round(num, 2) for num in to_alt_list]
+    assert (to_alt_list == key_list
+            ), f"Equation is not accurate when {key_df.columns[1]}."
+
+
+# Dataframes for the following altitude error test
+df_err_temp = pd.read_csv("tests/calc/csv_to_df/temp_error.csv")
+df_err_press = pd.read_csv("tests/calc/csv_to_df/press_error.csv")
+df_err_strat = pd.read_csv("tests/calc/csv_to_df/beyond_stratosphere.csv")
+
+@pytest.mark.parametrize("kwargs, error_message", [
+    ({"df": df_err_temp, "base_temp": None},
+     "there's no temperature column and base_temp = None"),
+    ({"df": df_err_press, "base_press": None},
+     "there's no pressure column and base_press = None"),
+    ({"df": df_err_strat},
+     "altitude is above the stratosphere (50km)"),
+    ])
+def test_to_altitude_errors(kwargs, error_message):
+    """
+    Tests that the to_altitude function raises errors when expected to.
+    """
+    with pytest.raises(ValueError) as exc_info:
+        utils.to_altitude(**kwargs)
+    assert (exc_info.type == ValueError), f"Error not raised when {error_message}."
