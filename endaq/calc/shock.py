@@ -490,7 +490,7 @@ def shock_spectrum(
             )
             srs[var] = pivot.max(axis=1)
         srs.columns.name = accel.columns.name
-        return srs
+        return srs[["Resultant"]] if aggregate_axes == True else srs
 
     omega = 2 * np.pi * freqs
 
