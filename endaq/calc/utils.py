@@ -11,7 +11,6 @@ import pandas as pd
 import scipy.signal
 import pint
 
-
 def sample_spacing(
     data: Union[np.ndarray, pd.DataFrame],
     convert: typing.Literal[None, "to_seconds"] = "to_seconds",
@@ -150,7 +149,11 @@ def resample(df: pd.DataFrame, sample_rate: Optional[float] = None) -> pd.DataFr
         df,
         num_samples_after_resampling,
         t=df.index.values.astype(np.float64),
-    )
+        )
+    resampled_time = pd.date_range(
+        df.iloc[0].name, df.iloc[-1].name, 
+        periods=num_samples_after_resampling,
+        )
 
     # Check for datetimes, if so localize
     if 'datetime' in str(df.index.dtype):
@@ -158,9 +161,9 @@ def resample(df: pd.DataFrame, sample_rate: Optional[float] = None) -> pd.DataFr
 
     resampled_df = pd.DataFrame(
         resampled_data,
-        index=resampled_time.astype(df.index.dtype),
+        index=(resampled_time),
         columns=df.columns,
-    )
+        )
 
     resampled_df.index.name = df.index.name
 
