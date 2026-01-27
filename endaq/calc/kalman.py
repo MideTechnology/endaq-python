@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import List, Optional, Iterable, Union, Callable
+from typing import List, Optional, Iterable, Union, Callable, Literal
 import numpy as np
 
 
@@ -10,57 +10,48 @@ class Kalman:
     A new `Kalman` class should be instantialized for filter operations on different inputs.
     The following functions 
     need to be implemented by the methods that wish to use this class:
-    :py:func:`get_A()`
-    :py:func:`get_H()`
-    :py:func:`get_Q()`
     :py:func:`initialize_system()`
     naming conventions : capital letters are matrices, pr_xxx is priori, and ps_xxx is posterior 
     """
 
-    def __init__(self, df: pd.DataFrame, R : pd.DataFrame):
+    def __init__(
+            self,
+            H: np.ndarray, 
+            Q: np.ndarray, 
+            R : np.ndarray,
+            ):
         """
-        init for the Kalman class
-        :param df: the dataset to perform the Kalma operation on
-        :param R: the
+        init for the Kalman class. m is the number of input variables, and
+        n is the number of prediction variables
+        :param df: the dataset to perform the Kalman operation on, an 
+            array of z's
+        :param A: State Transition Matrix, n by n dimensions
+        :param H: State-to-Measurement Matrix, m by n dimensions
+        :param Q: Process noise Covariance Matrix, n by n dimensions
+        :param R: Measurement Covariance Matrix, m by m dimensions
         """
-        x, P = self.initialize_system()
-        self.x : np.array = x # n by 1 column vector
-        self.P : np.ndarray = P # n by n
-        self.filtered : np.array = np.array([])
-        # see if this is readily available in the sensors
-        self.R : np.ndarray= R # m by m
-        self.K : np.ndarray= self._compute_gain() # n by m
-        self.A : np.ndarray = self.get_A() # n by n
-        self.H : np.ndarray = self.get_H() # m by n
-        self.Q : np.ndarray = self.get_Q() # n by n
-        #----- in between variables -----#
+ 
+        #----- prediction variables -----# 
         self._pr_x : np.array = None 
         self._pr_P : np.ndarray= None 
-        self.z : np.array = None # m by 1 column vector
+        #----- prediction variables -----#
+        self.R : np.ndarray = R 
+        self.H : np.ndarray = H
+        self.A : np.ndarray = None #This gets set on the first iteration
+        self.Q : np.ndarray = Q 
+        x, P = self.initialize_system()
+
+        self.x : np.array = x # n by 1 column vector
+        self.P : np.ndarray = P # n by n
+
+        #K = self._compute_kalman_gain() # n by m
+
+        self.K : np.ndarray = None
+        self.filtered : np.array = np.array([])
+
+
+     
     #========== Methods to Implement ==========#
-    def get_base_A(self):
-        """
-        Getter for the State Transition Matrix, whose dimensions are n by n.
-        This method is abstract and needs to be defined in the implementing subclass.
-        """
-
-        raise NotImplementedError("Method get_base_A() needs to be implemented by the inheriting subclass")
-    
-    def get_base_H(self):
-        """
-        Getter for the State to Measurement matrix, whose dimensions are m by m.
-        This method is abstract and needs to be defined in the implementing subclass.
-        """
-
-        raise NotImplementedError("Method get_base_H() needs to be implemented by the inheriting subclass")
-    
-    def get_base_Q(self):
-        """
-        Getter for the Noise Covariance Matrix, whose dimensions are n by n.
-        This method is abstract and needs to be defined in the implementing subclass.
-        """
-
-        raise NotImplementedError("Method get_base_Q() needs to be implemented by the inheriting subclass")
 
     def initialize_system(self) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -72,24 +63,43 @@ class Kalman:
 
         raise NotImplementedError("Method initialize_system() " \
                                   "needs to be implemented by the ineriting subclass")
+
+    def get_next_data_point(self) -> Union[tuple[np.array, float], Literal["End"]]:
+        """
+        gets the next data point (form of a vector) along with the time
+          between this point and the previous. "End" is returned if there are no more
+          data points.
+        :return: next data point, or keyword "End" 
+        """
+        raise NotImplementedError("Method get_next_data_point()" \
+                                  "needs to be implemented by the inherting subclass")
     
+    def new_A(self, deltaT) -> np.ndarray:
+        """
+        Note that this method does not mutate `self.A` and does not use self.
+        :param deltaT: the time between the current point and the previous point.
+        :return: a matrix of A is with the associated deltaT value. 
+        """
+        raise NotImplementedError("Method new_A(deltaT)" \
+                                  "needs to be implemented by the inherting subclass")
+
     #==========     Main Methods     ==========#
-    def run(self) -> Union[pd.Series | pd.DataFrame]:
+    def run(self) -> pd.series:
         """
         Runs a Kalman filter on all steps for `inputs` set in :py:func:`__init__`.
         :return: a pandas `Series` object, with original timesteps and the computed values. 
-            If insufficient enough data, the original Dataset will be returned instead.
         """
-
-        dates = self.df.index
-        name = self.df.name
-        df = self.df.to_numpy()
-        for row in df:
-            self.z = row
+        self.initialize_system()
+        dp = self.get_next_data_point()
+        filtered_points = []
+        while dp != "End":
+            self.A = self.new_A(dp[1])
             self._predict()
-            self._update()
-            filtered = np.append(filtered, self.x)
-        return self.filtered.to_series(index = dates, name = name)
+            filtered_points.append(self._update(dp[0]))
+            dp = self.get_next_data_point()
+
+        return filtered_points
+        
 
     #==========    Helper Methods    ==========#
     def _predict(self):
@@ -100,29 +110,27 @@ class Kalman:
         """
         self._pr_x = self.A @ self.x
         self._pr_P = self.A @ self.P @ self.A.T + self.Q
-
-    def _update(self):
+    def _update(self, z) -> np.array:
         """
         Updates the Kalman filter's parameters based on the predicted computation
         and the actual answers
-        :return: This method mutates internal values, nothing is returned
-        :rtype: None
+        :param z: contains one or more column measurement column vectors. 
+            In the case that `z` is not a nested list, it is assumed to 
+            be one singular z value. 
+        :return: This method mutates internal values, and returns the final 
+            value of x
         """
-        self.K = self._pr_P @ self.H.T @ np.linalg.inv(
-            self.H @ self._pr_P @ self.H.T + self.R)
-        self.x = self._pr_x + self.K @ (self.z - self.H @ self._pr_x)
-        self.P = (np.eye(self.P.shape[0]) - self.K @ self.H) @ self._pr_P
+        
+        if not isinstance(z[0], list):
+            z = [z]
+        for z_comp in z:
+            S = self.H @ self._pr_P @ self.H.T + self.R
+            self.K = self._pr_P @ self.H.T @ np.linalg.pinv(S)
 
 
-    def _compute_gain(self):
-       """
-       Computes the gain of the current system.
-       :return: This method mutates self.K, and does not return anything
-       :rtype: None
-       """
-       if self._pr_P is None: 
-            self._predict()
-            self._update() 
-       self.K = (self._pr_P @ self.H.T) @ (
-           np.linalg.inv(self.H @ self._pr_P @  self.H.T + self.R))
-    
+            self.x = self._pr_x + self.K @ (z_comp - self.H @ self._pr_x)
+            ikh = (np.eye(self.P.shape[0]) - self.K @ self.H)
+            self.P = ikh @ self._pr_P @ ikh.T + self.K @ self.R @ self.K.T
+
+        return self.H @ self.x  
+

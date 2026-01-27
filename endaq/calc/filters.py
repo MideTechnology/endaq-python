@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Optional, Union, Tuple
+from typing import Optional, Union, Tuple, List
 import functools
 
 import pandas as pd
 import numpy as np
 import scipy.signal
 
-from endaq.calc import utils
+from endaq.calc import utils, kalman
 
 
 def _get_filter_frequencies_type(low_cutoff, high_cutoff):
@@ -343,6 +343,73 @@ def ellip(
 
     return df            
 
+def refine_acceleration(
+        dfs : List[pd.DataFrame],
+        model_number : Optional[str] = None,
+) -> Union[pd.Series, pd.DataFrame]:
+    """
+    Refines the acceleration input by using a Kalman filter, implmeneted in `Kalman.py`.
+    This function does not syncronize inputs, rather treating it as if it was one
+    large sensor 
+
+    :param df: the input data; assumes at least two acceleration channels,
+        all of which contain the name `acceleration`, who have a `X`, `Y`, and a `Z` channel,
+        standard when using :py:func:`endaq.ide.get_doc`.
+    :param model_number: the model number of the device that recorded this data, used in 
+        determining the noise values. A value of none or incompatible name will use a default value
+        of 0.5. 
+    :return: a series containing the refined acceleration with time stamps as indices.
+        the original dataframe is instead returned if of the following holds
+            1. insufficient data for the filter (< 4 time points)
+            2. insufficient amount of acceleration channels (< 2 channels)
+    """
+    noise_table = {} #TODO : find data for this
+    noise = noise_table.get(model_number, 0.05)
+    for df in dfs:
+        df.columns = ['X', 'Y', 'Z']
+    #combined_df = pd.concat(dfs)
+    combined_df = dfs[0]
+   
+    #Acceleration Kalman class construction start#
+    class AccelKalman(kalman.Kalman):
+        def __init__(self, df, noise):
+            self.df = df
+            self.len_df = len(df)
+            self.idx = 2
+            H = np.concat((np.eye(3), np.zeros((3,3))), axis = 1)
+            Q = np.zeros((6,6)) 
+            Q[5,5] = noise
+            R = np.ones((3,3)) #this is just a placeholder? 
+
+            super().__init__(H, Q, R)
+
+        def initialize_system(self):
+            deltaT = (self.df.index[1] - self.df.index[0]).total_seconds()
+            x = np.concatenate((self.df.values[1], 
+                            (self.df.values[1] - self.df.values[0]) * deltaT))
+            P = np.diag(
+                np.concatenate([
+                    [np.var(self.df[col]) for col in self.df.columns],
+                    [100,100,100]]))
+            return (x,P)
+        
+        def new_A(self, deltaT):
+            A = np.eye(6)
+            A[0,3] = deltaT
+            A[1,4] = deltaT
+            A[2,5] = deltaT
+            return A
+
+        def get_next_data_point(self):
+            if self.idx >= self.len_df:
+                return "End"
+            self.idx += 1
+            return (self.df.values[self.idx - 1], 
+                    (self.df.index[self.idx - 1] - self.df.index[self.idx - 2]).total_seconds())
+        
+
+    ak = AccelKalman(combined_df, noise=noise)
+    return ak.run()
 
 def _fftnoise(f):
     """

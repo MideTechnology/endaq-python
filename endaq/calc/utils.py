@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import typing
-from typing import Optional, Union, Literal
+from typing import Optional, Union, Literal, List
 import warnings
 
 import numpy as np
