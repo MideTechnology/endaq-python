@@ -6,6 +6,8 @@ import functools
 import pandas as pd
 import numpy as np
 import scipy.signal
+import time #XXX: This import is used for testing, and should be removed before merging
+
 
 from endaq.calc import utils, kalman
 
@@ -349,15 +351,16 @@ def refine_acceleration(
 ) -> Union[pd.Series, pd.DataFrame]:
     """
     Refines the acceleration input by using a Kalman filter, implmeneted in `Kalman.py`.
-    This function does not syncronize inputs, rather treating it as if it was one
-    large sensor 
+    This function does not syncronize inputs, rather treating it as if it was one sensor with
+    twice as much time stamp recordings. Note that this does truncate the first two datapoints. 
+    Eg : dfs[0] has 100 recording points, dfs[1] has 100 recording points, output will have 198. 
 
-    :param df: the input data; assumes at least two acceleration channels,
+    :param dfs: the input data; assumes at least two acceleration channels,
         all of which contain the name `acceleration`, who have a `X`, `Y`, and a `Z` channel,
         standard when using :py:func:`endaq.ide.get_doc`.
     :param model_number: the model number of the device that recorded this data, used in 
         determining the noise values. A value of none or incompatible name will use a default value
-        of 0.5. 
+        of 0.05. 
     :return: a series containing the refined acceleration with time stamps as indices.
         the original dataframe is instead returned if of the following holds
             1. insufficient data for the filter (< 4 time points)
@@ -367,19 +370,23 @@ def refine_acceleration(
     noise = noise_table.get(model_number, 0.05)
     for df in dfs:
         df.columns = ['X', 'Y', 'Z']
-    #combined_df = pd.concat(dfs)
-    combined_df = dfs[0]
+
+     #   for column in df.columns:
+     #       df[column] = df[column]
+    combined_df = pd.concat(dfs)
+    #combined_df = dfs[0]
    
     #Acceleration Kalman class construction start#
     class AccelKalman(kalman.Kalman):
         def __init__(self, df, noise):
+            self.past = time.perf_counter()
             self.df = df
             self.len_df = len(df)
             self.idx = 2
             H = np.concat((np.eye(3), np.zeros((3,3))), axis = 1)
             Q = np.zeros((6,6)) 
             Q[5,5] = noise
-            R = np.ones((3,3)) #this is just a placeholder? 
+            R = np.diag([np.var(self.df[col]) for col in self.df.columns]) #this is just a placeholder? 
 
             super().__init__(H, Q, R)
 
@@ -401,6 +408,10 @@ def refine_acceleration(
             return A
 
         def get_next_data_point(self):
+            if self.idx % 1000 == 0:
+                now = time.perf_counter()
+                print(f"checkpoint {self.idx}, time taken:  {now - self.past}")
+                self.past = now
             if self.idx >= self.len_df:
                 return "End"
             self.idx += 1
@@ -409,7 +420,8 @@ def refine_acceleration(
         
 
     ak = AccelKalman(combined_df, noise=noise)
-    return ak.run()
+    filtered_points =  ak.run()
+    return pd.DataFrame(filtered_points, index=combined_df.index[2:], columns=["X","Y","Z"])
 
 def _fftnoise(f):
     """

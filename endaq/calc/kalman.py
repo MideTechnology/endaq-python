@@ -1,17 +1,22 @@
 import pandas as pd
-from typing import List, Optional, Iterable, Union, Callable, Literal
+from typing import List, Optional, Union, Literal
 import numpy as np
+import time #XXX: This import is used for testing, and should be removed before merging
+
 
 
 class Kalman:
     """
-    An abstract mutable class that performs a Kalman filter, implementation based on 
-    https://thekalmanfilter.com/kalman-filter-explained-simply/.
+    An abstract mutable class that performs a Kalman filter, implementation mainly based on 
+    https://thekalmanfilter.com/kalman-filter-explained-simply/ with other influences.
     A new `Kalman` class should be instantialized for filter operations on different inputs.
     The following functions 
     need to be implemented by the methods that wish to use this class:
     :py:func:`initialize_system()`
-    naming conventions : capital letters are matrices, pr_xxx is priori, and ps_xxx is posterior 
+    :py:func:`get_next_data_point()`
+    :py:func:`new_A()`
+    naming conventions : capital letters are matrices, lowercase letters are vectors,
+        pr_xxx is predicted
     """
 
     def __init__(
@@ -44,7 +49,6 @@ class Kalman:
         self.x : np.array = x # n by 1 column vector
         self.P : np.ndarray = P # n by n
 
-        #K = self._compute_kalman_gain() # n by m
 
         self.K : np.ndarray = None
         self.filtered : np.array = np.array([])
@@ -67,16 +71,19 @@ class Kalman:
     def get_next_data_point(self) -> Union[tuple[np.array, float], Literal["End"]]:
         """
         gets the next data point (form of a vector) along with the time
-          between this point and the previous. "End" is returned if there are no more
-          data points.
-        :return: next data point, or keyword "End" 
+        between this point and the previous. "End" is returned if there are no more
+        data points.
+        This method is abstract and needs to be defined in the implementing subclass.
+        :return: (next data point and delta time elapsed) or keyword "End" 
         """
         raise NotImplementedError("Method get_next_data_point()" \
                                   "needs to be implemented by the inherting subclass")
     
     def new_A(self, deltaT) -> np.ndarray:
         """
+        Updates the value of state transition matrix A based on the time delta between steps.
         Note that this method does not mutate `self.A` and does not use self.
+        This method is abstract and needs to be defined in the implementing subclass.
         :param deltaT: the time between the current point and the previous point.
         :return: a matrix of A is with the associated deltaT value. 
         """
@@ -86,7 +93,8 @@ class Kalman:
     #==========     Main Methods     ==========#
     def run(self) -> pd.series:
         """
-        Runs a Kalman filter on all steps for `inputs` set in :py:func:`__init__`.
+        Runs a Kalman filter using the parameters set in :py:func:`__init__` and the
+        data points given in :py:func:`get_next_data_point()`
         :return: a pandas `Series` object, with original timesteps and the computed values. 
         """
         self.initialize_system()
@@ -110,6 +118,7 @@ class Kalman:
         """
         self._pr_x = self.A @ self.x
         self._pr_P = self.A @ self.P @ self.A.T + self.Q
+
     def _update(self, z) -> np.array:
         """
         Updates the Kalman filter's parameters based on the predicted computation
@@ -117,8 +126,8 @@ class Kalman:
         :param z: contains one or more column measurement column vectors. 
             In the case that `z` is not a nested list, it is assumed to 
             be one singular z value. 
-        :return: This method mutates internal values, and returns the final 
-            value of x
+        :return: This method mutates internal values, and returns the adjusted
+            value of H @ x (the wanted values of our predicted x) 
         """
         
         if not isinstance(z[0], list):
@@ -126,11 +135,9 @@ class Kalman:
         for z_comp in z:
             S = self.H @ self._pr_P @ self.H.T + self.R
             self.K = self._pr_P @ self.H.T @ np.linalg.pinv(S)
-
-
             self.x = self._pr_x + self.K @ (z_comp - self.H @ self._pr_x)
             ikh = (np.eye(self.P.shape[0]) - self.K @ self.H)
-            self.P = ikh @ self._pr_P @ ikh.T + self.K @ self.R @ self.K.T
+            self.P = ikh @ self._pr_P 
 
         return self.H @ self.x  
 
