@@ -343,16 +343,17 @@ def ellip(
         tukey_window = scipy.signal.windows.tukey(len(df.index), alpha=tukey_percent)
         df = df.mul(tukey_window, axis="rows")
 
-    return df            
+    return df
 
 def refine_acceleration(
         dfs : List[pd.DataFrame],
         model_number : Optional[str] = None,
-) -> Union[pd.Series, pd.DataFrame]:
+) -> pd.DataFrame:
     """
     Refines the acceleration input by using a Kalman filter, implmeneted in `Kalman.py`.
     This function does not syncronize inputs, rather treating it as if it was one sensor with
-    twice as much time stamp recordings. Note that this does truncate the first two datapoints. 
+    twice as much time stamp recordings. Note that this does truncate the first two datapoints, 
+    and that all data is zero-meaned. 
     Eg : dfs[0] has 100 recording points, dfs[1] has 100 recording points, output will have 198. 
 
     :param dfs: the input data; assumes at least two acceleration channels,
@@ -368,37 +369,51 @@ def refine_acceleration(
     """
     noise_table = {} #TODO : find data for this
     noise = noise_table.get(model_number, 0.05)
-    for df in dfs:
-        df.columns = ['X', 'Y', 'Z']
 
-     #   for column in df.columns:
-     #       df[column] = df[column]
-    combined_df = pd.concat(dfs)
-    #combined_df = dfs[0]
-   
     #Acceleration Kalman class construction start#
     class AccelKalman(kalman.Kalman):
-        def __init__(self, df, noise):
-            self.past = time.perf_counter()
-            self.df = df
-            self.len_df = len(df)
-            self.idx = 2
+        def __init__(self, dfs, noise):
+            for df in dfs:
+                for col in df.columns:
+                    df[col] = df[col] - df[col].mean()
+            self.df_data = [df.values for df in dfs]
+            self.df_timestamps = [df.index for df in dfs]
+            self.timestamp_idx = [0 for _ in dfs]
+
+            self._full_dataset = np.concat(self.df_data)
+
             H = np.concat((np.eye(3), np.zeros((3,3))), axis = 1)
             Q = np.zeros((6,6)) 
+            Q[3,3] = noise
+            Q[4,4] = noise
             Q[5,5] = noise
-            R = np.diag([np.var(self.df[col]) for col in self.df.columns]) #this is just a placeholder? 
+            R = np.diag(
+                [np.var([dp[column_idx] for dp in self.df_data]) for column_idx in range(len(self.df_data[0][0]))], #HACK : I really don't like this implementation
+            )
 
+            self.specs = [df.columns[0][2:] for df in dfs] #gets the rating, eg (40g) 
+            self.rating = {'(8g)' : None,
+                           '(40g)' : None,
+                           '(16g)' : None,
+                           '(100g)' : None,
+                           } 
             super().__init__(H, Q, R)
 
+
         def initialize_system(self):
-            deltaT = (self.df.index[1] - self.df.index[0]).total_seconds()
-            x = np.concatenate((self.df.values[1], 
-                            (self.df.values[1] - self.df.values[0]) * deltaT))
+            dp1 = self.get_next_data_point()
+            dp2 = self.get_next_data_point()
+
+            if (isinstance(dp1, str)) or (isinstance(dp2, str)):
+                raise StopIteration("Not enough data points")
+
+            deltaT = (dp2[1] - dp1[1]).total_seconds()
+            x = np.concatenate((dp2[0], (dp2[0] - dp1[0]) * deltaT))
             P = np.diag(
                 np.concatenate([
-                    [np.var(self.df[col]) for col in self.df.columns],
+                    [np.var([dp[column_idx] for dp in self.df_data]) for column_idx in range(len(self.df_data[0][0]))],
                     [100,100,100]]))
-            return (x,P)
+            return (x,P, dp2[1])
         
         def new_A(self, deltaT):
             A = np.eye(6)
@@ -408,20 +423,40 @@ def refine_acceleration(
             return A
 
         def get_next_data_point(self):
-            if self.idx % 1000 == 0:
-                now = time.perf_counter()
-                print(f"checkpoint {self.idx}, time taken:  {now - self.past}")
-                self.past = now
-            if self.idx >= self.len_df:
+            if self.df_data == []:
                 return "End"
-            self.idx += 1
-            return (self.df.values[self.idx - 1], 
-                    (self.df.index[self.idx - 1] - self.df.index[self.idx - 2]).total_seconds())
-        
+            
+            candidates = [self.df_timestamps[i][self.timestamp_idx[i]] for i in range(len(self.timestamp_idx))]
+            selected = candidates.index(min(candidates)) 
+            df_idx = self.timestamp_idx[selected]
+            next_dp = (
+                self.df_data[selected][df_idx],
+                candidates[selected], 
+                #self.rating[self.specs[df_idx]](self.df_data[df_idx]),
+                0.5,
+                )
+            
+            self.timestamp_idx[selected] += 1
 
-    ak = AccelKalman(combined_df, noise=noise)
-    filtered_points =  ak.run()
-    return pd.DataFrame(filtered_points, index=combined_df.index[2:], columns=["X","Y","Z"])
+            if self.timestamp_idx[selected] >= len(self.df_timestamps[selected]):
+                del self.df_data[selected]
+                del self.df_timestamps[selected]
+                del self.timestamp_idx[selected] 
+
+            return next_dp
+    #Acceleration Kalman class construction end#
+
+    ak = AccelKalman(dfs, noise=noise)
+    filtered_series =  ak.run()
+
+    by_column = [[] for _ in range(3)]
+    for row in filtered_series:
+        for col_idx in range(len(row)):
+            by_column[col_idx].append(row[col_idx])
+
+    return pd.DataFrame(
+        dict(zip(['X (refined)', 'Y (refined)', 'Z (refined)'], by_column)), 
+             index = filtered_series.index)
 
 def _fftnoise(f):
     """
