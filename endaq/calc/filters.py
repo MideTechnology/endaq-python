@@ -422,12 +422,12 @@ def refine_acceleration(
             #representing high uncertainty
             return (x,P, dp2[1])
         
-        def new_A(self, deltaT):
+        def update_parameters(self, deltaT):
             A = np.eye(6)
             A[0,3] = deltaT
             A[1,4] = deltaT
             A[2,5] = deltaT
-            return A
+            self.A = A
 
         def new_Q(self): 
             #XXX : I don't actually know if this is right.
