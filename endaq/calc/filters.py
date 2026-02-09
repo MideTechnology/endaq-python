@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 import scipy.signal
 import time #XXX: This import is used for testing, and should be removed before merging
+import random #XXX: This import is used for testing, and should be removed before merging
 
 
 from endaq.calc import utils, kalman
@@ -347,7 +348,6 @@ def ellip(
 
 def refine_acceleration(
         dfs : List[pd.DataFrame],
-        model_number : Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Refines the acceleration input by using a Kalman filter, implmeneted in `Kalman.py`.
@@ -359,23 +359,22 @@ def refine_acceleration(
     :param dfs: the input data; assumes at least two acceleration channels,
         all of which contain the name `acceleration`, who have a `X`, `Y`, and a `Z` channel,
         standard when using :py:func:`endaq.ide.get_doc`.
-    :param model_number: the model number of the device that recorded this data, used in 
-        determining the noise values. A value of none or incompatible name will use a default value
-        of 0.05. 
     :return: a series containing the refined acceleration with time stamps as indices.
         the original dataframe is instead returned if of the following holds
             1. insufficient data for the filter (< 4 time points)
             2. insufficient amount of acceleration channels (< 2 channels)
     """
-    noise_table = {} #TODO : find data for this
-    noise = noise_table.get(model_number, 0.05)
-
     #Acceleration Kalman class construction start#
-    class AccelKalman(kalman.Kalman):
-        def __init__(self, dfs, noise):
+    class AccelerationKalmanFilter(kalman.LinearKF):
+        """
+        Concrete implementation of the Noise Variant Kalman Filter in `kalman.py`,
+        used to combine multiple acceleration channels on an Endaq Device.
+        """ 
+        def __init__(self, dfs):
             for df in dfs:
                 for col in df.columns:
                     df[col] = df[col] - df[col].mean()
+
             self.df_data = [df.values for df in dfs]
             self.df_timestamps = [df.index for df in dfs]
             self.timestamp_idx = [0 for _ in dfs]
@@ -383,20 +382,25 @@ def refine_acceleration(
             self._full_dataset = np.concat(self.df_data)
 
             H = np.concat((np.eye(3), np.zeros((3,3))), axis = 1)
-            Q = np.zeros((6,6)) 
-            Q[3,3] = noise
-            Q[4,4] = noise
-            Q[5,5] = noise
+            Q = np.diag([0.05] * 3 + [0.0 * 3])  #i don't think this is correct.
             R = np.diag(
-                [np.var([dp[column_idx] for dp in self.df_data]) for column_idx in range(len(self.df_data[0][0]))], #HACK : I really don't like this implementation
+                [np.var([dp[column_idx] for dp in self.df_data]) 
+                    for column_idx in range(len(self.df_data[0][0]))], #HACK : I really don't like this implementation
             )
 
             self.specs = [df.columns[0][2:] for df in dfs] #gets the rating, eg (40g) 
-            self.rating = {'(8g)' : None,
-                           '(40g)' : None,
-                           '(16g)' : None,
-                           '(100g)' : None,
-                           } 
+            
+            self.base_rating = {'(8g)' : 0.00002,
+                            '(16g)' : 0.004,
+                            '(40g)' : 0.00002,
+                            '(100g)' : 0.05,
+                            } 
+
+            self.hz_rating = {'(8g)' : None,
+                            '(16g)' : None,
+                            '(40g)' : None,
+                            '(100g)' : None,
+                            } 
             super().__init__(H, Q, R)
 
 
@@ -411,8 +415,11 @@ def refine_acceleration(
             x = np.concatenate((dp2[0], (dp2[0] - dp1[0]) * deltaT))
             P = np.diag(
                 np.concatenate([
-                    [np.var([dp[column_idx] for dp in self.df_data]) for column_idx in range(len(self.df_data[0][0]))],
+                    [np.var([dp[column_idx] for dp in self.df_data])
+                          for column_idx in range(len(self.df_data[0][0]))],
                     [100,100,100]]))
+            #100 is an arbitrary value commonly used in Kalman filter implementations,
+            #representing high uncertainty
             return (x,P, dp2[1])
         
         def new_A(self, deltaT):
@@ -422,31 +429,59 @@ def refine_acceleration(
             A[2,5] = deltaT
             return A
 
+        def new_Q(self): 
+            #XXX : I don't actually know if this is right.
+            return np.diag([self.noise] * 3 +
+                           [self.noise * 2] * 3) 
+        
+
+
         def get_next_data_point(self):
             if self.df_data == []:
                 return "End"
             
-            candidates = [self.df_timestamps[i][self.timestamp_idx[i]] for i in range(len(self.timestamp_idx))]
-            selected = candidates.index(min(candidates)) 
-            df_idx = self.timestamp_idx[selected]
+            candidates = [self.df_timestamps[i][self.timestamp_idx[i]] 
+                          for i in range(len(self.timestamp_idx))]
+            selected_df_idx = candidates.index(min(candidates)) 
+            df_idx = self.timestamp_idx[selected_df_idx]
             next_dp = (
-                self.df_data[selected][df_idx],
-                candidates[selected], 
-                #self.rating[self.specs[df_idx]](self.df_data[df_idx]),
-                0.5,
+                self.df_data[selected_df_idx][df_idx],
+                candidates[selected_df_idx], 
                 )
             
-            self.timestamp_idx[selected] += 1
+            self.timestamp_idx[selected_df_idx] += 1
 
-            if self.timestamp_idx[selected] >= len(self.df_timestamps[selected]):
-                del self.df_data[selected]
-                del self.df_timestamps[selected]
-                del self.timestamp_idx[selected] 
-
+            if self.timestamp_idx[selected_df_idx] >= len(self.df_timestamps[selected_df_idx]):
+                del self.df_data[selected_df_idx]
+                del self.df_timestamps[selected_df_idx]
+                del self.timestamp_idx[selected_df_idx] 
+           
+            self._determine_noise(selected_df_idx)
             return next_dp
+    
+        def _determine_noise(self, selected_df_idx):
+            """
+            Determines the additional noise 
+            :param selected_idx: The index of the selected dataframe in `self.df_data`.
+
+            :return: None, this method mutates `self.noise`.
+            """
+            name = self.specs[selected_df_idx]
+            penultimate_idx = self.timestamp_idx[selected_df_idx] - 2
+
+            if penultimate_idx < 0:
+                self.noise = self.base_rating[name]
+                return
+            
+            timestamps = self.df_timestamps[selected_df_idx]
+            hz = 1 / (
+                timestamps[penultimate_idx + 1] - 
+                timestamps[penultimate_idx]
+                ).total_seconds()
+            self.noise = self.hz_rating[name](hz) + self.base_rating[name]
     #Acceleration Kalman class construction end#
 
-    ak = AccelKalman(dfs, noise=noise)
+    ak = AccelerationKalmanFilter(dfs)
     filtered_series =  ak.run()
 
     by_column = [[] for _ in range(3)]
