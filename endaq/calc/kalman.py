@@ -247,12 +247,13 @@ class UnscentedKF(KalmanFilterInterface):
         """
         self.x, self.P = self.initialize_system()
         dp = self.get_next_data_point()
+        self.n = len(dp[0])
         
         self.timestamps = np.append(self.timestamps, dp[1])
         dp = dp[0]
         
         while dp != 'End':
-            self._initialize_weights()
+            self.eta_m, self.eta_c = self._initialize_weights()
         
             #TODO : make sure it's dp for both
             self.x_pr, self.P_pr = self._calculate_priori(dp)
@@ -284,15 +285,18 @@ class UnscentedKF(KalmanFilterInterface):
         #adds 2 * L more eta_i to eta_m and eta_c
         eta_m += [eta_i] * (2 * self.n)
         eta_c += [eta_i] * (2 * self.n)
+
         return (eta_m, eta_c)
 
-    def _unscented_transform(self, x_T, mean_weight, cov_weight, cov_noise) -> tuple[np.ndarray, np.ndarray]:
+    def _unscented_transform(self, x_T, mu_w, P_w, cov_noise) -> tuple[np.ndarray, np.ndarray]:
         """
         peforms an unscented transform to compute the mean and covariance of the given
         random sample points.
         :param x_T: a numpy array of sample points, who are also numpy arrays.
             Note that this parameter is **transposed**, which is
             a list of column vectors who are represented as rows.
+        :param mu_w: mean weight of the sample points.
+        :param P_w: mean covariance of the sample points.
         :param cov_noise: the covariance noise associated with the sample points
         :return: a tuple of (mean, covariance)
         """
@@ -300,14 +304,16 @@ class UnscentedKF(KalmanFilterInterface):
             x_T = np.array(x_T)
         if x_T.size == 0:
             return (np.array([]), np.array([]))
-        x_mean = np.mean([weight * col for (weight, col) in zip(mean_weight, x_T)], axis = 1)
-        x_cov = np.zeros(x_T[0].shape[0])
-        for (weight, col) in zip(cov_weight, x_T):
-            zm_col = col - x_mean
-            x_cov += weight * zm_col
-        x_cov += cov_noise
         
-        return (x_mean, x_cov)
+        mu_x = np.mean([weight * col for (weight, col) in zip(mu_w, x_T)], axis = 1)
+        
+        P_x = np.zeros(x_T[0].shape[0])
+        for (weight, col) in zip(P_w, x_T):
+            zm_col = col - mu_x
+            P_x += weight * zm_col
+        P_x += cov_noise
+        
+        return (mu_x, P_x)
     
     def _create_sigma_points(self, x, S) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -321,22 +327,19 @@ class UnscentedKF(KalmanFilterInterface):
         """
         
         sigma_mag = np.sqrt(self.n + self.l) * S
-        cal_X : Annotated[np.ndarray, Literal[(self.n, 2 * self.n + 1)]] = \
-            np.concat([np.zeros((self.n,1)), sigma_mag, -1 * sigma_mag])
+        cal_X = np.concat([np.zeros((self.n,1)), sigma_mag, -1 * sigma_mag])
         
-        Psi_T : Annotated[np.ndarray, Literal[(self.n, 2 * self.n + 1)]] = \
-        np.array([
-                self.predict_next_state(cal_X[:,i]) for i in range(cal_X.shape[0])]
-            ).T
+        Psi_T = np.array(
+            [self.predict_next_state(cal_X[:,i]) for i in range(cal_X.shape[0])]
+            )
 
-        y_mean = 0
+        mu_y = 0
         P_y = np.zeros(1 + 2 * self.n)
         
         for col_idx in range(Psi_T.shape[0]):
-            y_mean += Psi_T[col_idx] * self.eta_m[col_idx]
-            psi_var = [Psi_T[:, col_idx] - y_mean].T @ (
-                np.array([Psi_T[:, col_idx] - y_mean]))
-            
+            mu_y += Psi_T[col_idx] * self.eta_m[col_idx]
+            psi_var = [Psi_T[:, col_idx] - mu_y].T @ [Psi_T[:, col_idx] - mu_y]
+                
             P_y += self.eta_c[col_idx] * psi_var
         return (cal_X, P_y)    
         
@@ -348,11 +351,11 @@ class UnscentedKF(KalmanFilterInterface):
         """
         S = np.linalg.cholesky(self.P)  
         cal_X, self.P_y = self._create_sigma_points(self.x, S)
-        cal_X_pr = self.predict_next_state(cal_X) 
 
+        cal_X_pr = self.predict_next_state(cal_X) 
         self.cal_Y = cal_X_pr 
 
-        return self._unscented_transform(cal_X_pr)
+        return self._unscented_transform(cal_X_pr, self.eta_m, self.eta_c, self.Q)
 
         
     def _calculate_posteriori(self, z) -> tuple[np.ndarray, np.ndarray]:
