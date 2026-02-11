@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import List, Optional, Union, Literal
+from typing import Union, Literal, Annotated, TypeVar
 import numpy as np
 import datetime as dt
 
@@ -36,6 +36,7 @@ class KalmanFilterInterface:
 
         raise NotImplementedError("Method initialize_system() " \
                                   "needs to be implemented by the ineriting subclass")
+
 
 
     def get_next_data_point(self) -> Union[tuple[np.array, dt.datetime64], Literal["End"]]:
@@ -85,33 +86,33 @@ class LinearKF(KalmanFilterInterface):
         :param Q: Process noise Covariance Matrix, n by n dimensions
         :param R: Measurement Covariance Matrix, m by m dimensions
         """
-
+        #----- annotation variables -----# 
+        n = int 
+        m = int
         #----- prediction variables -----# 
-        self.x_pr : np.ndarray = None 
-        self.P_pr : np.ndarray = None 
-
+        self.x_pr = None 
+        self.P_pr = None 
         #-----   system variables   -----#
-        self.A : np.ndarray = A # This gets set on the first iteration
-        self.H : np.ndarray = H
-        self.R : np.ndarray = R 
-        self.Q : np.ndarray = Q 
+        self.A = A 
+        self.H = H
+        self.R = R 
+        self.Q = Q 
         x, P, start = self.initialize_system()
 
-        self.x : np.ndarray = x # n by 1 column vector
-        self.P : np.ndarray = P # n by n
+        self.x = x 
+        self.P = P
 
-
-        self.K : np.ndarray = None
+        self.K = None
         #-----   output variables   -----#
         self.filtered  = []
         self.timestamps = [start]
-        
 
     #==========     Overriden Methods     ==========#
     def run(self) -> pd.Series:
         self.initialize_system()
         dp = self.get_next_data_point()
         filtered_points = []
+
         while dp != "End":
             self.update_parameters((dp[1] - self.timestamps[-1]).total_seconds())
             self.timestamps.append(dp[1])
@@ -137,7 +138,7 @@ class LinearKF(KalmanFilterInterface):
         return (x_pr, P_pr)
 
 
-    def _calculate_posteriori(self, z) -> np.array:
+    def _calculate_posteriori(self, z) -> np.ndarray:
         """
         Updates the Kalman filter's parameters based on the predicted computation
         and the actual measurement.
@@ -147,13 +148,15 @@ class LinearKF(KalmanFilterInterface):
         :return: This method mutates internal values, and returns the adjusted
             value of H @ x (the wanted values of our predicted x) 
         """
-
         if not isinstance(z[0], list):
             z = [z]
+
         for z_comp in z:
             S = self.H @ self.P_pr @ self.H.T + self.R
             self.K = self.P_pr @ self.H.T @ np.linalg.pinv(S)
+
             self.x = self.x_pr + self.K @ (z_comp - self.H @ self.x_pr)
+
             ikh = (np.eye(self.P.shape[0]) - self.K @ self.H)
             self.P = ikh @ self.P_pr
 
@@ -166,80 +169,53 @@ class UnscentedKF(KalmanFilterInterface):
     An abstract class for the process of a Unscented Kalman Filter (UKF). This 
     class has additional methods to be implemented: 
     - `self.predict_next_state(x_T)`
-    - `self.convert_to_measurement()`
-    Implementation mostly follows https://yugu.faculty.wvu.edu/files/d/2cbb566f-9936-4033-bb1c-6d887c30d45a/irl_wvu_online_ukf_implementation_v1-0_06_28_2013.pdf,
+    - `self.measurement_to_state(y_T)`
+    Implementation mostly follows https://yugu.faculty.wvu.edu/files/d/2cbb566f-9936-4033-bb1c-6d887c30d45a/irl_wvu_online_ukf_implementation_v1-0_06_28_2013.pdf
+    and https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/10-Unscented-Kalman-Filter.ipynb,
     with variable naming convention from a variety of sources.
     The following is Unscented Kalman Filter specific variable notation:
     - cal_ represents an inbetween sigma point calculation. 
-    
     """
     
     
     def __init__(self, Q, alpha, *, beta= 2, kappa= 0):
         """
         initialization method for the Unscented Kalman Filter.
+        All methods with value `None` get set to proper values in methods,
+        and are only written out here for clarity.
         :param Q: proccess noise matrix
         :param alpha: sigma points spread
         :param beta: secondary scaling parameter, default (and most optimal) value is set to 2
         :param kappa: tertiary scaling parameter, default (and most common) value is set to 0
         """
-        
-
         self.Q = Q
-        self.v = None
-        
+        self.n = None 
         #----- Previous iteration variables -----#
-        self.x = None
-        self.P = None
+        self.x : Annotated[np.ndarray, Literal[(self.n, 1)]] = None
+        self.P : Annotated[np.ndarray, Literal[(self.n, self.n)]] = None
         #----- Inbetween variables -----#
         self.S : np.ndarray = None 
         self.K : np.ndarray = None
         #----- Sigma point specifics -----#
-        self.scaling = (alpha, beta, kappa)
-        #initializng as None for clarity, gets set in `self.unscented_transform()`
-        self.eta_c = None #covariance weight vectors
-        self.eta_m = None #mean weight vectors
-        self.cal_X : np.ndarray = None
-        self.cal_Y : np.ndarray = None
-        
+        eta_c, eta_m = self._initialize_weights(alpha, beta=beta, kappa=kappa)
+        #covariance weight vectors
+        self.eta_c : Annotated[np.ndarray, Literal[(1, 2 * self.n)]] = eta_c
+        #mean weight vectors
+        self.eta_m : Annotated[np.ndarray, Literal[(1, 2 * self.n)]] = eta_m 
         #----- Output variables -----#
-        #INVARIANT : timestamp will have 2+ timestamps before the first calculation
-        #            and will continue to have 2+ for the entire duration
+        """ INVARIANT : timestamp will have 2+ timestamps before the first calculation
+            and will continue to have 2+ for the entire duration, as timestamps are
+            never removed. """
         self.timestamps = np.array([])
         self.filtered_data = np.array([])
-        
 
-    def unscented_transform(self, alpha, *, beta = 2, kappa = 0):
-        """
-        Performs an unscented transform, calculating sigma points and the post-transform covariance
-        on an assumption of a zero-mean for our random variable `x`. 
-        :param alpha: sigma points spread
-        :param beta: secondary scaling parameter, default (and most optimal) value is set to 2
-        :param kappa: tertiary scaling parameter, default (and most common) value is set to 0
-        :return: a tuple consisting of sigma points and the associated covariance. Values `self.eta_m` and `self.eta_c`
-            are also mutated.
-        """
-        #l represents lambda the variable, not lambda function
-        l = alpha ** 2 (self.L + kappa) - self.L 
-        self.eta_m = np.array([l / (self.L + l)])
-        self.eta_c = np.array([1 / (self.L + l) + 1 - alpha ** 2  + beta])
+    #----------- Methods for user to implement -----------#
+    def initialize_system(self):
+        return super().initialize_system()
+    
+    def get_next_data_point(self):
+        return super().get_next_data_point()
 
-        self.eta_m += [1/(2(self.L + l))]* (2 * self.L) #this is **not** a np array
-        self.eta_c += [1/(2(self.L + l))]* (2 * self.L) #this is **not** a np array
-        sigma_mag = np.sqrt(self.L + l) * self.S
-        cal_X = np.concat([np.zeros((self.L,1)), sigma_mag, -1 * sigma_mag])
-        
-        Psi = np.array([self.predict_next_state(cal_X[:,i]) for i in range(cal_X.shape[0])]).T
-        
-        y_mean = sum([Psi[:, col_idx] * self.eta_m[col_idx] for col_idx in range(Psi.shape[0])])
-        P_y = np.sum(
-        [self.eta_c[col_idx] * 
-        (np.array([Psi[:, col_idx] - y_mean]).T @
-         np.array([Psi[:, col_idx] - y_mean]))
-         for col_idx in range(Psi.shape[0])], 
-        axis = 0)
-        return (cal_X, P_y)    
-        
     def predict_next_state(self, x_T) -> np.ndarray:
         """
         The state transition function A for a UKF. Due to the variable number of inputs
@@ -247,59 +223,151 @@ class UnscentedKF(KalmanFilterInterface):
         For efficiency reasons,
         self should be used for all other variables, eg : noise 
         :parameter x_T: the **Transposed** data (x_T is a vector) point. 
-        :return: a vector with the same dimensions as x_T
+        :return: a column vector (non transposed) with the same dimensions as x
         """
         raise Exception("Method predict_next_state(x_T) " \
         "needs to be implemented by the inheriting subclass")
 
-   
-    def convert_to_measurement(self, y_T) -> np.ndarray:
+    def measurement_to_state(self, y_T) -> np.ndarray:
         """
         The measurement conversion function H for a UKF. Due to the variable number of inputs
         in different subclasses, this method takes in no parameters. Instead, self should be used
         to find the associated measurement.
         :return: a vector with the same dimensions as y_T
-
         """
         raise Exception("Method convert_to_measurement()" \
         "needs to be implemented by the inheriting subclass")
     
-    
+    #----------- Main Methods -----------#
     def run(self) -> pd.Series:
-        raise Exception("This method has not been implemented yet,"
-        " and should be implemented in the UKF class")
+        """
+        Runs the Unscented Kalman filter, mutating the internal parameters. 
+        The UKF should be re-instantialized every time it is run.
+        :return: A series containing timestamps as indecies and the predicted data
+        """
+        self.x, self.P = self.initialize_system()
+        dp = self.get_next_data_point()
+        
+        self.timestamps = np.append(self.timestamps, dp[1])
+        dp = dp[0]
+        
+        while dp != 'End':
+            self._initialize_weights()
+        
+            #TODO : make sure it's dp for both
+            self.x_pr, self.P_pr = self._calculate_priori(dp)
+            self.x, self.P = self._calculate_posteriori(dp)
+            self.filtered_data = np.append(self.filtered_data, self.x)
+
+            dp = self.get_next_data_point()
+            self.timestamps = np.append(self.timestamps, dp[1])
+            dp = dp[0]
+
+    #----------- Helper Methods -----------#
+
+    def _initialize_weights(self, alpha, *, beta = 2, kappa = 0) -> tuple[list[float], list[float]]:
+        """
+        Initializes the mean and covariance weightings of the sigma points
+        :param alpha: sigma points spread
+        :param beta: secondary scaling parameter, default (and most optimal) value is set to 2
+        :param kappa: tertiary scaling parameter, default (and most common) value is set to 0
+        :return: a tuple consisting of (mean weightings, covariance weightings), both of
+            which are list of floats
+        """
+        #l represents lambda the variable, not lambda function
+        self.l = alpha ** 2 (self.n + kappa) - self.n 
+
+        eta_m = np.array([self.l / (self.n + self.l)])
+        eta_c = np.array([1 / (self.n + self.l) + 1 - alpha ** 2  + beta])
+
+        eta_i = 1/(2(self.n + self.l))
+        #adds 2 * L more eta_i to eta_m and eta_c
+        eta_m += [eta_i] * (2 * self.n)
+        eta_c += [eta_i] * (2 * self.n)
+        return (eta_m, eta_c)
+
+    def _unscented_transform(self, x_T, mean_weight, cov_weight, cov_noise) -> tuple[np.ndarray, np.ndarray]:
+        """
+        peforms an unscented transform to compute the mean and covariance of the given
+        random sample points.
+        :param x_T: a numpy array of sample points, who are also numpy arrays.
+            Note that this parameter is **transposed**, which is
+            a list of column vectors who are represented as rows.
+        :param cov_noise: the covariance noise associated with the sample points
+        :return: a tuple of (mean, covariance)
+        """
+        if isinstance(x_T, list):
+            x_T = np.array(x_T)
+        if x_T.size == 0:
+            return (np.array([]), np.array([]))
+        x_mean = np.mean([weight * col for (weight, col) in zip(mean_weight, x_T)], axis = 1)
+        x_cov = np.zeros(x_T[0].shape[0])
+        for (weight, col) in zip(cov_weight, x_T):
+            zm_col = col - x_mean
+            x_cov += weight * zm_col
+        x_cov += cov_noise
+        
+        return (x_mean, x_cov)
     
-    
-    def _calculate_priori(self) -> tuple[np.ndarray, np.ndarray]:
+    def _create_sigma_points(self, x, S) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Performs an unscented transform, calculating sigma points and the post-transform covariance
+        on an assumption of a zero-mean for our random variable `x`. 
+        :param alpha: sigma points spread
+        :param beta: secondary scaling parameter, default (and most optimal) value is set to 2
+        :param kappa: tertiary scaling parameter, default (and most common) value is set to 0
+        :return: a tuple consisting of sigma points and the associated covariance. 
+            Values `self.eta_m` and `self.eta_c` are also mutated.
+        """
+        
+        sigma_mag = np.sqrt(self.n + self.l) * S
+        cal_X : Annotated[np.ndarray, Literal[(self.n, 2 * self.n + 1)]] = \
+            np.concat([np.zeros((self.n,1)), sigma_mag, -1 * sigma_mag])
+        
+        Psi_T : Annotated[np.ndarray, Literal[(self.n, 2 * self.n + 1)]] = \
+        np.array([
+                self.predict_next_state(cal_X[:,i]) for i in range(cal_X.shape[0])]
+            ).T
+
+        y_mean = 0
+        P_y = np.zeros(1 + 2 * self.n)
+        
+        for col_idx in range(Psi_T.shape[0]):
+            y_mean += Psi_T[col_idx] * self.eta_m[col_idx]
+            psi_var = [Psi_T[:, col_idx] - y_mean].T @ (
+                np.array([Psi_T[:, col_idx] - y_mean]))
+            
+            P_y += self.eta_c[col_idx] * psi_var
+        return (cal_X, P_y)    
+        
+    def _calculate_priori(self, x) -> tuple[np.ndarray, np.ndarray]:
         """
         Makes a prediction on what the state should be with the information already known.
         This can be thought of as the "predict" step of a predict and adjust algorithm.
-        :return : a tuple consisting of (x_priori, P_priori) 
+        :return : a tuple consisting of (x_priori, P_priori).
         """
         S = np.linalg.cholesky(self.P)  
-        cal_X, P_y = self.unscented_transform(self.x, self.S)
+        cal_X, self.P_y = self._create_sigma_points(self.x, S)
         cal_X_pr = self.predict_next_state(cal_X) 
-        x_pr = sum([cal_X_pr[:, col_idx] * self.eta_m[col_idx] for col_idx in range(cal_X_pr.shape[0])])
-        P_pr = self.Q + np.sum(
-            [self.eta_c[col_idx] * 
-            (np.array([cal_X_pr[:, col_idx]]).T @
-             np.array([cal_X_pr[:, col_idx]]))
-             for col_idx in range()], 
-            axis = 0)
-        return (x_pr, P_pr)
+
+        self.cal_Y = cal_X_pr 
+
+        return self._unscented_transform(cal_X_pr)
+
         
-    def _calculate_posteriori(self) -> tuple[np.ndarray, np.ndarray]:
+    def _calculate_posteriori(self, z) -> tuple[np.ndarray, np.ndarray]:
         """
         Corrects the internal variables based on the accuracy of the calculated priori.
         This can be thought of as the "update" step of a predict and update algorithm.
         :return: a tuple consisting of (x_posteriori, P_posteriori)
         """
-        y_pr = None
-        P_yy = None
-        P_xy = None
+        cal_Z = self.measurement_to_state(self.cal_Y)
+        mu_z, P_z = self._unscented_transform(cal_Z, self.R) 
+        y = z - mu_z
         
-        K = self.P_xy @ np.linalg.pinv(P_yy)
-        x = self.x_pr + self.K @ (self.y - self.y_pr)
-        P = self.P_pr - K @ self.P_yy @ self.K.T
-        
+        K = self.eta_c * np.sum((self.cal_Y - self.x_pr)(cal_Z - mu_z).T, axis = 1)
+        K = K @ np.linalg.pinv(P_z)
+
+        x = self.x_pr + K @ y
+        P = self.P_pr - K @ P_z @ K.T
         return (x, P)
