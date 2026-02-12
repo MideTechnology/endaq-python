@@ -3,65 +3,12 @@ from typing import Union, Literal, Annotated, TypeVar
 import numpy as np
 import datetime as dt
 
+__all__ = {
+    AccelerationKalmanFilter,
+    OrientationKalmanFilter,
+}
 
-class KalmanFilterInterface:
-    """
-    An interface holding the methods used in a Kalman Filter.
-    Due to the extensive adaptability of the Kalman Filter, all methods 
-    will remain unimplemented and no variables will be set, all left to the super class.
-    All implementation should follow the notation below
-    - uppercase Letter represents matrix, 
-    - _h represents vector. 
-    -  _pr represents priori or prediction
-    - _T represents a transposed matrix
-    - Unless stated otherwise, all other variable names do not follow specific notation.
-
-    """
-
-    def update_parameters(self, delta_t) -> None:
-        """
-        Updates any internal parameters based on the given delta time.
-        :return : None, all data associated with this method is modified.
-        """
-        raise NotImplementedError("Method update_parameters(delta_t) " \
-                                  "needs to be implemented by the inheriting subclass")
-    
-    def initialize_system(self) -> tuple[np.ndarray, np.ndarray]:
-        """
-        initializes the Kalaman system by defining the initial state and certaintiy.
-        This method is abstract and needs to be defined in the implementing subclass.
-        :return: a tuple consisting of the state variable `x` 
-            and state covariance `P` matrix, index respective.
-        """
-
-        raise NotImplementedError("Method initialize_system() " \
-                                  "needs to be implemented by the ineriting subclass")
-
-
-
-    def get_next_data_point(self) -> Union[tuple[np.array, dt.datetime64], Literal["End"]]:
-        """
-        gets the next data point (form of a vector) along with the time
-        between this point and the previous. "End" is returned if there are no more
-        data points.
-        This method is abstract and needs to be defined in the implementing subclass.
-        :return: (next data point, delta time elapsed) or keyword "End" 
-        """
-        raise NotImplementedError("Method get_next_data_point()" \
-                                  "needs to be implemented by the inheriting subclass")
-    
-    def run(self) -> pd.Series:
-        """
-        Runs a Kalman filter using the parameters set in :py:func:`__init__` and the
-        data points given in :py:func:`get_next_data_point()`
-        :return: a pandas `Series` object, with original timesteps and the computed values. 
-        """
-        raise NotImplementedError("Method run()" \
-                                  "needs to be implemented by the inheriting subclass")
-
-
-
-class LinearKF(KalmanFilterInterface):
+class LinearKalmanFilter:
     """
     An abstract mutable class that performs a Kalman filter, implementation mainly based on 
     https://thekalmanfilter.com/kalman-filter-explained-simply/ with other influences.
@@ -86,9 +33,6 @@ class LinearKF(KalmanFilterInterface):
         :param Q: Process noise Covariance Matrix, n by n dimensions
         :param R: Measurement Covariance Matrix, m by m dimensions
         """
-        #----- annotation variables -----# 
-        n = int 
-        m = int
         #----- prediction variables -----# 
         self.x_pr = None 
         self.P_pr = None 
@@ -107,8 +51,43 @@ class LinearKF(KalmanFilterInterface):
         self.filtered  = []
         self.timestamps = [start]
 
-    #==========     Overriden Methods     ==========#
+    #-----   methods to override   -----#
+    def update_parameters(self, delta_t) -> None:
+        """
+        Updates any internal parameters based on the given delta time.
+        :return : None, all data associated with this method is modified.
+        """
+        raise NotImplementedError("Method update_parameters(delta_t) " \
+                                  "needs to be implemented by the inheriting subclass")
+    
+    def initialize_system(self) -> tuple[np.ndarray, np.ndarray]:
+        """
+        initializes the Kalaman system by defining the initial state and certaintiy.
+        This method is abstract and needs to be defined in the implementing subclass.
+        :return: a tuple consisting of the state variable `x` 
+            and state covariance `P` matrix, index respective.
+        """
+
+        raise NotImplementedError("Method initialize_system() " \
+                                  "needs to be implemented by the ineriting subclass")
+
+    def get_next_data_point(self) -> Union[tuple[np.array, dt.datetime64], Literal["End"]]:
+        """
+        gets the next data point (form of a vector) along with the time
+        between this point and the previous. "End" is returned if there are no more
+        data points.
+        This method is abstract and needs to be defined in the implementing subclass.
+        :return: (next data point, delta time elapsed) or keyword "End" 
+        """
+        raise NotImplementedError("Method get_next_data_point()" \
+                                  "needs to be implemented by the inheriting subclass")
+    
     def run(self) -> pd.Series:
+        """
+        Runs a Kalman filter using the parameters set in :py:func:`__init__` and the
+        data points given in :py:func:`get_next_data_point()`
+        :return: a pandas `Series` object, with original timesteps and the computed values. 
+        """
         self.initialize_system()
         dp = self.get_next_data_point()
         filtered_points = []
@@ -162,9 +141,7 @@ class LinearKF(KalmanFilterInterface):
 
         return self.H @ self.x  
 
-
-
-class UnscentedKF(KalmanFilterInterface): 
+class UnscentedKalmanFilter: 
     """
     An abstract class for the process of a Unscented Kalman Filter (UKF). This 
     class has additional methods to be implemented: 
@@ -176,7 +153,6 @@ class UnscentedKF(KalmanFilterInterface):
     The following is Unscented Kalman Filter specific variable notation:
     - cal_ represents an inbetween sigma point calculation. 
     """
-    
     
     def __init__(self, Q, alpha, *, beta= 2, kappa= 0):
         """
@@ -197,7 +173,7 @@ class UnscentedKF(KalmanFilterInterface):
         self.S : np.ndarray = None 
         self.K : np.ndarray = None
         #----- Sigma point specifics -----#
-        eta_c, eta_m = self._initialize_weights(alpha, beta=beta, kappa=kappa)
+        eta_c, eta_m = self._calculate_weights(alpha, beta=beta, kappa=kappa)
         #covariance weight vectors
         self.eta_c : Annotated[np.ndarray, Literal[(1, 2 * self.n)]] = eta_c
         #mean weight vectors
@@ -210,11 +186,35 @@ class UnscentedKF(KalmanFilterInterface):
         self.filtered_data = np.array([])
 
     #----------- Methods for user to implement -----------#
-    def initialize_system(self):
-        return super().initialize_system()
+    def update_parameters(self, delta_t) -> None:
+        """
+        Updates any internal parameters based on the given delta time.
+        :return : None, all data associated with this method is modified.
+        """
+        raise NotImplementedError("Method update_parameters(delta_t) " \
+                                  "needs to be implemented by the inheriting subclass")
     
-    def get_next_data_point(self):
-        return super().get_next_data_point()
+    def initialize_system(self) -> tuple[np.ndarray, np.ndarray]:
+        """
+        initializes the Kalaman system by defining the initial state and certaintiy.
+        This method is abstract and needs to be defined in the implementing subclass.
+        :return: a tuple consisting of the state variable `x` 
+            and state covariance `P` matrix, index respective.
+        """
+
+        raise NotImplementedError("Method initialize_system() " \
+                                  "needs to be implemented by the ineriting subclass")
+
+    def get_next_data_point(self) -> Union[tuple[np.array, dt.datetime64], Literal["End"]]:
+        """
+        gets the next data point (form of a vector) along with the time
+        between this point and the previous. "End" is returned if there are no more
+        data points.
+        This method is abstract and needs to be defined in the implementing subclass.
+        :return: (next data point, delta time elapsed) or keyword "End" 
+        """
+        raise NotImplementedError("Method get_next_data_point()" \
+                                  "needs to be implemented by the inheriting subclass")
 
     def predict_next_state(self, x_T) -> np.ndarray:
         """
@@ -225,7 +225,7 @@ class UnscentedKF(KalmanFilterInterface):
         :parameter x_T: the **Transposed** data (x_T is a vector) point. 
         :return: a column vector (non transposed) with the same dimensions as x
         """
-        raise Exception("Method predict_next_state(x_T) " \
+        raise NotImplementedError("Method predict_next_state(x_T) " \
         "needs to be implemented by the inheriting subclass")
 
     def measurement_to_state(self, y_T) -> np.ndarray:
@@ -235,7 +235,7 @@ class UnscentedKF(KalmanFilterInterface):
         to find the associated measurement.
         :return: a vector with the same dimensions as y_T
         """
-        raise Exception("Method convert_to_measurement()" \
+        raise NotImplementedError("Method convert_to_measurement()" \
         "needs to be implemented by the inheriting subclass")
     
     #----------- Main Methods -----------#
@@ -253,7 +253,7 @@ class UnscentedKF(KalmanFilterInterface):
         dp = dp[0]
         
         while dp != 'End':
-            self.eta_m, self.eta_c = self._initialize_weights()
+            self.eta_m, self.eta_c = self._calculate_weights()
         
             #TODO : make sure it's dp for both
             self.x_pr, self.P_pr = self._calculate_priori(dp)
@@ -266,7 +266,7 @@ class UnscentedKF(KalmanFilterInterface):
 
     #----------- Helper Methods -----------#
 
-    def _initialize_weights(self, alpha, *, beta = 2, kappa = 0) -> tuple[list[float], list[float]]:
+    def _calculate_weights(self, alpha, *, beta = 2, kappa = 0) -> tuple[list[float], list[float]]:
         """
         Initializes the mean and covariance weightings of the sigma points
         :param alpha: sigma points spread
@@ -357,7 +357,6 @@ class UnscentedKF(KalmanFilterInterface):
 
         return self._unscented_transform(cal_X_pr, self.eta_m, self.eta_c, self.Q)
 
-        
     def _calculate_posteriori(self, z) -> tuple[np.ndarray, np.ndarray]:
         """
         Corrects the internal variables based on the accuracy of the calculated priori.
@@ -368,9 +367,196 @@ class UnscentedKF(KalmanFilterInterface):
         mu_z, P_z = self._unscented_transform(cal_Z, self.R) 
         y = z - mu_z
         
-        K = self.eta_c * np.sum((self.cal_Y - self.x_pr)(cal_Z - mu_z).T, axis = 1)
+        K = self.eta_c * np.sum((self.cal_Y - self.x_pr) @ (cal_Z - mu_z).T, axis = 1)
         K = K @ np.linalg.pinv(P_z)
 
         x = self.x_pr + K @ y
         P = self.P_pr - K @ P_z @ K.T
         return (x, P)
+
+#------------- CONCRETE IMPLEMENTATIONS -------------#
+class AccelerationKalmanFilter(LinearKalmanFilter):
+        """
+        Concrete implementation a Kalman filter for `refine_acceleration` in 
+        filters.py, used to combine multiple acceleration channels on an Endaq Device.
+        """ 
+        def __init__(self, dfs):
+            for df in dfs:
+                for col in df.columns:
+                    df[col] = df[col] - df[col].mean()
+
+            self.df_data = [df.values for df in dfs]
+            self.df_timestamps = [df.index for df in dfs]
+            self.timestamp_idx = [0 for _ in dfs]
+
+            self._full_dataset = np.concat(self.df_data)
+
+            H = np.concat((np.eye(3), np.zeros((3,3))), axis = 1)
+            Q = np.diag([0.05] * 3 + [0.0 * 3])  #i don't think this is correct.
+            R = np.diag(
+                [np.var([dp[column_idx] for dp in self.df_data]) 
+                    for column_idx in range(len(self.df_data[0][0]))], #HACK : I really don't like this implementation
+            )
+
+            self.specs = [df.columns[0][2:] for df in dfs] #gets the rating, eg (40g) 
+            
+            self.base_rating = {'(8g)' : 0.00002,
+                            '(16g)' : 0.004,
+                            '(40g)' : 0.00002,
+                            '(100g)' : 0.05,
+                            } 
+
+            self.hz_rating = {'(8g)' : None,
+                            '(16g)' : None,
+                            '(40g)' : None,
+                            '(100g)' : None,
+                            } 
+            super().__init__(H, Q, R)
+
+
+        def initialize_system(self):
+            dp1 = self.get_next_data_point()
+            dp2 = self.get_next_data_point()
+
+            if (isinstance(dp1, str)) or (isinstance(dp2, str)):
+                raise StopIteration("Not enough data points")
+
+            deltaT = (dp2[1] - dp1[1]).total_seconds()
+            x = np.concatenate((dp2[0], (dp2[0] - dp1[0]) * deltaT))
+            P = np.diag(
+                np.concatenate([
+                    [np.var([dp[column_idx] for dp in self.df_data])
+                          for column_idx in range(len(self.df_data[0][0]))],
+                    [100,100,100]]))
+            #100 is an arbitrary value commonly used in Kalman filter implementations,
+            #representing high uncertainty
+            return (x,P, dp2[1])
+        
+        def update_parameters(self, deltaT):
+            A = np.eye(6)
+            A[0,3] = deltaT
+            A[1,4] = deltaT
+            A[2,5] = deltaT
+            self.A = A
+
+        
+        def get_next_data_point(self):
+            if self.df_data == []:
+                return "End"
+            
+            candidates = [self.df_timestamps[i][self.timestamp_idx[i]] 
+                          for i in range(len(self.timestamp_idx))]
+            selected_df_idx = candidates.index(min(candidates)) 
+            df_idx = self.timestamp_idx[selected_df_idx]
+            next_dp = (
+                self.df_data[selected_df_idx][df_idx],
+                candidates[selected_df_idx], 
+                )
+            
+            self.timestamp_idx[selected_df_idx] += 1
+
+            if self.timestamp_idx[selected_df_idx] >= len(self.df_timestamps[selected_df_idx]):
+                del self.df_data[selected_df_idx]
+                del self.df_timestamps[selected_df_idx]
+                del self.timestamp_idx[selected_df_idx] 
+           
+            self._determine_noise(selected_df_idx)
+            return next_dp
+    
+        def _determine_noise(self, selected_df_idx):
+            """
+            Determines the additional noise 
+            :param selected_idx: The index of the selected dataframe in `self.df_data`.
+
+            :return: None, this method mutates `self.noise`.
+            """
+            name = self.specs[selected_df_idx]
+            penultimate_idx = self.timestamp_idx[selected_df_idx] - 2
+
+            if penultimate_idx < 0:
+                self.noise = self.base_rating[name]
+                return
+            
+            timestamps = self.df_timestamps[selected_df_idx]
+            hz = 1 / (
+                timestamps[penultimate_idx + 1] - 
+                timestamps[penultimate_idx]
+                ).total_seconds()
+            self.noise = self.hz_rating[name](hz) + self.base_rating[name]
+
+class OrientationKalmanFilter(UnscentedKalmanFilter):
+    """
+    A concrete implementation of a Unscented Kalman filter for `validate_orientation` in 
+    filters.py, by predicting orientation through acceleration and rotation.
+    Due to the nature of quaternions, in addition to the the base methods to implement,
+    `_create_sigma_points` and `_calculate_weights` have to be overriden.
+    """
+
+    def __init__(self, acceleration_df, rotation_df, orientation_df):
+        """        
+        :param acceleration_df: dataframe representing acceleration. Any ratings of sensors
+            are valid, or `refine_acceleration` can be used to combine into one. 
+        :param rotation_df: dataframe representing  rotation. 
+        :param orientation_df: dataframe representing **relative** orientation. 
+        """
+        self.cur_idx = 0
+        #TODO : align datasets to all have the same time points (and equal number of dps)
+        aligned_acc = None
+        aligned_rot = None
+        aligned_ori = None
+        #TODO : do I want to keep this as a dataframe or convert to lists (aka ILOC)
+        self.acc_df = aligned_acc
+        self.rot_df = aligned_rot
+        self.ori_df = aligned_ori
+        self.timestamps = None #already predetermined from resampling
+        self.delta_t = None #already predetermined from resampling
+
+    def update_parameters(self, delta_t) -> None:
+        """
+        Updates any internal parameters based on the given delta time.
+        :return : None, all data associated with this method is modified.
+        """
+        pass
+    
+    def initialize_system(self) -> tuple[np.ndarray, np.ndarray]:
+        """
+        initializes the Kalaman system by defining the initial state and certaintiy.
+        This method is abstract and needs to be defined in the implementing subclass.
+        :return: a tuple consisting of the state variable `x` 
+            and state covariance `P` matrix, index respective.
+        """
+        
+        raise NotImplementedError("Method initialize_system() " \
+                                  "needs to be implemented by the ineriting subclass")
+
+    def get_next_data_point(self) -> Union[tuple[np.array, dt.datetime64], Literal["End"]]:
+        """
+        gets the next data point as a 10 index array, [accel, rot, orientation] and the
+        time delta between points.
+        :return: (next data point, delta time elapsed) or keyword "End" 
+        """
+        raise NotImplementedError("Method get_next_data_point()" \
+                                  "needs to be implemented by the inheriting subclass")
+
+    def predict_next_state(self, x_T) -> np.ndarray:
+        """
+        The state transition function A for a UKF. Due to the variable number of inputs
+        in different subclasses, this method takes in the only guarenteed parameter, x.
+        For efficiency reasons,
+        self should be used for all other variables, eg : noise 
+        :parameter x_T: the **Transposed** data (x_T is a vector) point. 
+        :return: a column vector (non transposed) with the same dimensions as x
+        """
+        raise NotImplementedError("Method predict_next_state(x_T) " \
+        "needs to be implemented by the inheriting subclass")
+
+    def measurement_to_state(self, y_T) -> np.ndarray:
+        """
+        The measurement conversion function H for a UKF. Due to the variable number of inputs
+        in different subclasses, this method takes in no parameters. Instead, self should be used
+        to find the associated measurement.
+        :return: a vector with the same dimensions as y_T
+        """
+        raise NotImplementedError("Method convert_to_measurement()" \
+        "needs to be implemented by the inheriting subclass")
+

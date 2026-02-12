@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-from typing import Optional, Union, Tuple, List
+from typing import Optional, Union, Tuple, List, Literal
 import functools
 
 import pandas as pd
 import numpy as np
 import scipy.signal
-import time #XXX: This import is used for testing, and should be removed before merging
-import random #XXX: This import is used for testing, and should be removed before merging
+from kalman import *
 
-
-from endaq.calc import utils, kalman
+from endaq.calc import utils
 
 
 def _get_filter_frequencies_type(low_cutoff, high_cutoff):
@@ -115,7 +113,7 @@ def bessel(
     high_cutoff: Optional[float] = None,
     half_order: int = 3,
     tukey_percent: float = 0.0,
-    norm: typing.Literal["phase", "delay", "mag"] = "mag",
+    norm: Literal["phase", "delay", "mag"] = "mag",
 ) -> pd.DataFrame:
     """
     Apply a lowpass and/or a highpass Bessel filter to an array.
@@ -364,122 +362,6 @@ def refine_acceleration(
             1. insufficient data for the filter (< 4 time points)
             2. insufficient amount of acceleration channels (< 2 channels)
     """
-    #Acceleration Kalman class construction start#
-    class AccelerationKalmanFilter(kalman.LinearKF):
-        """
-        Concrete implementation of the Noise Variant Kalman Filter in `kalman.py`,
-        used to combine multiple acceleration channels on an Endaq Device.
-        """ 
-        def __init__(self, dfs):
-            for df in dfs:
-                for col in df.columns:
-                    df[col] = df[col] - df[col].mean()
-
-            self.df_data = [df.values for df in dfs]
-            self.df_timestamps = [df.index for df in dfs]
-            self.timestamp_idx = [0 for _ in dfs]
-
-            self._full_dataset = np.concat(self.df_data)
-
-            H = np.concat((np.eye(3), np.zeros((3,3))), axis = 1)
-            Q = np.diag([0.05] * 3 + [0.0 * 3])  #i don't think this is correct.
-            R = np.diag(
-                [np.var([dp[column_idx] for dp in self.df_data]) 
-                    for column_idx in range(len(self.df_data[0][0]))], #HACK : I really don't like this implementation
-            )
-
-            self.specs = [df.columns[0][2:] for df in dfs] #gets the rating, eg (40g) 
-            
-            self.base_rating = {'(8g)' : 0.00002,
-                            '(16g)' : 0.004,
-                            '(40g)' : 0.00002,
-                            '(100g)' : 0.05,
-                            } 
-
-            self.hz_rating = {'(8g)' : None,
-                            '(16g)' : None,
-                            '(40g)' : None,
-                            '(100g)' : None,
-                            } 
-            super().__init__(H, Q, R)
-
-
-        def initialize_system(self):
-            dp1 = self.get_next_data_point()
-            dp2 = self.get_next_data_point()
-
-            if (isinstance(dp1, str)) or (isinstance(dp2, str)):
-                raise StopIteration("Not enough data points")
-
-            deltaT = (dp2[1] - dp1[1]).total_seconds()
-            x = np.concatenate((dp2[0], (dp2[0] - dp1[0]) * deltaT))
-            P = np.diag(
-                np.concatenate([
-                    [np.var([dp[column_idx] for dp in self.df_data])
-                          for column_idx in range(len(self.df_data[0][0]))],
-                    [100,100,100]]))
-            #100 is an arbitrary value commonly used in Kalman filter implementations,
-            #representing high uncertainty
-            return (x,P, dp2[1])
-        
-        def update_parameters(self, deltaT):
-            A = np.eye(6)
-            A[0,3] = deltaT
-            A[1,4] = deltaT
-            A[2,5] = deltaT
-            self.A = A
-
-        def new_Q(self): 
-            #XXX : I don't actually know if this is right.
-            return np.diag([self.noise] * 3 +
-                           [self.noise * 2] * 3) 
-        
-
-
-        def get_next_data_point(self):
-            if self.df_data == []:
-                return "End"
-            
-            candidates = [self.df_timestamps[i][self.timestamp_idx[i]] 
-                          for i in range(len(self.timestamp_idx))]
-            selected_df_idx = candidates.index(min(candidates)) 
-            df_idx = self.timestamp_idx[selected_df_idx]
-            next_dp = (
-                self.df_data[selected_df_idx][df_idx],
-                candidates[selected_df_idx], 
-                )
-            
-            self.timestamp_idx[selected_df_idx] += 1
-
-            if self.timestamp_idx[selected_df_idx] >= len(self.df_timestamps[selected_df_idx]):
-                del self.df_data[selected_df_idx]
-                del self.df_timestamps[selected_df_idx]
-                del self.timestamp_idx[selected_df_idx] 
-           
-            self._determine_noise(selected_df_idx)
-            return next_dp
-    
-        def _determine_noise(self, selected_df_idx):
-            """
-            Determines the additional noise 
-            :param selected_idx: The index of the selected dataframe in `self.df_data`.
-
-            :return: None, this method mutates `self.noise`.
-            """
-            name = self.specs[selected_df_idx]
-            penultimate_idx = self.timestamp_idx[selected_df_idx] - 2
-
-            if penultimate_idx < 0:
-                self.noise = self.base_rating[name]
-                return
-            
-            timestamps = self.df_timestamps[selected_df_idx]
-            hz = 1 / (
-                timestamps[penultimate_idx + 1] - 
-                timestamps[penultimate_idx]
-                ).total_seconds()
-            self.noise = self.hz_rating[name](hz) + self.base_rating[name]
-    #Acceleration Kalman class construction end#
 
     ak = AccelerationKalmanFilter(dfs)
     filtered_series =  ak.run()
@@ -511,7 +393,7 @@ def band_limited_noise(
     max_freq: float = None,
     duration: float = 1.0,
     sample_rate: float = 1000.0,
-    norm: typing.Literal["rms", "peak"] = "peak",
+    norm: Literal["rms", "peak"] = "peak",
 ) -> pd.DataFrame:
     """
     Generate a time series with noise in a defined frequency range.
