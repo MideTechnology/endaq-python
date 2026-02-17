@@ -6,7 +6,7 @@ import functools
 import pandas as pd
 import numpy as np
 import scipy.signal
-from kalman import *
+from endaq.calc.kalman import *
 
 from endaq.calc import utils
 

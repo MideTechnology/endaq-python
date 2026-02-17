@@ -3,10 +3,10 @@ from typing import Union, Literal, Annotated, TypeVar
 import numpy as np
 import datetime as dt
 
-__all__ = {
-    AccelerationKalmanFilter,
-    OrientationKalmanFilter,
-}
+__all__ = [
+    "AccelerationKalmanFilter",
+    "OrientationKalmanFilter",
+]
 
 class LinearKalmanFilter:
     """
@@ -39,8 +39,8 @@ class LinearKalmanFilter:
         #-----   system variables   -----#
         self.A = A 
         self.H = H
-        self.R = R 
         self.Q = Q 
+        self.R = R 
         x, P, start = self.initialize_system()
 
         self.x = x 
@@ -99,9 +99,8 @@ class LinearKalmanFilter:
             self.x_pr, self.P_pr = self._calculate_priori(self.x)
             posteriori = self._calculate_posteriori(dp[0])
             filtered_points.append(posteriori)
-
             dp = self.get_next_data_point()
-        
+
 
         return pd.Series(filtered_points, index=self.timestamps[1:])
 
@@ -276,12 +275,12 @@ class UnscentedKalmanFilter:
             which are list of floats
         """
         #l represents lambda the variable, not lambda function
-        self.l = alpha ** 2 (self.n + kappa) - self.n 
+        self.l = alpha ** 2 * (self.n + kappa) - self.n 
 
         eta_m = np.array([self.l / (self.n + self.l)])
         eta_c = np.array([1 / (self.n + self.l) + 1 - alpha ** 2  + beta])
 
-        eta_i = 1/(2(self.n + self.l))
+        eta_i = 1/(2* (self.n + self.l))
         #adds 2 * L more eta_i to eta_m and eta_c
         eta_m += [eta_i] * (2 * self.n)
         eta_c += [eta_i] * (2 * self.n)
@@ -381,18 +380,20 @@ class AccelerationKalmanFilter(LinearKalmanFilter):
         filters.py, used to combine multiple acceleration channels on an Endaq Device.
         """ 
         def __init__(self, dfs):
-            for df in dfs:
+            for df_idx in range(len(dfs)):
+                df = dfs[df_idx]
                 for col in df.columns:
                     df[col] = df[col] - df[col].mean()
-
+                    if col[0:3] not in ['X (', 'Y (', 'Z (']:
+                        dfs[df_idx] = df.drop(col, axis = 1)
             self.df_data = [df.values for df in dfs]
             self.df_timestamps = [df.index for df in dfs]
             self.timestamp_idx = [0 for _ in dfs]
 
             self._full_dataset = np.concat(self.df_data)
-
+            A = np.eye(6)
             H = np.concat((np.eye(3), np.zeros((3,3))), axis = 1)
-            Q = np.diag([0.05] * 3 + [0.0 * 3])  #i don't think this is correct.
+            Q = np.diag([0.05] * 3 + [0.0] *3)  #i don't think this is correct.
             R = np.diag(
                 [np.var([dp[column_idx] for dp in self.df_data]) 
                     for column_idx in range(len(self.df_data[0][0]))], #HACK : I really don't like this implementation
@@ -411,7 +412,7 @@ class AccelerationKalmanFilter(LinearKalmanFilter):
                             '(40g)' : None,
                             '(100g)' : None,
                             } 
-            super().__init__(H, Q, R)
+            super().__init__(A, H, Q, R)
 
 
         def initialize_system(self):
@@ -452,6 +453,7 @@ class AccelerationKalmanFilter(LinearKalmanFilter):
                 self.df_data[selected_df_idx][df_idx],
                 candidates[selected_df_idx], 
                 )
+            self._determine_noise(selected_df_idx)
             
             self.timestamp_idx[selected_df_idx] += 1
 
@@ -459,9 +461,9 @@ class AccelerationKalmanFilter(LinearKalmanFilter):
                 del self.df_data[selected_df_idx]
                 del self.df_timestamps[selected_df_idx]
                 del self.timestamp_idx[selected_df_idx] 
-           
-            self._determine_noise(selected_df_idx)
+
             return next_dp
+    
     
         def _determine_noise(self, selected_df_idx):
             """
@@ -482,7 +484,8 @@ class AccelerationKalmanFilter(LinearKalmanFilter):
                 timestamps[penultimate_idx + 1] - 
                 timestamps[penultimate_idx]
                 ).total_seconds()
-            self.noise = self.hz_rating[name](hz) + self.base_rating[name]
+            #self.noise = self.hz_rating[name](hz) + self.base_rating[name]
+            self.noise = self.base_rating[name]
 
 class OrientationKalmanFilter(UnscentedKalmanFilter):
     """
@@ -501,6 +504,7 @@ class OrientationKalmanFilter(UnscentedKalmanFilter):
         """
         self.cur_idx = 0
         #TODO : align datasets to all have the same time points (and equal number of dps)
+        
         aligned_acc = None
         aligned_rot = None
         aligned_ori = None
