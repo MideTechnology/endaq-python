@@ -2,6 +2,9 @@ import pandas as pd
 from typing import Union, Literal, Annotated, TypeVar
 import numpy as np
 import datetime as dt
+from scipy.spatial.transform import Rotation as R
+from endaq.calc.utils import align_datasets
+
 
 __all__ = [
     "AccelerationKalmanFilter",
@@ -153,42 +156,23 @@ class UnscentedKalmanFilter:
     - cal_ represents an inbetween sigma point calculation. 
     """
     
-    def __init__(self, Q, alpha, *, beta= 2, kappa= 0):
+    def __init__(self, Q, alpha = 0.001, *, beta= 2, kappa= 0):
         """
         initialization method for the Unscented Kalman Filter.
         All methods with value `None` get set to proper values in methods,
         and are only written out here for clarity.
         :param Q: proccess noise matrix
-        :param alpha: sigma points spread
+        :param alpha: sigma points spread, default is set to 0.001
         :param beta: secondary scaling parameter, default (and most optimal) value is set to 2
         :param kappa: tertiary scaling parameter, default (and most common) value is set to 0
         """
-        self.Q = Q
-        self.n = None 
-        #----- Previous iteration variables -----#
-        self.x : Annotated[np.ndarray, Literal[(self.n, 1)]] = None
-        self.P : Annotated[np.ndarray, Literal[(self.n, self.n)]] = None
-        #----- Inbetween variables -----#
-        self.S : np.ndarray = None 
-        self.K : np.ndarray = None
-        #----- Sigma point specifics -----#
-        eta_c, eta_m = self._calculate_weights(alpha, beta=beta, kappa=kappa)
-        #covariance weight vectors
-        self.eta_c : Annotated[np.ndarray, Literal[(1, 2 * self.n)]] = eta_c
-        #mean weight vectors
-        self.eta_m : Annotated[np.ndarray, Literal[(1, 2 * self.n)]] = eta_m 
-        #----- Output variables -----#
-        """ INVARIANT : timestamp will have 2+ timestamps before the first calculation
-            and will continue to have 2+ for the entire duration, as timestamps are
-            never removed. """
-        self.timestamps = np.array([])
-        self.filtered_data = np.array([])
-
+       
     #----------- Methods for user to implement -----------#
     def update_parameters(self, delta_t) -> None:
         """
         Updates any internal parameters based on the given delta time.
-        :return : None, all data associated with this method is modified.
+        
+        :return: None, all data associated with this method is modified.
         """
         raise NotImplementedError("Method update_parameters(delta_t) " \
                                   "needs to be implemented by the inheriting subclass")
@@ -215,7 +199,7 @@ class UnscentedKalmanFilter:
         raise NotImplementedError("Method get_next_data_point()" \
                                   "needs to be implemented by the inheriting subclass")
 
-    def predict_next_state(self, x_T) -> np.ndarray:
+    def predict_next_state(self, x_T, w_T) -> np.ndarray:
         """
         The state transition function A for a UKF. Due to the variable number of inputs
         in different subclasses, this method takes in the only guarenteed parameter, x.
@@ -244,103 +228,53 @@ class UnscentedKalmanFilter:
         The UKF should be re-instantialized every time it is run.
         :return: A series containing timestamps as indecies and the predicted data
         """
-        self.x, self.P = self.initialize_system()
-        dp = self.get_next_data_point()
-        self.n = len(dp[0])
-        
-        self.timestamps = np.append(self.timestamps, dp[1])
-        dp = dp[0]
-        
-        while dp != 'End':
-            self.eta_m, self.eta_c = self._calculate_weights()
-        
-            #TODO : make sure it's dp for both
-            self.x_pr, self.P_pr = self._calculate_priori(dp)
-            self.x, self.P = self._calculate_posteriori(dp)
-            self.filtered_data = np.append(self.filtered_data, self.x)
-
-            dp = self.get_next_data_point()
-            self.timestamps = np.append(self.timestamps, dp[1])
-            dp = dp[0]
+       
 
     #----------- Helper Methods -----------#
 
-    def _calculate_weights(self, alpha, *, beta = 2, kappa = 0) -> tuple[list[float], list[float]]:
+    def _calculate_weights(self, **kwargs) -> tuple[list[float], list[float]]:
         """
-        Initializes the mean and covariance weightings of the sigma points
-        :param alpha: sigma points spread
-        :param beta: secondary scaling parameter, default (and most optimal) value is set to 2
-        :param kappa: tertiary scaling parameter, default (and most common) value is set to 0
-        :return: a tuple consisting of (mean weightings, covariance weightings), both of
-            which are list of floats
+        Initializes the mean and covariance weightings of the sigma points.
+        this method is keyword arguments because weights are dependent on the system.
+
+        :param **kwargs: keyword only arguments, holding anything that is
         """
-        #l represents lambda the variable, not lambda function
-        self.l = alpha ** 2 * (self.n + kappa) - self.n 
 
-        eta_m = np.array([self.l / (self.n + self.l)])
-        eta_c = np.array([1 / (self.n + self.l) + 1 - alpha ** 2  + beta])
-
-        eta_i = 1/(2* (self.n + self.l))
-        #adds 2 * L more eta_i to eta_m and eta_c
-        eta_m += [eta_i] * (2 * self.n)
-        eta_c += [eta_i] * (2 * self.n)
-
-        return (eta_m, eta_c)
 
     def _unscented_transform(self, x_T, mu_w, P_w, cov_noise) -> tuple[np.ndarray, np.ndarray]:
         """
         peforms an unscented transform to compute the mean and covariance of the given
         random sample points.
+
         :param x_T: a numpy array of sample points, who are also numpy arrays.
             Note that this parameter is **transposed**, which is
             a list of column vectors who are represented as rows.
         :param mu_w: mean weight of the sample points.
         :param P_w: mean covariance of the sample points.
         :param cov_noise: the covariance noise associated with the sample points
+
         :return: a tuple of (mean, covariance)
         """
-        if isinstance(x_T, list):
-            x_T = np.array(x_T)
-        if x_T.size == 0:
-            return (np.array([]), np.array([]))
-        
-        mu_x = np.mean([weight * col for (weight, col) in zip(mu_w, x_T)], axis = 1)
-        
-        P_x = np.zeros(x_T[0].shape[0])
-        for (weight, col) in zip(P_w, x_T):
-            zm_col = col - mu_x
-            P_x += weight * zm_col
-        P_x += cov_noise
-        
-        return (mu_x, P_x)
+
     
-    def _create_sigma_points(self, x, S) -> tuple[np.ndarray, np.ndarray]:
-        """
+    def _create_sigma_points(self, x, P, **kwargs) -> tuple[np.ndarray, np.ndarray]:
+        r"""
         Performs an unscented transform, calculating sigma points and the post-transform covariance
         on an assumption of a zero-mean for our random variable `x`. 
-        :param alpha: sigma points spread
-        :param beta: secondary scaling parameter, default (and most optimal) value is set to 2
-        :param kappa: tertiary scaling parameter, default (and most common) value is set to 0
+
+        The equation it uses is the following <br>
+        $\mathcal{X}^a_{k-1} = \left[\hat{x}^a_{k-1}, \hat{x}^a_{k-1} \pm \sqrt{(L + \lambda) P^a_{k-1}} \right]$
+
+        :param x: the point to create the sigma points around
+        :param S: the covariance at the given point
+
+
+        :param **kwargs: keyword arguemnts for alternative implementations of sigma points. 
+            If used, it should be documented in it's docstring
         :return: a tuple consisting of sigma points and the associated covariance. 
-            Values `self.eta_m` and `self.eta_c` are also mutated.
         """
         
-        sigma_mag = np.sqrt(self.n + self.l) * S
-        cal_X = np.concat([np.zeros((self.n,1)), sigma_mag, -1 * sigma_mag])
-        
-        Psi_T = np.array(
-            [self.predict_next_state(cal_X[:,i]) for i in range(cal_X.shape[0])]
-            )
-
-        mu_y = 0
-        P_y = np.zeros(1 + 2 * self.n)
-        
-        for col_idx in range(Psi_T.shape[0]):
-            mu_y += Psi_T[col_idx] * self.eta_m[col_idx]
-            psi_var = [Psi_T[:, col_idx] - mu_y].T @ [Psi_T[:, col_idx] - mu_y]
-                
-            P_y += self.eta_c[col_idx] * psi_var
-        return (cal_X, P_y)    
+        return 
         
     def _calculate_priori(self, x) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -348,13 +282,7 @@ class UnscentedKalmanFilter:
         This can be thought of as the "predict" step of a predict and adjust algorithm.
         :return : a tuple consisting of (x_priori, P_priori).
         """
-        S = np.linalg.cholesky(self.P)  
-        cal_X, self.P_y = self._create_sigma_points(self.x, S)
 
-        cal_X_pr = self.predict_next_state(cal_X) 
-        self.cal_Y = cal_X_pr 
-
-        return self._unscented_transform(cal_X_pr, self.eta_m, self.eta_c, self.Q)
 
     def _calculate_posteriori(self, z) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -362,16 +290,6 @@ class UnscentedKalmanFilter:
         This can be thought of as the "update" step of a predict and update algorithm.
         :return: a tuple consisting of (x_posteriori, P_posteriori)
         """
-        cal_Z = self.measurement_to_state(self.cal_Y)
-        mu_z, P_z = self._unscented_transform(cal_Z, self.R) 
-        y = z - mu_z
-        
-        K = self.eta_c * np.sum((self.cal_Y - self.x_pr) @ (cal_Z - mu_z).T, axis = 1)
-        K = K @ np.linalg.pinv(P_z)
-
-        x = self.x_pr + K @ y
-        P = self.P_pr - K @ P_z @ K.T
-        return (x, P)
 
 #------------- CONCRETE IMPLEMENTATIONS -------------#
 class AccelerationKalmanFilter(LinearKalmanFilter):
@@ -493,9 +411,13 @@ class OrientationKalmanFilter(UnscentedKalmanFilter):
     filters.py, by predicting orientation through acceleration and rotation.
     Due to the nature of quaternions, in addition to the the base methods to implement,
     `_create_sigma_points` and `_calculate_weights` have to be overriden.
+    This method uses scipy.spatial.transform.Rotation for quaternions, which have scalar last
     """
 
-    def __init__(self, acceleration_df, rotation_df, orientation_df):
+    def __init__(self, 
+                acceleration_df, 
+                rotation_df, 
+                orientation_df):
         """        
         :param acceleration_df: dataframe representing acceleration. Any ratings of sensors
             are valid, or `refine_acceleration` can be used to combine into one. 
@@ -503,23 +425,24 @@ class OrientationKalmanFilter(UnscentedKalmanFilter):
         :param orientation_df: dataframe representing **relative** orientation. 
         """
         self.cur_idx = 0
-        #TODO : align datasets to all have the same time points (and equal number of dps)
         
-        aligned_acc = None
-        aligned_rot = None
-        aligned_ori = None
-        #TODO : do I want to keep this as a dataframe or convert to lists (aka ILOC)
-        self.acc_df = aligned_acc
-        self.rot_df = aligned_rot
-        self.ori_df = aligned_ori
-        self.timestamps = None #already predetermined from resampling
-        self.delta_t = None #already predetermined from resampling
+        aligned_acc, aligned_rot, aligned_ori = \
+            align_datasets([acceleration_df, rotation_df, orientation_df]) 
+        self.acc_iter = aligned_acc.itertuples()
+        self.rot_iter = aligned_rot.itertuples()
+        self.ori_iter = aligned_ori.itertuples()
+        self.timestamps = aligned_acc.index 
+        self.delta_t = self.timestamps[1] - self.timestamps[0] 
+
+        self.rot_noise = None
+        self.acc_noise = None
 
     def update_parameters(self, delta_t) -> None:
         """
         Updates any internal parameters based on the given delta time.
         :return : None, all data associated with this method is modified.
         """
+        #delta_t is static in this implementation, so nothing needs to be updated
         pass
     
     def initialize_system(self) -> tuple[np.ndarray, np.ndarray]:
@@ -539,10 +462,16 @@ class OrientationKalmanFilter(UnscentedKalmanFilter):
         time delta between points.
         :return: (next data point, delta time elapsed) or keyword "End" 
         """
-        raise NotImplementedError("Method get_next_data_point()" \
-                                  "needs to be implemented by the inheriting subclass")
 
-    def predict_next_state(self, x_T) -> np.ndarray:
+        next_acc = next(self.acc_iter, "End")
+        if next_acc == "End": 
+            return "End"
+        #by setup, all 3 iters have the same number of elements
+        next_point = np.array([next_acc, next(self.rot_iter), next(self.ori_iter)]).flatten()
+        #by definition, delta_t does not change.
+        return (next_point, self.delta_t)
+
+    def predict_next_state(self, x_T, w_T) -> np.ndarray:
         """
         The state transition function A for a UKF. Due to the variable number of inputs
         in different subclasses, this method takes in the only guarenteed parameter, x.
@@ -551,16 +480,46 @@ class OrientationKalmanFilter(UnscentedKalmanFilter):
         :parameter x_T: the **Transposed** data (x_T is a vector) point. 
         :return: a column vector (non transposed) with the same dimensions as x
         """
-        raise NotImplementedError("Method predict_next_state(x_T) " \
-        "needs to be implemented by the inheriting subclass")
+        q = x_T[0:4]
+        omega = x_T[4:]
+        q_delta = R.from_rotvec(omega)
+        q_pr = q * q_delta
+        #omega_pr = omega
+        return np.array([np.concat([q_pr.as_quat(), omega])]).T
 
-    def measurement_to_state(self, y_T) -> np.ndarray:
+
+    def measurement_to_state(self, y_T, v_T) -> np.ndarray:
         """
         The measurement conversion function H for a UKF. Due to the variable number of inputs
         in different subclasses, this method takes in no parameters. Instead, self should be used
         to find the associated measurement.
         :return: a vector with the same dimensions as y_T
         """
-        raise NotImplementedError("Method convert_to_measurement()" \
-        "needs to be implemented by the inheriting subclass")
+        q = y_T[0:4]
+        omega = y_T[4:]
+        z_rot = omega + self.rot_noise
+        #TODO : 1 goes in the direction of gravity
+        z_acc = q * R.from_quat([0,0,1,0]) * (q ** -1) + self.acc_noise
 
+        return np.array([np.concat([z_rot.as_quat(), z_acc])]).T
+
+
+    def _create_sigma_points(self, x, P, **kwargs):
+        pass
+
+    def _calculate_weights(self, **kwargs) -> tuple[list[float], list[float]]:
+        """
+        Initializes the mean and covariance weightings of the sigma points
+        
+        :param **kwargs: For this, we expect the kwargs of "S" and "Q"
+        :param S: found in **kwargs, represents the Cholesky of the covariance matrix, with the
+            noise already added in
+
+        :return: a tuple consisting of (mean weightings, covariance weightings), both of
+            which are list of floats
+        """
+        if 'S' not in kwargs:
+            raise Exception('Expected "S" when calling _calculate_weights')
+        S = kwargs['S']
+        W = np.sqrt(2 * S.shape[1]) * S.T
+        return np.concat([W, -1 * W])

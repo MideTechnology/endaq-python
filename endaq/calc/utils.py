@@ -459,3 +459,26 @@ def to_altitude(df: pd.DataFrame,
 
     # Return DataFrame with New Altitude Column
     return alt_df
+
+def align_datasets(dfs: List[pd.DataFrame]) ->  List[pd.DataFrame]:
+    """
+    Align the datasets. TODO : finish this DocString
+
+
+    :param dfs: the list of dataframes to align
+
+    :return: the aligned dataframes, in the same ordering as :param:`dfs`
+    :raises IndexError: if two or more datasets do not align
+    """
+    left_point = max([[df.index[0] for df in dfs]])
+    right_point = min([[df.index[0] for df in dfs]])
+    #find a starting point they all share
+    trimmed_dfs = [df.iloc[
+        (df.index >= left_point) and (df.index <= right_point)
+        ] for df in dfs]
+    #find an ending point they all share
+    resample_to = max([len(df) for df in trimmed_dfs])
+    try:
+        return [resample(df, resample_to/len(df)) for df in trimmed_dfs]
+    except:
+        raise IndexError("two or more datasets contain no overlapping points")
