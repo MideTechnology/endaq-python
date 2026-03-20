@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import bisect
 import typing
-from typing import Optional, Union, Literal
+from typing import List, Optional, Union, Literal
 import warnings
 
 import numpy as np
@@ -462,3 +463,48 @@ def to_altitude(df: pd.DataFrame,
 
     # Return DataFrame with New Altitude Column
     return alt_df
+
+def align_datasets(dfs) -> List[pd.DataFrame]:
+    """
+    Resamples the given dataframes to all be equal-sized with resampled uniform timestamps.
+    Any timestamps outside of the shared range will be dropped.
+
+    :return: a list of dataframes in the same order that they were inputted in.
+    """
+    aligned_start = max([df.index[0] for df in dfs])
+    aligned_end = min([df.index[-1] for df in dfs])
+
+    if aligned_start > aligned_end:
+        raise Exception()
+    left_idx = [bisect.bisect_right(df.index, aligned_start) - 1 for df in dfs] #the most left point **in bound**
+    right_idx = [bisect.bisect_left(df.index, aligned_end) for df in dfs] #the first right point oob
+
+    trimmed_dfs = [df[i][left_idx[i] + 1: right_idx[i] - 1] for i in range(len(dfs))]
+
+    for i, (df, l_idx) in enumerate(zip(dfs, left_idx)):
+        if df.index[l_idx] != aligned_start:
+            dt = (df.index[l_idx] - df.index[l_idx] - 1).total_seconds()
+            da = (df.iloc[l_idx] - df.iloc[l_idx - 1]) / dt
+            new_dt = (aligned_start - df.index[l_idx]).total_seconds()
+            new_point = df.iloc[l_idx - 1] + new_dt * da
+            trimmed_dfs[i] = pd.concat([
+                pd.DataFrame([new_point], index= [aligned_start]),
+                trimmed_dfs[i]
+                ])
+        else:
+            trimmed_dfs[i] = pd.concat([df.loc[[aligned_start]], trimmed_dfs[i]])
+    
+    for i, (df, r_idx) in enumerate(zip(dfs, right_idx)):
+        if df.index[r_idx] != aligned_end:
+            dt = (df.index[r_idx] - df.index[r_idx - 1]).total_seconds()
+            da = (df.iloc[r_idx] - df.iloc[r_idx - 1]) / dt
+            new_dt = (aligned_end - (df.index[r_idx - 1])).total_seconds()
+            trimmed_dfs[i] - pd.concat([
+                trimmed_dfs[i],
+                pd.DataFrame([df.iloc[r_idx - 1] + new_dt * da], index = [aligned_end])
+                ])
+        else:
+            trimmed_dfs[i] = pd.concat([trimmed_dfs[i]], df.loc[[aligned_end]])
+    #TODO: fill in with what none should be
+    resampled_dfs = [resample(df, None) for df in dfs]
+    return resampled_dfs

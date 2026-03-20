@@ -344,106 +344,21 @@ def ellip(
     return df            
 
 
-def refine_acceleration(
-        dfs : List[pd.DataFrame], 
-        product_name: Optional[str],
-        *,
-        deg: Optional[int] = None,
-        window_length: Optional[int] = 10,
-        step = 3
-        ) -> pd.DataFrame:
+def refine_acceleration(dfs: List[pd.DataFrame], model_name: str) -> pd.DataFrame:
     """
-    Combines mutliple acceleration channels to create a with a flat frequency response curve
-    using a modified savitzky-golay filter. Note that this will remove 2 * py:param:`window_length`
-    datapoints, py:param:`window_length` from each side.
+    Generates more accurate acceleration data by combining the two acceleration channels on
+    an enDAQ device.  This is done by filtering out inaccurate frequencies based off of known
+    frequency curves, and averaging out data based on noise values.
 
-    :param dfs: a List of dataframes to combine, all of which has a 'X', 'Y', and 'Z' channel.
-    :param product_name: the name of the enDAQ device used to record the dataframes, which can 
-        be found through doc.recorderInfo['ProductName']. If None, the error will come from the 
-        worst case of error between the sensor types of the rating.
+    :param dfs: Two panda dataframes of acceleration channels. If there exists channels 
+        other than X,Y,Z, they will be droppedd.
+    :param model_name: a string
 
-    :param deg: a keyword-only argument that sets the degree of the polynomial
-        in the salgov for polynomial fitting. If left as None, a degree will be calculated
-    :param window_length: a keyword-only argument that sets the size of the window used in
-        the salgov for polynomial fitting.
-    :param step: a keyword-only argument that sets how many points are generated at each
-        step of the savitzky-golay filter. This parameter cannot be larger than
-        py:param:`window_length`
-
-    :return: a DataFrame, with columns ['X (adjusted)', 'Y (adjusted)', 'Z (adjusted)'], with
-        each column containing their respective data.
+    :return: a pandas Dataframe with the flattened acceleration data
     """
+    #NOTE: if wanted, we can extract it from the device info (eg: SX-EXXDXX), it would only work
+    #under the assumption that there can not exist two sensors with the same g-rating.
 
-    #drop any channels that don't match the correct regex
-
-    #create / apply noise column
-
-    #combine dataframes using pd.concat
-
-    #convert to numeric, drop any NaN / inf values
-
-    #apply weighted_savgol_filter()
-
-    #combine to pd.DataFrame
-
-    pass
-
-def weighted_savgol_filter(x: List[float],
-                           y: List[float], 
-                           deg: int, 
-                           window_length: int = 1, 
-                           w: Optional[List[float]] = None, 
-                           step : int = 1) -> pd.Series:
-    """
-    A variation on the savgol filter, who adjusts points by fitting them to a windowed best fit 
-    curve of a given degree. This implementation adds :py:param:`weight` and :py:param:`step`
-    parameters, which allow the filter to have bias towards lower noise variables, and perform less
-    calculation for higher step values.
-
-    :param x: with n datapoints.
-    :param y: with n datapoints.
-    :param deg: the degree of the polynomial to fit to.
-    :param w: a List of weights respective to the y point in the same index with n datapoints.
-        If None is given, all points will be weighted equal, like a standard savgol implementation.
-    :param window_length: the size of the window, dictating how many datapoints will be fit to the 
-        polynomial.
-    :param step: dictates how many datapoints are generated from the best fit polynomial, 
-        between 1 and n.
-
-    :return: a pandas series where the index is x, and the values are the adjusted y-points.
-    """ 
-    #validity checks
-    if len(x) != len(y) or len(x) != len(w):
-        raise ValueError("x, y, and weights all need to share equal number of points")
-    
-    if len(x) <= window_length:
-        raise ValueError("the number of datapoints has to be greater than the window size")
-    
-    new_x = []
-    new_y = []
-    
-    start_idx = window_length
-    end_idx = start_idx + window_length
-
-    while end_idx < len(x):
-        x_temp = x[start_idx:end_idx]
-        y_temp = y[start_idx:end_idx]
-        w_temp = w[start_idx:end_idx]
-        poly_fit = np.polyfit(
-            x = x_temp, 
-            y = y_temp, 
-            deg = deg if deg is not None else np.ceil(window_length / 2),
-            w = w_temp,
-        )
-        mid_point = x[int(np.ceil((start_idx + end_idx)/ 2))]
-        new_x.append(mid_point)
-        new_y.append(
-            np.sum([(mid_point ** (i - 1)) * poly_fit[-1 * i]
-                    for i in range(len(poly_fit), 0, -1)]))
-        
-        start_idx += step
-        end_idx += step
-    return pd.Series(new_y, index = new_x)
 
 def _fftnoise(f):
     """
