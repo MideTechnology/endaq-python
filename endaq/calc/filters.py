@@ -6,6 +6,7 @@ import functools
 import pandas as pd
 import numpy as np
 import scipy.signal
+import re
 
 from endaq.calc import utils
 
@@ -344,21 +345,124 @@ def ellip(
     return df            
 
 
-def refine_acceleration(dfs: List[pd.DataFrame], model_name: str) -> pd.DataFrame:
+def refine_acceleration(dfs: List[pd.DataFrame], part_number: str) -> pd.DataFrame:
     """
     Generates more accurate acceleration data by combining the two acceleration channels on
-    an enDAQ device.  This is done by filtering out inaccurate frequencies based off of known
+    an enDAQ device. This is done by filtering out inaccurate frequencies based off of known
     frequency curves, and averaging out data based on noise values.
+    
+    :param dfs: 2 panda dataframes with DateTimeIndex, converted by `endaq.ide.to_pandas`.
+        Any non X / Y / Z acceleration channels will be dropped. The first dataframe should be 
+        the main accelerometer (channel 8), and the second should be the secondary accelerometer,
+        (channel 32 or channel 80).
+    :param part_number: a string of the product name, that (for a doc `ds`) can be found by 
+    `ds.recoderInfo['PartNumber']`.
 
-    :param dfs: Two panda dataframes of acceleration channels. If there exists channels 
-        other than X,Y,Z, they will be droppedd.
-    :param model_name: a string
-
-    :return: a pandas Dataframe with the flattened acceleration data
+    :return: a pandas Dataframe with the flattened acceleration data.
     """
-    #NOTE: if wanted, we can extract it from the device info (eg: SX-EXXDXX), it would only work
-    #under the assumption that there can not exist two sensors with the same g-rating.
+    #removing non X/Y/Z acceleration channels
+    for idx in range(len(dfs)):
+        df = dfs[idx]
+        df = df[df.columns[
+            list(map(lambda x: x[0] in ['X', 'Y', 'Z'], 
+                     df.columns))]].copy()
+        for col in df.columns:
+            df[col] = df[col] - np.mean(df[col])
+        dfs[idx] = df
+        
 
+    aligned_dfs = utils.align_dataframes(dfs)
+    sensors = re.findall(r"[E|D|R]\d+", part_number)
+    if len(dfs) != 2 or len(dfs) != len(sensors):
+        raise Exception("there needs to be exactly two dataframes and the part " \
+        "number needs to contain exactly two sensor ids")
+
+    #TODO: 0 mean everything ... easy way or the easy way.
+    sensor_info = [_sensor_info(sensor) for sensor in sensors]
+    noises = [si['noise'] for si in sensor_info]
+    bounds = [(si['low_cutoff'], si['high_cutoff']) for si in sensor_info]
+    dfs = [butterworth(df, low_cutoff= l_bound, high_cutoff= r_bound) 
+                    for (df, (l_bound, r_bound)) in zip(aligned_dfs, bounds)]
+    for df in dfs: df.columns = ['X', 'Y', 'Z']
+    
+    overlap = (max([bound[0] for bound in bounds]), min([bound[1] for bound in bounds]))
+    
+    hz_overlap_dfs = [butterworth(df, low_cutoff=overlap[0], high_cutoff=overlap[1])
+                       for df in dfs] 
+    
+    averaged_df = _weighted_avg(hz_overlap_dfs, noises)
+    hz_isolated_dfs = [] 
+    for df, (l_bound, r_bound) in zip(dfs, bounds):
+        isolated_df = df
+        if l_bound == overlap[0]: butterworth(isolated_df, high_cutoff= l_bound)
+        if r_bound == overlap[1]: butterworth(isolated_df, low_cutoff= r_bound)
+        hz_isolated_dfs.append(isolated_df)
+
+    return sum(hz_isolated_dfs + [averaged_df]) #+ is joining lists, not adding numbers
+
+def _weighted_avg(dfs: List[pd.DataFrame], noise: List[float]):
+    """
+    Combines multiple dataframe into one by applying a weighted average base on noise in a linear-inverse fashion. 
+    For sensors A and B, if the noise ratio is 2:1, the weighing ratio will be 1:2. Note that a value of 0 is 
+    considered in the weighting.
+    
+    :param dfs: the dataframes to normalize. It is assumed that all dataframes have the same indecies. 
+    :param noise: The noise value to the index-respective dataframe. Noise will be normalized.
+
+    :return: a single dataframe with the weighted values
+    """
+    if len(dfs) != len(noise) or len(dfs) == 0:
+        raise Exception("dataframes and noise need to have equal, non zero number of elements")
+    #normalize the weightings. If there is a weighting with 0 noise, return that instead
+    if 0 in noise:
+        return dfs[noise.index(0)]
+    noise = (np.array(noise) / sum(noise))[::-1]
+    
+    return pd.DataFrame(sum([n * d for n, d in zip(noise, dfs)]), 
+                        columns = dfs[0].columns, index = dfs[0].index)
+    
+
+def _sensor_info(sensor: str) -> dict:
+    """
+    creates a dictionary with information relevant to :py:func:`refine_acceleration`, namely
+    
+    - sensor_type: Literal["D", "E", "R"]. Indicates if the sensor is digital, piezoelectric, 
+        or piezoresistive
+    - rating: the g rating of the sensor, or the maximum it can read while accurate
+    - noise: float. Indicates the noise of the sensor when the response curve is flat
+    - low_cutoff: the lowest Hz where the response curve is flat.
+    - high_cutoff: the highest Hz where the response curve is flat.
+
+    :return: a dictionary with the information stated above
+    """
+    sensor_type = sensor[0]
+    sensor_rating = int(sensor[1:])
+
+    match sensor_type:
+        case "E":
+            low = 10
+            high = sensor_rating / 5
+            noise = {25: 8E-4, 100: 3E-3, 500: 1.5E-2, 2000: 0.06}[sensor_rating]
+        case "D":
+            try:
+                low, high = {16: (1,300), 40: (1, 100)}[sensor_rating]
+                noise = {16: 4E-3, 40: 8E-5}[sensor_rating]
+            except KeyError:
+                raise Exception(f"rating {sensor_rating} not supported for digital IMUs")
+        case "R":
+            low = 1
+            high = sensor_rating / 5
+            noise = {100: 3E-3, 500: 1.5E-2, 2000: 0.06}
+        case _:
+            raise Exception(f"Sensor type {sensor_type} not recognized, should be one of E, D, R.")
+        
+    return {
+        "sensor_type": sensor_type,
+        "noise": noise, 
+        "rating": sensor_rating, 
+        "low_cutoff": low, 
+        "high_cutoff": high,
+        }
 
 def _fftnoise(f):
     """
