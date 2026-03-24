@@ -204,3 +204,14 @@ def test_to_pandas_tz(test_IDE):
 
 if __name__ == '__main__':
     unittest.main()
+
+def test_get_unified_acceleration(test_IDE):
+    """
+    Tests that the start and end stamps are correct, and 
+    that all data "exists" (no NaN values)
+    """
+    accel_channels = info.get_channels(test_IDE, 'accel', False)
+    accel = info.get_unified_acceleration(test_IDE)
+    assert accel.notnull().all().all()
+    assert accel.index[0] == max([ac.index[0] for ac in accel_channels])
+    assert accel.index[-1] == min([ac.index[-1] for ac in accel_channels])

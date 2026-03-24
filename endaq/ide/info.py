@@ -4,7 +4,7 @@ Functions for retrieving summary data from a dataset.
 from __future__ import annotations
 import typing
 
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 import datetime
 import dateutil.tz
 import warnings
@@ -13,16 +13,19 @@ import numpy as np
 import pandas as pd
 import pandas.io.formats.style
 import idelib.dataset
+import re
 
-from .measurement import MeasurementType, ANY, get_channels
+from .measurement import MeasurementType, ANY, get_channels, ACCELERATION
 from .files import get_doc
 from .util import parse_time
 
+from endaq.calc import utils, filters
 
 __all__ = [
     "get_channel_table",
     "to_pandas",
     "get_primary_sensor_data",
+    "get_unified_acceleration"
 ]
 
 
@@ -433,3 +436,187 @@ def get_primary_sensor_data(
     
     #Return only the subchannels with right units
     return data[channels.name]    
+
+# ============================================================================
+#
+# ============================================================================
+def get_unified_acceleration(doc: idelib.dataset.Dataset) -> pd.DataFrame:
+    """
+    Retrieves a more accurate acceleration channel by combining the
+    frequencies where each of the accelerometers are the more accurate, and filtering frequencies 
+    out of range.
+
+    Note that this method uses :py:func:`calc.utils.resample()`, which can cause artifacts
+    at the start or end of the data due to a periodic assumption. If important data is recorded 
+    within those bounds, it is not recommended to use this method.
+
+    :param doc: An open `Dataset` object, see :py:func:`~endaq.ide.get_doc()` 
+            for more.
+
+    :return: a pandas Dataframe with the flattened acceleration data. Output channel names 
+        are [X, Y, Z].
+    """
+    
+    acceleration_channels = get_channels(doc, ACCELERATION, False)
+    dfs = []
+    s_ratings = []
+    for ch in acceleration_channels:
+        dfs.append(to_pandas(ch))
+        sensor = ch[0].sensor.name
+        kwords = sensor.split(" ") 
+        if kwords[0].startswith("ADXL"):
+            r = {"ADXL355": 8, 
+                 "ADXL357": 40, 
+                 "ADXL345": 16, 
+                 "ADXL375": 200
+                 }[kwords[0]]
+            s_ratings.append(("DC", r))
+        else:
+            s_ratings.append((kwords[1], ch.transform(0, 65535)[1]))
+    original_sample_rate = np.array([utils.sample_spacing(chan) for chan in dfs])
+    cleaned_dfs = []
+    for idx in range(len(dfs)):
+        df = dfs[idx].copy()
+        #drop non-axes channels
+        df = df[[col for col in df.columns if col[0] in 'XYZ']]
+        #0 mean all data
+        for col in df.columns:
+            df[col] = df[col] - np.mean(df[col])
+        cleaned_dfs.append(df)
+        
+    aligned_dfs = utils.align_dataframes(cleaned_dfs)
+
+    sensor_info = [_sensor_info(sensor, 1 / osr) for sensor, osr in zip(s_ratings, original_sample_rate)]
+    noises = np.array([si['noise'] for si in sensor_info])
+    bounds = [(si['low_cutoff'], si['high_cutoff']) for si in sensor_info]
+    dfs = [filters.butterworth(df, low_cutoff= l_bound, high_cutoff= r_bound) 
+                    for (df, (l_bound, r_bound)) in zip(aligned_dfs, bounds)]
+    for df in dfs: df.columns = ['X', 'Y', 'Z']
+    
+    hz_overlaps = _find_all_overlaps(bounds = bounds) 
+    averaged_dfs = []
+    for k, v in hz_overlaps.items():
+        cur_overlap_dfs = [dfs[v_i] for v_i in v]
+        cur_noises = noises[v]
+        hz_overlap_dfs = [filters.butterworth(df, low_cutoff=k[0], high_cutoff=k[1])
+                       for df in cur_overlap_dfs]
+        bound_avgd_df = _weighted_avg(hz_overlap_dfs, cur_noises)
+        averaged_dfs.append(bound_avgd_df)
+
+
+    return sum(averaged_dfs)
+
+def _find_all_overlaps(bounds: typing.List[tuple[int, int]]) -> dict[tuple[int, int], typing.List[int]]:
+    """
+    finds **all** possible overlaps of a list of start and end bounds. if an end bound and a start
+        bound share the same value, it is not considered overlapping.
+    
+    :param bounds: a list of each start and end bounds, where the end bound is strictly greater
+        than the starting bounds.
+
+    :return: a dictionary where the keys are the bounds for every overlap, and the values are
+        the indices that belong in each bound, respective to :py:param:`bounds` 
+    """
+
+    if len(bounds) == 0:
+        return {}
+    #labeling the components
+    lblHz = namedtuple("labeledTuple", ("idx", "Hz"))
+    labels = range(len(bounds))
+
+    lower_bounds = list(map(lblHz, labels, [b[0] for b in bounds]))
+    upper_bounds = list(map(lblHz, labels, [b[1] for b in bounds]))
+    bounds_sorted = sorted(lower_bounds + upper_bounds, key= lambda b: b.Hz)
+
+    #we are using np arrays here as a pseudo-way of preventing mutability
+    open_intervals: typing.List[lblHz.idx] = np.array([bounds_sorted[0].idx]) #more specifically, lblHz.idx
+    closed_intervals: dict[tuple[int, int], typing.List[int]] = {}
+    
+    left_bound = bounds_sorted[0].Hz
+    bounds_sorted = bounds_sorted[1:]
+
+    for point in bounds_sorted:
+        if left_bound != point.Hz:
+            closed_intervals[left_bound, point.Hz] = open_intervals
+            left_bound = point.Hz
+        if point.idx in open_intervals:
+            open_intervals = np.setdiff1d(open_intervals, [point.idx]) #there must be a better way
+        else:
+            open_intervals = np.append(open_intervals, point.idx)
+    return closed_intervals
+
+
+def _weighted_avg(dfs: typing.List[pd.DataFrame], noise: typing.List[float]):
+    """
+    Combines multiple dataframe into one by applying a weighted average base on noise in a linear-inverse fashion. 
+    For sensors A and B, if the noise ratio is 2:1, the weighing ratio will be 1:2. Note that a value of 0 is 
+    considered in the weighting.
+    
+    :param dfs: the dataframes to normalize. It is assumed that all dataframes have
+        the same DateTimeIndex values. 
+    :param noise: The noise value to the index-respective dataframe. Noise will be normalized.
+
+    :return: a single dataframe with the weighted values
+    """
+    if len(dfs) != len(noise) or len(dfs) == 0:
+        raise ValueError("dataframes and noise need to have equal, non zero number of elements")
+    #normalize the weightings. If there is a weighting with 0 noise, return that instead
+    if 0 in noise:
+        return dfs[noise.index(0)]
+    noise = (np.array(noise) / sum(noise))[::-1]
+    
+    return pd.DataFrame(sum([n * d for n, d in zip(noise, dfs)]), 
+                        columns = dfs[0].columns, index = dfs[0].index)
+    
+
+def _sensor_info(s_rating: tuple[str, int], sample_rate: float) -> dict:
+    """
+    creates a dictionary with information relevant to :py:func:`refine_acceleration`, namely
+    
+    - sensor_type: Literal["D", "E", "R"]. Indicates if the sensor is digital, piezoelectric, 
+        or piezoresistive
+    - rating: the g rating of the sensor, or the maximum it can read while accurate
+    - noise: float. Indicates the noise of the sensor when the response curve is flat
+    - low_cutoff: the lowest Hz where the response curve is flat.
+    - high_cutoff: the highest Hz where the response curve is flat.
+
+    :param: s_rating: a tuple consisting of (sensor type, rating)
+    :param sample_rate: the sample rate which the sensor is sensing at, used to compute 
+        upper bounds in piezoresistive / piezoelectic.
+
+    :return: a dictionary with the information stated above
+    """
+    sensor_type = s_rating[0]
+    sensor_rating = s_rating[1]
+
+    match sensor_type:
+        case "PE":
+            low = 10
+            high = int(sample_rate / 5) 
+            try:
+                noise = {25: 8E-4, 100: 3E-3, 500: 1.5E-2, 2000: 0.06}[sensor_rating]
+            except KeyError:
+                raise Exception(f"rating {sensor_rating} not supported for Piezoelectric sensors")
+        case "DC":
+            try:
+                low, high = {16: (1,300), 40: (1, 100)}[sensor_rating]
+                noise = {16: 4E-3, 40: 8E-5}[sensor_rating]
+            except KeyError:
+                raise Exception(f"rating {sensor_rating} not supported for digital IMUs")
+        case "PR":
+            low = 1
+            high = int(sample_rate / 5) 
+            try:
+                noise = {100: 3E-3, 500: 1.5E-2, 2000: 0.06}[sensor_rating]
+            except:
+                raise Exception(f"rating {sensor_rating} not supported for Piezoresistve sensors")
+        case _:
+            raise Exception(f"Sensor type {sensor_type} not recognized, should be one of PE, DC, PR.")
+        
+    return {
+        "sensor_type": sensor_type,
+        "noise": noise, 
+        "rating": sensor_rating, 
+        "low_cutoff": low, 
+        "high_cutoff": high,
+        }
