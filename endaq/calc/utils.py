@@ -480,37 +480,47 @@ def align_dataframes(dfs: List[pd.DataFrame]) -> List[pd.DataFrame]:
     aligned_start = max([df.index[0] for df in dfs])
     aligned_end = min([df.index[-1] for df in dfs])
 
-    if aligned_start > aligned_end:
-        raise Exception()
-    left_idx = [bisect.bisect_right(df.index, aligned_start) - 1 for df in dfs] #the most left point **in bound**
-    right_idx = [bisect.bisect_left(df.index, aligned_end) for df in dfs] #the first right point oob
+    if aligned_start >= aligned_end:
+        raise ValueError("No range of time shared between dataframes")
+    left_idx = [bisect.bisect_right(df.index, aligned_start) - 1 for df in dfs] #the most left point in bound
+    right_idx = [bisect.bisect_left(df.index, aligned_end) for df in dfs] #the first right point out of bounds
 
+    #removes the start / end points
     trimmed_dfs = [dfs[i][left_idx[i] + 1: right_idx[i] - 1] for i in range(len(dfs))]
-
+    
     for i, (df, l_idx) in enumerate(zip(dfs, left_idx)):
+        #if the original timestamp is too early
         if df.index[l_idx] != aligned_start:
+            #change in time and acceleration
             dt = (df.index[l_idx] - df.index[l_idx - 1]).total_seconds()
             da = (df.iloc[l_idx] - df.iloc[l_idx - 1]) / dt
             new_dt = (aligned_start - df.index[l_idx]).total_seconds()
+            #compute the new point
             new_point = df.iloc[l_idx - 1] + new_dt * da
+            #and add it back to the dataframe
             trimmed_dfs[i] = pd.concat([
                 pd.DataFrame([new_point], index= [aligned_start]),
                 trimmed_dfs[i]
                 ])
+        #in the case that the data is already in the correct point, add it back in
         else:
             trimmed_dfs[i] = pd.concat([df.loc[[aligned_start]], trimmed_dfs[i]])
-    
+
+    #repeating the steps above, with slight indexing differences to accomodate the right index
     for i, (df, r_idx) in enumerate(zip(dfs, right_idx)):
         if df.index[r_idx] != aligned_end:
             dt = (df.index[r_idx] - df.index[r_idx - 1]).total_seconds()
             da = (df.iloc[r_idx] - df.iloc[r_idx - 1]) / dt
             new_dt = (aligned_end - (df.index[r_idx - 1])).total_seconds()
+            new_point = df.iloc[r_idx - 1] + new_dt * da
             trimmed_dfs[i] = pd.concat([
                 trimmed_dfs[i],
-                pd.DataFrame([df.iloc[r_idx - 1] + new_dt * da], index = [aligned_end])
+                pd.DataFrame([new_point], index = [aligned_end])
                 ])
         else:
             trimmed_dfs[i] = pd.concat([trimmed_dfs[i], df.loc[[aligned_end]]])
+
+    #resamples the data to the dataframe with the most points available
     total_samples = max(tdf.shape[0] for tdf in trimmed_dfs)
     resampled_dfs = [resample(df, total_samples / (sample_spacing(df) * len(df))) for df in trimmed_dfs]
     return resampled_dfs
