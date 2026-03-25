@@ -130,7 +130,7 @@ dB_refs = {
 }
 
 
-def resample(df: pd.DataFrame, sample_rate: Optional[float] = None) -> pd.DataFrame:
+def resample(df: pd.DataFrame, sample_rate: Optional[float] = None, num_samples = None) -> pd.DataFrame:
     """
     Resample a dataframe to a desired sample rate (in Hz)
 
@@ -145,16 +145,20 @@ def resample(df: pd.DataFrame, sample_rate: Optional[float] = None) -> pd.DataFr
     else:
         dt = sample_spacing(df)
         num_samples_after_resampling = int(dt * len(df) * sample_rate)
-
+    #HACK : extra parameter was added. If this comment is present, it shouldn't be
+    #pushed to dev
+    if num_samples is not None:
+        num_samples_after_resampling = num_samples
     resampled_data, resampled_time = scipy.signal.resample(
         df,
         num_samples_after_resampling,
         t=df.index.values.astype(np.float64),
         )
-    resampled_time = pd.date_range(
-        df.iloc[0].name, df.iloc[-1].name, 
-        periods=num_samples_after_resampling,
-        )
+    if resampled_time[0] != df.index[0] or resampled_time[-1] != df.index[-1]:
+        resampled_time = pd.date_range(
+            df.index[0], df.index[-1], 
+            periods=num_samples_after_resampling,
+            )
 
     # Check for datetimes, if so localize
     if 'datetime' in str(df.index.dtype):
@@ -467,11 +471,7 @@ def to_altitude(df: pd.DataFrame,
 def align_dataframes(dfs: List[pd.DataFrame]) -> List[pd.DataFrame]:
     """
     Resamples the given dataframes to all be equal-sized with resampled uniform timestamps.
-    Any timestamps outside of the shared range will be dropped. <br>
-    **NOTE**: at the time of writing this method, there is an issue with :py:func:`scipy.signal.resample()`,
-        where some dataframes may be returned squished. If at least one of the two dataframes contain the 
-        correct timestamps, those timestamps will be used. Otherwise, the timestamps will be manually
-        computed.
+    Any timestamps outside of the shared range will be dropped.
 
     :param dfs: a List of dataframes with DateTimeIndex to align.
 
@@ -522,5 +522,19 @@ def align_dataframes(dfs: List[pd.DataFrame]) -> List[pd.DataFrame]:
 
     #resamples the data to the dataframe with the most points available
     total_samples = max(tdf.shape[0] for tdf in trimmed_dfs)
-    resampled_dfs = [resample(df, total_samples / (sample_spacing(df) * len(df))) for df in trimmed_dfs]
+    resampled_dfs = [resample(df, total_samples / (sample_spacing(df) * len(df)), total_samples) for df in trimmed_dfs]
+    
+    """
+    In the current implementation of scipy's resample, there can be some inconsistent rounding point
+    when creating the datetimes. For this reason, we will find one that meets spec (correct start
+    and end points) and use that for all.
+    """
+    datepoints = None
+    for df in resampled_dfs:
+        if df.index[0] == aligned_start and df.index[-1] == aligned_end:
+            datepoints = df.index
+            break 
+    if datepoints is None:
+        raise Exception("resampling error, timestamps incosistent with inputs")
+    for df in resampled_dfs: df.index = datepoints
     return resampled_dfs
