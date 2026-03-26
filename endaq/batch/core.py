@@ -214,7 +214,7 @@ def _make_peak_windows(ch_data_cache: analyzer.CalcCache, margin_len):
     if sys.version_info < (3, 9):
         return aligned_peak_data.stack().stack().reorder_levels(levels)
 
-    return aligned_peak_data.stack(future_stack=True).stack().reorder_levels(levels)
+    return aligned_peak_data.stack(future_stack=True).stack(future_stack = False).reorder_levels(levels)
 
 
 def _make_vc_curves(ch_data_cache: analyzer.CalcCache):
