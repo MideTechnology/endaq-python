@@ -442,13 +442,12 @@ def get_primary_sensor_data(
 # ============================================================================
 def get_unified_acceleration(doc: idelib.dataset.Dataset) -> pd.DataFrame:
     """
-    Retrieves a more accurate acceleration channel by combining the
-    frequencies where each of the accelerometers are the more accurate, and filtering frequencies 
-    out of range. 
+    Computes a more accurate acceleration channel by filtering frequencies 
+    out of range and combining frequencies where multiple accelerometers are accurate. 
 
     Note that this method uses :py:func:`calc.utils.resample()`, which can cause artifacts
-    at the start or end of the data due to a periodic assumption. If important data is recorded 
-    within those bounds, it is not recommended to use this method.
+    at the start or end of the data due to a assumption about signal periodicity. If important 
+    data is recorded within those bounds, it is not recommended to use this method.
 
     :param doc: An open `Dataset` object, see :py:func:`~endaq.ide.get_doc()` 
             for more.
@@ -457,11 +456,7 @@ def get_unified_acceleration(doc: idelib.dataset.Dataset) -> pd.DataFrame:
         are [X, Y, Z].
     """
     
-    #HACK : remove this bypass for impl
-    if isinstance(doc, list):
-        acceleration_channels = sum([get_channels(d, ACCELERATION, False) for d in doc], [])
-    else:
-        acceleration_channels = get_channels(doc, ACCELERATION, False)
+    acceleration_channels = get_channels(doc, ACCELERATION, False)
 
     dfs = [to_pandas(ch) for ch in acceleration_channels]
 
@@ -530,7 +525,8 @@ def _find_all_overlaps(bounds: typing.List[tuple[int, int]]) -> dict[tuple[int, 
 
     for point in bounds_sorted:
         if left_bound != point.Hz:
-            closed_intervals[left_bound, point.Hz] = open_intervals
+            if open_intervals.size != 0:
+                closed_intervals[left_bound, point.Hz] = open_intervals
             left_bound = point.Hz
         if point.idx in open_intervals:
             open_intervals = np.setdiff1d(open_intervals, [point.idx])
@@ -559,7 +555,7 @@ def _weighted_avg(dfs: typing.List[pd.DataFrame], noise: typing.List[float]):
     noise_normalized = np.array(noise) / sum(noise)
     
     #formula for the inverse is for array [a0, a1, ..., an], inverse is 
-    # [a1a2...an, a0a2...an, a1a2...an]
+    # [a1a2...an, a0a2...an, a1a2...an], and then normalized
     new_noise = 1 / noise_normalized
     for n in noise_normalized:
         new_noise *= n
@@ -569,8 +565,7 @@ def _weighted_avg(dfs: typing.List[pd.DataFrame], noise: typing.List[float]):
     return pd.DataFrame(sum([n * d for n, d in zip(new_noise, dfs)]), 
                         columns = dfs[0].columns, index = dfs[0].index)
     
-#TODOL figure out signature for ch
-def _sensor_info(ch: any) -> dict:
+def _sensor_info(ch: idelib.dataset.Channel) -> dict:
     """
     creates a dictionary with information relevant to :py:func:`refine_acceleration`, namely
     
@@ -581,9 +576,8 @@ def _sensor_info(ch: any) -> dict:
     - low_cutoff: the lowest Hz where the response curve is flat.
     - high_cutoff: the highest Hz where the response curve is flat.
 
-    :param: s_rating: a tuple consisting of (sensor type, rating)
-    :param sample_rate: the sample rate which the sensor is sensing at, used to compute 
-        upper bounds in analog sensors
+    :param ch: The channel of the dataset to work on. This channel should have a child, which will
+        be used to extract the data.
 
     :return: a dictionary with the information stated above
     """

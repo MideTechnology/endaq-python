@@ -130,30 +130,40 @@ dB_refs = {
 }
 
 
-def resample(df: pd.DataFrame, sample_rate: Optional[float] = None, num_samples = None) -> pd.DataFrame:
+def resample(
+        df: pd.DataFrame, 
+        sample_rate: Optional[float] = None, 
+        num_samples: Optional[int] = None
+        ) -> pd.DataFrame:
     """
-    Resample a dataframe to a desired sample rate (in Hz)
-
+    Resample a dataframe to a desired sample rate (in Hz) or a desired number of points.
+    Note that :param:`sample_rate` and :param:`num_samples` are mutually exclusive. If
+    neither of sample_rate or num_samples is suplied, it will use the same sample_rate 
+    as it currently does, but makes the time stamps uniformly spaced.
+    
     :param df: The DataFrame to resample, indexed by time
     :param sample_rate: The desired sample rate to resample the given data to.
-     If one is not supplied, then it will use the same as it currently does, but
-     make the time stamps uniformly spaced
+    :param num_samples: The desired number of samples to resample the given data to. 
+
     :return: The resampled data in a DataFrame
     """
-    if sample_rate is None:
-        num_samples_after_resampling = len(df)
-    else:
+    if sample_rate is not None and num_samples is not None:
+        raise ValueError("Only one of `sample_rate` and `num_samples` can be set.")
+
+    if sample_rate is not None:
         dt = sample_spacing(df)
         num_samples_after_resampling = int(dt * len(df) * sample_rate)
-    #HACK : extra parameter was added. If this comment is present, it shouldn't be
-    #pushed to dev
-    if num_samples is not None:
+    elif num_samples is not None:
         num_samples_after_resampling = num_samples
+    else:
+        num_samples_after_resampling = len(df)
+
     resampled_data, resampled_time = scipy.signal.resample(
         df,
         num_samples_after_resampling,
         t=df.index.values.astype(np.float64),
         )
+    
     if resampled_time[0] != df.index[0] or resampled_time[-1] != df.index[-1]:
         resampled_time = pd.date_range(
             df.index[0], df.index[-1], 
@@ -522,7 +532,7 @@ def align_dataframes(dfs: List[pd.DataFrame]) -> List[pd.DataFrame]:
 
     #resamples the data to the dataframe with the most points available
     total_samples = max(tdf.shape[0] for tdf in trimmed_dfs)
-    resampled_dfs = [resample(df, total_samples / (sample_spacing(df) * len(df)), total_samples) for df in trimmed_dfs]
+    resampled_dfs = [resample(df, num_samples = total_samples) for df in trimmed_dfs]
     
     """
     In the current implementation of scipy's resample, there can be some inconsistent rounding point
@@ -531,7 +541,7 @@ def align_dataframes(dfs: List[pd.DataFrame]) -> List[pd.DataFrame]:
     """
     datepoints = None
     for df in resampled_dfs:
-        if df.index[0] == aligned_start and df.index[-1] == aligned_end:
+        if df.index[0] == aligned_start and df.index[-1] == aligned_end: 
             datepoints = df.index
             break 
     if datepoints is None:
