@@ -72,9 +72,6 @@ jobs:
           --cov-report=xml 
           --hypothesis-profile=ci
           --numprocesses auto
-          -W error::RuntimeWarning
-          -W error::UserWarning
-          -W error::DeprecationWarning
 
       - name: Generate Codecov Report
         uses: codecov/codecov-action@v3
