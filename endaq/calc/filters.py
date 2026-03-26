@@ -1,17 +1,13 @@
 from __future__ import annotations
 
-from typing import Optional, Union, Tuple, List
+from typing import Optional, Union, Tuple
 import functools
-from itertools import batched
-import re
 
 import pandas as pd
 import numpy as np
 import scipy.signal
-from collections import namedtuple
 
 from endaq.calc import utils
-from endaq.ide import get_channels, ACCELERATION
 
 
 def _get_filter_frequencies_type(low_cutoff, high_cutoff):
