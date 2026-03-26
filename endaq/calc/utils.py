@@ -137,7 +137,7 @@ def resample(
         ) -> pd.DataFrame:
     """
     Resample a dataframe to a desired sample rate (in Hz) or a desired number of points.
-    Note that :param:`sample_rate` and :param:`num_samples` are mutually exclusive. If
+    Note that ``sample_rate`` and ``num_samples`` are mutually exclusive. If
     neither of sample_rate or num_samples is suplied, it will use the same sample_rate 
     as it currently does, but makes the time stamps uniformly spaced.
     

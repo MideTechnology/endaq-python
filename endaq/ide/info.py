@@ -13,7 +13,6 @@ import numpy as np
 import pandas as pd
 import pandas.io.formats.style
 import idelib.dataset
-import re
 
 from .measurement import MeasurementType, ANY, get_channels, ACCELERATION
 from .files import get_doc
@@ -504,7 +503,7 @@ def _find_all_overlaps(bounds: typing.List[tuple[int, int]]) -> dict[tuple[int, 
         than the starting bounds.
 
     :return: a dictionary where the keys are the bounds for every overlap, and the values are
-        the indices that belong in each bound, respective to :py:param:`bounds` 
+        the indices that belong in each bound, respective to ``bounds`` 
     """
 
     if len(bounds) == 0:
