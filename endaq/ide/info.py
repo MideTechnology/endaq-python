@@ -470,10 +470,10 @@ def get_unified_acceleration(doc: idelib.dataset.Dataset) -> pd.DataFrame:
         cleaned_dfs.append(df)
         
     aligned_dfs = utils.align_dataframes(cleaned_dfs)
-
+    aligned_sr = 1 / (aligned_dfs[0].index[1] - aligned_dfs[0].index[0]).total_seconds()
     sensor_info = [_sensor_info(ch) for ch in acceleration_channels]
     noises = np.array([si['noise'] for si in sensor_info])
-    bounds = [(si['low_cutoff'], si['high_cutoff']) for si in sensor_info]
+    bounds = [(si['low_cutoff'], min(si['high_cutoff'], int(aligned_sr / 2) - 1)) for si in sensor_info]
     #filters out the frequencies that the sensors can not accurately detect
     dfs = [filters.butterworth(df, low_cutoff= l_bound, high_cutoff= r_bound) 
                     for (df, (l_bound, r_bound)) in zip(aligned_dfs, bounds)]
@@ -590,35 +590,34 @@ def _sensor_info(ch: idelib.dataset.Channel) -> dict:
         rating = ch.transform(0, 65535)[1]
         s_type = kwords[1]
 
-    match s_type:
-        case "PE":
-            low = 10
-            high = int(sample_rate / 5) 
+    if (s_type == "PE"):
+        low = 10
+        high = int(sample_rate / 5) 
+        try:
+            noise = {25: 8E-4, 100: 3E-3, 500: 1.5E-2, 2000: 0.06}[rating]
+        except KeyError:
+            raise Exception(f"rating {rating} not supported for Piezoelectric sensors")
+    elif (s_type == "DC"):
             try:
-                noise = {25: 8E-4, 100: 3E-3, 500: 1.5E-2, 2000: 0.06}[rating]
-            except KeyError:
-                raise Exception(f"rating {rating} not supported for Piezoelectric sensors")
-        case "DC":
-            try:
-                low, high = {16: (1,300), 40: (1, 100)}[rating]
-                noise = {16: 4E-3, 40: 8E-5}[rating]
+                low, high = {8: (1, 150), 16: (1,300), 40: (1, 100)}[rating]
+                noise = {8: 2E-5, 16: 4E-3, 40: 8E-5}[rating]
             except KeyError:
                 raise Exception(f"rating {rating} not supported for digital IMUs")
-        case "PR":
-            low = 1
-            high = int(sample_rate / 5) 
-            #PR has built in resistance, and needs to be accounted for
-            #equation within 33% tolerance, and extended to the nearest 50 just in case
-            if 50 <= rating or  rating <= 150:
-                noise = 3E-3
-            elif 350 <= rating or rating <= 700:
-                noise = 1.5E-2
-            elif 1450 <= rating <= 2750: 
-                noise = 6E-2
-            else:
-                raise Exception(f"rating {rating} not supported for Piezoresistve sensors")
-        case _:
-            raise Exception(f"Sensor type {s_type} not recognized, should be one of PE, DC, PR.")
+    elif (s_type == "PR"):
+        low = 1
+        high = int(sample_rate / 5) 
+        #PR has built in resistance, and needs to be accounted for
+        #equation within 33% tolerance, and extended to the nearest 50 just in case
+        if 50 <= rating or  rating <= 150:
+            noise = 3E-3
+        elif 350 <= rating or rating <= 700:
+            noise = 1.5E-2
+        elif 1450 <= rating <= 2750: 
+            noise = 6E-2
+        else:
+            raise Exception(f"rating {rating} not supported for Piezoresistve sensors")
+    else:
+        raise Exception(f"Sensor type {s_type} not recognized, should be one of PE, DC, PR.")
         
     return {
         "sensor_type": s_type,

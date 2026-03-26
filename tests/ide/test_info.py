@@ -7,7 +7,7 @@ import numpy as np
 from idelib.importer import importFile
 import pandas as pd
 
-from endaq.ide import files, info
+from endaq.ide import files, info, to_pandas
 
 
 IDE_FILENAME = os.path.join(os.path.dirname(__file__), "test.ide")
@@ -210,7 +210,7 @@ def test_get_unified_acceleration(test_IDE):
     Tests that the start and end stamps are correct, and 
     that all data "exists" (no NaN values)
     """
-    accel_channels = info.get_channels(test_IDE, 'accel', False)
+    accel_channels = [to_pandas(ch) for ch in info.get_channels(test_IDE, 'accel', False)]
     accel = info.get_unified_acceleration(test_IDE)
     assert accel.notnull().all().all()
     assert accel.index[0] == max([ac.index[0] for ac in accel_channels])
