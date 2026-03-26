@@ -564,6 +564,31 @@ def _weighted_avg(dfs: typing.List[pd.DataFrame], noise: typing.List[float]):
     return pd.DataFrame(sum([n * d for n, d in zip(new_noise, dfs)]), 
                         columns = dfs[0].columns, index = dfs[0].index)
     
+def get_max_sensor_range(ch: idelib.dataset.Channel) -> int:
+    """
+    Gets the g-rating of the sensor used from the given channel.
+    
+    :param ch: The channel of the dataset to work on. This channel should have a child, which will
+        be used to extract the data.
+
+    :return: g-rating.
+    """
+
+    sensor = ch[0].sensor.name
+    kwords = sensor.split(" ") 
+    #DC
+    if kwords[0].startswith("ADXL"):
+        return int(kwords[1][:-1])
+    elif kwords[1] == "PE":
+        return ch.transform(0, 65535)[1]
+    else: 
+        values = np.asarray([100, 500, 2000])
+        #finds the value closest to ch.transform(0, 65535)[1]. This is because 
+        #we PR have some resistance and won't by default give the value we want
+        return values[np.abs(np.asarray(values) - ch.transform(0, 65535)[1]).argmin()]
+
+
+
 def _sensor_info(ch: idelib.dataset.Channel) -> dict:
     """
     creates a dictionary with information relevant to :py:func:`refine_acceleration`, namely
@@ -584,12 +609,11 @@ def _sensor_info(ch: idelib.dataset.Channel) -> dict:
     sensor = ch[0].sensor.name
     kwords = sensor.split(" ") 
     if kwords[0].startswith("ADXL"):
-        rating = int(kwords[1][:-1])
         s_type = "DC"
     else:
-        rating = ch.transform(0, 65535)[1]
         s_type = kwords[1]
 
+    rating = get_max_sensor_range(ch)
     if (s_type == "PE"):
         low = 10
         high = int(sample_rate / 5) 
