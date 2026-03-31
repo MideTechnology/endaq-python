@@ -27,7 +27,7 @@ INSTALL_REQUIRES = [
     "idelib>=3.2.8",
     "jinja2",
     "numpy>1.19.5",
-    "pandas>=1.3",
+    "pandas>=1.3, <3.0",
     "plotly>=5.3.1",
     "pynmeagps",
     "python-dotenv>=0.18.0",
