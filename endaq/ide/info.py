@@ -16,8 +16,7 @@ import idelib.dataset
 
 from .measurement import MeasurementType, ANY, get_channels, ACCELERATION
 from .files import get_doc
-from .util import parse_time
-
+from .util import parse_time, get_accelerometer_info, get_accelerometer_bounds
 from endaq.calc import utils, filters
 
 __all__ = [
@@ -471,7 +470,7 @@ def get_unified_acceleration(doc: idelib.dataset.Dataset) -> pd.DataFrame:
         
     aligned_dfs = utils.align_dataframes(cleaned_dfs)
     aligned_sr = 1 / (aligned_dfs[0].index[1] - aligned_dfs[0].index[0]).total_seconds()
-    sensor_info = [_sensor_info(ch) for ch in acceleration_channels]
+    sensor_info = [get_accelerometer_info(ch) for ch in acceleration_channels]
     noises = np.array([si['noise'] for si in sensor_info])
     bounds = [(si['low_cutoff'], min(si['high_cutoff'], int(aligned_sr / 2) - 1)) for si in sensor_info]
     #filters out the frequencies that the sensors can not accurately detect
@@ -564,89 +563,3 @@ def _weighted_avg(dfs: typing.List[pd.DataFrame], noise: typing.List[float]):
     return pd.DataFrame(sum([n * d for n, d in zip(new_noise, dfs)]), 
                         columns = dfs[0].columns, index = dfs[0].index)
     
-def get_max_sensor_range(ch: idelib.dataset.Channel) -> int:
-    """
-    Gets the g-rating of the sensor used from the given channel.
-    
-    :param ch: The channel of the dataset to work on. This channel should have a child, which will
-        be used to extract the data.
-
-    :return: g-rating.
-    """
-
-    sensor = ch[0].sensor.name
-    kwords = sensor.split(" ") 
-    #DC
-    if kwords[0].startswith("ADXL"):
-        return int(kwords[1][:-1])
-    elif kwords[1] == "PE":
-        return ch.transform(0, 65535)[1]
-    else: 
-        values = np.asarray([100, 500, 2000])
-        #finds the value closest to ch.transform(0, 65535)[1]. This is because 
-        #we PR have some resistance and won't by default give the value we want
-        return values[np.abs(np.asarray(values) - ch.transform(0, 65535)[1]).argmin()]
-
-
-
-def _sensor_info(ch: idelib.dataset.Channel) -> dict:
-    """
-    creates a dictionary with information relevant to :py:func:`refine_acceleration`, namely
-    
-    - sensor_type: Literal["DC", "PE", "PR"]. Indicates if the sensor is digital, piezoelectric, 
-        or piezoresistive respectively
-    - rating: the g rating of the sensor, or the maximum it can read while accurate
-    - noise: float. Indicates the noise of the sensor when the response curve is flat
-    - low_cutoff: the lowest Hz where the response curve is flat.
-    - high_cutoff: the highest Hz where the response curve is flat.
-
-    :param ch: The channel of the dataset to work on. This channel should have a child, which will
-        be used to extract the data.
-
-    :return: a dictionary with the information stated above
-    """
-    sample_rate = 1 / utils.sample_spacing(to_pandas(ch))
-    sensor = ch[0].sensor.name
-    kwords = sensor.split(" ") 
-    if kwords[0].startswith("ADXL"):
-        s_type = "DC"
-    else:
-        s_type = kwords[1]
-
-    rating = get_max_sensor_range(ch)
-    if (s_type == "PE"):
-        low = 10
-        high = int(sample_rate / 5) 
-        try:
-            noise = {25: 8E-4, 100: 3E-3, 500: 1.5E-2, 2000: 0.06}[rating]
-        except KeyError:
-            raise Exception(f"rating {rating} not supported for Piezoelectric sensors")
-    elif (s_type == "DC"):
-            try:
-                low, high = {8: (1, 150), 16: (1,300), 40: (1, 100)}[rating]
-                noise = {8: 2E-5, 16: 4E-3, 40: 8E-5}[rating]
-            except KeyError:
-                raise Exception(f"rating {rating} not supported for digital IMUs")
-    elif (s_type == "PR"):
-        low = 1
-        high = int(sample_rate / 5) 
-        #PR has built in resistance, and needs to be accounted for
-        #equation within 33% tolerance, and extended to the nearest 50 just in case
-        if 50 <= rating or  rating <= 150:
-            noise = 3E-3
-        elif 350 <= rating or rating <= 700:
-            noise = 1.5E-2
-        elif 1450 <= rating <= 2750: 
-            noise = 6E-2
-        else:
-            raise Exception(f"rating {rating} not supported for Piezoresistve sensors")
-    else:
-        raise Exception(f"Sensor type {s_type} not recognized, should be one of PE, DC, PR.")
-        
-    return {
-        "sensor_type": s_type,
-        "noise": noise, 
-        "rating": rating, 
-        "low_cutoff": low, 
-        "high_cutoff": high,
-        }
