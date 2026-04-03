@@ -12,10 +12,10 @@ from endaq.ide import files, info, get_channels, compute_orientation
 
 
 IDE_FILENAME = os.path.join(os.path.dirname(__file__), "test.ide")
-TCO1_FILENAME = os.path.join(os.path.dirname(__file__), "tco_normal.ide")
-TCO2_FILENAME = os.path.join(os.path.dirname(__file__), "tco_no_acc.ide")
-TCO3_FILENAME = os.path.join(os.path.dirname(__file__), "tco_no_rot.ide")
-TCO4_FILENAME = os.path.join(os.path.dirname(__file__), "tco_no_mag.ide")
+TCO1_FILENAME = os.path.join(os.path.dirname(__file__), "tco_normal.IDE")
+TCO2_FILENAME = os.path.join(os.path.dirname(__file__), "tco_no_acc.IDE")
+TCO3_FILENAME = os.path.join(os.path.dirname(__file__), "tco_no_rot.IDE")
+TCO4_FILENAME = os.path.join(os.path.dirname(__file__), "tco_no_mag.IDE")
 
 
 @pytest.fixture
