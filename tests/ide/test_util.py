@@ -1,7 +1,7 @@
 from idelib.importer import importFile
 import pytest
 from endaq.ide.info import get_channels
-from endaq.ide.util import get_accelerometer_info
+from endaq.ide.util import get_accelerometer_info, get_accelerometer_bounds
 import os
 
 IDE_FILENAME = os.path.join(os.path.dirname(__file__), "test.ide")
@@ -40,3 +40,19 @@ def test_incorrect_sensor_get_accelerometer_info(test_IDE):
         if channel not in accels:
             with pytest.raises(ValueError):
                 get_accelerometer_info(channel)
+
+def test_get_accelerometer_bounds(test_IDE):
+    """
+    Tests that the subchannels g rating matches the parents value,
+    that all g values are symmetric, and it's one of the g-ratings we 
+    currently offer.
+    """
+    acc_sub_chs = get_channels(test_IDE, "accel", True)
+    acc_chs = get_channels(test_IDE, "accel", False)
+    parent_gs = list(map(get_accelerometer_bounds, acc_chs))
+    for g in parent_gs:
+        assert -1 * g[0] == g[1]
+        assert g[1] in [8, 16, 25, 40, 100, 200, 500, 2000, 6000]
+    for ch in acc_sub_chs:
+        expected_g = parent_gs[acc_chs.index(ch.parent)]
+        assert get_accelerometer_bounds(ch) == expected_g
