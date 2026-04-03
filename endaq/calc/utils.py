@@ -545,6 +545,6 @@ def align_dataframes(dfs: List[pd.DataFrame]) -> List[pd.DataFrame]:
             datepoints = df.index
             break 
     if datepoints is None:
-        raise Exception("resampling error, timestamps incosistent with inputs")
+        raise ValueError("resampling error, timestamps incosistent with inputs")
     for df in resampled_dfs: df.index = datepoints
     return resampled_dfs

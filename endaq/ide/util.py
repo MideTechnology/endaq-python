@@ -4,6 +4,7 @@ Some general-purpose IDE file manipulation funcions.
 import datetime
 import string
 from ebmlite import loadSchema
+from typing import Union
 
 from .measurement import ACCELERATION
 import idelib.dataset
@@ -131,7 +132,7 @@ def parse_time(t, datetime_start=None):
 #
 # ============================================================================
 
-def get_accelerometer_bounds(ch: idelib.dataset.Channel | idelib.dataset.SubChannel) -> tuple[int, int]:
+def get_accelerometer_bounds(ch: Union[idelib.dataset.Channel, idelib.dataset.SubChannel]) -> tuple[int, int]:
     """
     Gets the g-rating of the sensor used from the given channel.
     
@@ -199,22 +200,22 @@ def get_accelerometer_info(ch: idelib.dataset.Channel) -> dict:
         try:
             noise = {25: 8E-4, 100: 3E-3, 500: 1.5E-2, 2000: 0.06, 6000: 0.08}[rating]
         except KeyError:
-            raise Exception(f"rating {rating} not supported for Piezoelectric sensors")
+            raise ValueError(f"rating {rating} not supported for Piezoelectric sensors")
     elif (s_type == "DC"):
             try:
                 low, high = {8: (1, 150), 16: (1,300), 40: (1, 100)}[rating]
                 noise = {8: 2E-5, 16: 4E-3, 40: 8E-5}[rating]
             except KeyError:
-                raise Exception(f"rating {rating} not supported for digital IMUs")
+                raise ValueError(f"rating {rating} not supported for digital IMUs")
     elif (s_type == "PR"):
         low = 1
         high = int(sample_rate / 5) 
         try:
             noise = {50: 3E-3, 500: 1.5E-2, 2000:6E-2}[rating]
         except:
-            raise Exception(f"rating {rating} not supported for Piezoresistve sensors")
+            raise ValueError(f"rating {rating} not supported for Piezoresistve sensors")
     else:
-        raise Exception(f"Sensor type {s_type} not recognized, should be one of PE, DC, PR.")
+        raise ValueError(f"Sensor type {s_type} not recognized, should be one of PE, DC, PR.")
         
     return {
         "sensor_type": s_type,

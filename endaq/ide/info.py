@@ -493,7 +493,9 @@ def get_unified_acceleration(doc: idelib.dataset.Dataset) -> pd.DataFrame:
     
     return sum(averaged_dfs)
 
-def _find_all_overlaps(bounds: typing.List[tuple[int, int]]) -> dict[tuple[int, int], typing.List[int]]:
+def _find_all_overlaps(
+        bounds: typing.List[typing.Tuple[int, int]]
+        ) -> typing.Dict[typing.Tuple[int, int], typing.List[int]]:
     """
     finds **all** possible overlaps of a list of start and end bounds. if an end bound and a start
         bound share the same value, it is not considered overlapping.
