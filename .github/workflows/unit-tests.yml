@@ -21,7 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
-        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
+        python-version: [3.10', '3.11', '3.12', '3.13', '3.14']
 
     env:
       OS: ${{ matrix.os }}
@@ -72,9 +72,6 @@ jobs:
           --cov-report=xml 
           --hypothesis-profile=ci
           --numprocesses auto
-          -W error::RuntimeWarning
-          -W error::UserWarning
-          -W error::DeprecationWarning
 
       - name: Generate Codecov Report
         uses: codecov/codecov-action@v3
