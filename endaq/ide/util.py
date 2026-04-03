@@ -4,8 +4,14 @@ Some general-purpose IDE file manipulation funcions.
 import datetime
 import string
 from ebmlite import loadSchema
+from typing import Union
 
-__all__ = ['parse_time', 'validate']
+from .measurement import ACCELERATION
+import idelib.dataset
+import numpy as np
+
+
+__all__ = ['parse_time', 'validate', 'get_accelerometer_bounds', 'get_accelerometer_info']
 
 
 # ============================================================================
@@ -122,4 +128,99 @@ def parse_time(t, datetime_start=None):
 
     raise TypeError(f"Unsupported type for parse_time(): {type(t).__name__} ({t!r})")
 
+# ============================================================================
+#
+# ============================================================================
 
+def get_accelerometer_bounds(ch: Union[idelib.dataset.Channel, idelib.dataset.SubChannel]) -> tuple[int, int]:
+    """
+    Gets the g-rating of the sensor used from the given channel.
+    
+    :param ch: The channel of the dataset to work on. This channel should have a child, which will
+        be used to extract the data.
+
+    :return: a tuple of g-rating bounds. 
+    """
+    ch = ch if isinstance(ch, idelib.dataset.SubChannel) else ch[0]
+    if not ACCELERATION.match(ch):
+        raise ValueError("An acceleration channel should be given")
+    s_name = ch.sensor.name
+
+    if s_name.startswith("ADXL"):
+        g = {"ADXL345": 16, "ADXL362": 16,
+             "ADXL357": 40, "ADXL359": 40,
+             "ADXL355": 8, "ADXL375": 200,
+             }[s_name.split(" ")[0]]
+        return (-1 * g, g)
+    
+    values = np.asarray([8, 16, 25, 100, 200, 500, 2000, 6000])
+    #finds the value closest to ch.transform(0, 65535)[1]. This is because 
+    #we PR have some resistance and won't by default give the value we want,
+    #and digital sensors do not return perfect values.
+    g = values[np.abs(np.asarray(values) - ch.transform(0, 65535)[1]).argmin()]
+    return (-1 * g, g)
+
+# ============================================================================
+#
+# ============================================================================
+
+def get_accelerometer_info(ch: idelib.dataset.Channel) -> dict:
+    """
+    creates a dictionary with information relevant to :py:func:`refine_acceleration`, namely
+    
+    - sensor_type: Literal["DC", "PE", "PR"]. Indicates if the sensor is digital, piezoelectric, 
+        or piezoresistive respectively
+    - rating: the g rating of the sensor, or the maximum it can read while accurate
+    - noise: float. Indicates the noise of the sensor when the response curve is flat
+    - low_cutoff: the lowest rate at which the sensor is being shaken at where the response curve is flat.
+    - high_cutoff: the highest rate at which the sensor is being shaken at where the response curve is flat.
+
+    :param ch: The channel of the dataset to work on. This channel should have a child, which will
+        be used to extract the data. This sensor must 
+
+    :return: a dictionary with the information stated above
+    """
+    if not ACCELERATION.match(ch):
+        raise ValueError("An acceleration channel should be given")
+
+    times = ch.getSession().arraySlice()[0, :]
+    #same thing as 1/ ((times[1] - times[0]) / 1000000)
+    sample_rate = 1000000 / (times[1] - times[0]) 
+    sensor = ch[0].sensor.name
+    kwords = sensor.split(" ") 
+    if kwords[0].startswith("ADXL"):
+        s_type = "DC"
+    else:
+        s_type = kwords[1]
+    rating = get_accelerometer_bounds(ch)[1]
+
+    if (s_type == "PE"):
+        low = 10
+        high = int(sample_rate / 5) 
+        try:
+            noise = {25: 8E-4, 100: 3E-3, 500: 1.5E-2, 2000: 0.06, 6000: 0.08}[rating]
+        except KeyError:
+            raise ValueError(f"rating {rating} not supported for Piezoelectric sensors")
+    elif (s_type == "DC"):
+            try:
+                low, high = {8: (1, 150), 16: (1,300), 40: (1, 100)}[rating]
+                noise = {8: 2E-5, 16: 4E-3, 40: 8E-5}[rating]
+            except KeyError:
+                raise ValueError(f"rating {rating} not supported for digital IMUs")
+    elif (s_type == "PR"):
+        low = 1
+        high = int(sample_rate / 5) 
+        try:
+            noise = {50: 3E-3, 500: 1.5E-2, 2000:6E-2}[rating]
+        except:
+            raise ValueError(f"rating {rating} not supported for Piezoresistve sensors")
+    else:
+        raise ValueError(f"Sensor type {s_type} not recognized, should be one of PE, DC, PR.")
+        
+    return {
+        "sensor_type": s_type,
+        "noise": noise, 
+        "rating": rating, 
+        "low_cutoff": low, 
+        "high_cutoff": high,
+        }

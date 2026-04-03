@@ -4,7 +4,7 @@ Functions for retrieving summary data from a dataset.
 from __future__ import annotations
 import typing
 
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 import datetime
 import dateutil.tz
 import warnings
@@ -14,15 +14,16 @@ import pandas as pd
 import pandas.io.formats.style
 import idelib.dataset
 
-from .measurement import MeasurementType, ANY, get_channels
+from .measurement import MeasurementType, ANY, get_channels, ACCELERATION
 from .files import get_doc
-from .util import parse_time
-
+from .util import parse_time, get_accelerometer_info, get_accelerometer_bounds
+from endaq.calc import utils, filters
 
 __all__ = [
     "get_channel_table",
     "to_pandas",
     "get_primary_sensor_data",
+    "get_unified_acceleration"
 ]
 
 
@@ -433,3 +434,134 @@ def get_primary_sensor_data(
     
     #Return only the subchannels with right units
     return data[channels.name]    
+
+# ============================================================================
+#
+# ============================================================================
+def get_unified_acceleration(doc: idelib.dataset.Dataset) -> pd.DataFrame:
+    """
+    Computes a more accurate acceleration channel by filtering frequencies 
+    out of range and combining frequencies where multiple accelerometers are accurate. 
+
+    Note that this method uses :py:func:`calc.utils.resample()`, which can cause artifacts
+    at the start or end of the data due to a assumption about signal periodicity. If important 
+    data is recorded within those bounds, it is not recommended to use this method.
+
+    :param doc: An open `Dataset` object, see :py:func:`~endaq.ide.get_doc()` 
+            for more.
+
+    :return: a pandas Dataframe with the flattened acceleration data. Output channel names 
+        are [X, Y, Z].
+    """
+    
+    acceleration_channels = get_channels(doc, ACCELERATION, False)
+
+    dfs = [to_pandas(ch) for ch in acceleration_channels]
+
+    cleaned_dfs = []
+    for idx in range(len(dfs)):
+        df = dfs[idx].copy()
+        #drop non-axes channels
+        df = df[[col for col in df.columns if col[0] in 'XYZ']]
+        #0 mean all data
+        for col in df.columns:
+            df[col] = df[col] - np.mean(df[col])
+        cleaned_dfs.append(df)
+        
+    aligned_dfs = utils.align_dataframes(cleaned_dfs)
+    aligned_sr = 1 / (aligned_dfs[0].index[1] - aligned_dfs[0].index[0]).total_seconds()
+    sensor_info = [get_accelerometer_info(ch) for ch in acceleration_channels]
+    noises = np.array([si['noise'] for si in sensor_info])
+    bounds = [(si['low_cutoff'], min(si['high_cutoff'], int(aligned_sr / 2) - 1)) for si in sensor_info]
+    #filters out the frequencies that the sensors can not accurately detect
+    dfs = [filters.butterworth(df, low_cutoff= l_bound, high_cutoff= r_bound) 
+                    for (df, (l_bound, r_bound)) in zip(aligned_dfs, bounds)]
+    for df in dfs: df.columns = ['X', 'Y', 'Z']
+    
+    hz_overlaps = _find_all_overlaps(bounds = bounds) 
+    averaged_dfs = []
+
+    #for each range, the good frequencies are isolated and averaged with the other datasets
+    #who share the same freuqency range
+    for k, v in hz_overlaps.items():
+        cur_overlap_dfs = [dfs[v_i] for v_i in v]
+        cur_noises = noises[v]
+        hz_overlap_dfs = [filters.butterworth(df, low_cutoff=k[0], high_cutoff=k[1])
+                       for df in cur_overlap_dfs]
+        bound_avgd_df = _weighted_avg(hz_overlap_dfs, cur_noises)
+        averaged_dfs.append(bound_avgd_df)
+    
+    return sum(averaged_dfs)
+
+def _find_all_overlaps(
+        bounds: typing.List[typing.Tuple[int, int]]
+        ) -> typing.Dict[typing.Tuple[int, int], typing.List[int]]:
+    """
+    finds **all** possible overlaps of a list of start and end bounds. if an end bound and a start
+        bound share the same value, it is not considered overlapping.
+    
+    :param bounds: a list of each start and end bounds, where the end bound is strictly greater
+        than the starting bounds.
+
+    :return: a dictionary where the keys are the bounds for every overlap, and the values are
+        the indices that belong in each bound, respective to ``bounds`` 
+    """
+
+    if len(bounds) == 0:
+        return {}
+    #labeling the components
+    lblHz = namedtuple("labeledTuple", ("idx", "Hz"))
+    labels = range(len(bounds))
+
+    lower_bounds = list(map(lblHz, labels, [b[0] for b in bounds]))
+    upper_bounds = list(map(lblHz, labels, [b[1] for b in bounds]))
+    bounds_sorted = sorted(lower_bounds + upper_bounds, key= lambda b: b.Hz)
+
+    open_intervals: typing.List[lblHz.idx] = np.array([bounds_sorted[0].idx]) 
+    closed_intervals: dict[tuple[int, int], typing.List[int]] = {}
+    
+    left_bound = bounds_sorted[0].Hz
+    bounds_sorted = bounds_sorted[1:]
+
+    for point in bounds_sorted:
+        if left_bound != point.Hz:
+            if open_intervals.size != 0:
+                closed_intervals[left_bound, point.Hz] = open_intervals
+            left_bound = point.Hz
+        if point.idx in open_intervals:
+            open_intervals = np.setdiff1d(open_intervals, [point.idx])
+        else:
+            open_intervals = np.append(open_intervals, point.idx)
+    return closed_intervals
+
+
+def _weighted_avg(dfs: typing.List[pd.DataFrame], noise: typing.List[float]):
+    """
+    Combines multiple dataframe into one by applying a weighted average base on noise in a linear-inverse fashion. 
+    For sensors A and B, if the noise ratio is 2:1, the weighing ratio will be 1:2. Note that a value of 0 is 
+    considered in the weighting.
+    
+    :param dfs: the dataframes to normalize. It is assumed that all dataframes have
+        the same DateTimeIndex values. 
+    :param noise: The noise value to the index-respective dataframe. Noise will be normalized.
+
+    :return: a single dataframe with the weighted values
+    """
+    if len(dfs) != len(noise) or len(dfs) == 0:
+        raise ValueError("dataframes and noise need to have equal, non zero number of elements")
+    #normalize the weightings. If there is a weighting with 0 noise, return that instead
+    if 0 in noise:
+        return dfs[noise.index(0)]
+    noise_normalized = np.array(noise) / sum(noise)
+    
+    #formula for the inverse is for array [a0, a1, ..., an], inverse is 
+    # [a1a2...an, a0a2...an, a1a2...an], and then normalized
+    new_noise = 1 / noise_normalized
+    for n in noise_normalized:
+        new_noise *= n
+    
+    new_noise = new_noise / sum(new_noise)
+    #in the case that len(dfs) == 1, the noise is 1 and the original is returned
+    return pd.DataFrame(sum([n * d for n, d in zip(new_noise, dfs)]), 
+                        columns = dfs[0].columns, index = dfs[0].index)
+    

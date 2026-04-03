@@ -343,7 +343,6 @@ def ellip(
 
     return df            
 
-
 def _fftnoise(f):
     """
     Generate time series noise for a given range of frequencies with random phase using ifft.
