@@ -7,10 +7,15 @@ import numpy as np
 from idelib.importer import importFile
 import pandas as pd
 
-from endaq.ide import files, info
+from endaq.ide import measurement
+from endaq.ide import files, info, get_channels, compute_orientation
 
 
 IDE_FILENAME = os.path.join(os.path.dirname(__file__), "test.ide")
+TCO1_FILENAME = os.path.join(os.path.dirname(__file__), "tco_normal.ide")
+TCO2_FILENAME = os.path.join(os.path.dirname(__file__), "tco_no_acc.ide")
+TCO3_FILENAME = os.path.join(os.path.dirname(__file__), "tco_no_rot.ide")
+TCO4_FILENAME = os.path.join(os.path.dirname(__file__), "tco_no_mag.ide")
 
 
 @pytest.fixture
@@ -18,6 +23,15 @@ def test_IDE():
     with importFile(IDE_FILENAME) as ds:
         yield ds
 
+@pytest.fixture
+def tco_pass_IDE():
+    #orientation computation files that **will** pass
+    yield [importFile(TCO1_FILENAME), importFile(TCO4_FILENAME)]
+    
+@pytest.fixture
+def tco_fail_IDE():
+    #orientation computation files that **will not** pass
+    yield [importFile(TCO2_FILENAME), importFile(TCO3_FILENAME)]
 
 class TimeParseTest(unittest.TestCase):
     """ Test the time parsing function.
@@ -200,6 +214,20 @@ def test_to_pandas_tz(test_IDE):
 
     assert "UTC" in str(result_utc.index.dtype)
     assert "device" in str(result_device.index.dtype)
+
+def test_compute_orientation(tco_pass_IDE, tco_fail_IDE):
+    """
+    Tests that channels should fail if the needed information is not present, and if it 
+    passes, follows the scalar-last convention
+    """
+    for ide in tco_pass_IDE:
+        assert np.array_equal(compute_orientation(ide).columns, ['X', 'Y', 'Z', 'W'])
+    
+    for ide in tco_fail_IDE:        
+        with pytest.raises(Exception):
+            compute_orientation(ide)
+            assert False
+
 
 
 if __name__ == '__main__':

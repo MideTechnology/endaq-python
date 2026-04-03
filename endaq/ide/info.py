@@ -14,15 +14,18 @@ import pandas as pd
 import pandas.io.formats.style
 import idelib.dataset
 
-from .measurement import MeasurementType, ANY, get_channels
+from .measurement import MeasurementType, ANY, ROTATION, ACCELERATION, MAGNETIC, get_channels
 from .files import get_doc
 from .util import parse_time
+from ..calc.utils import align_dataframes
 
+import ahrs
 
 __all__ = [
     "get_channel_table",
     "to_pandas",
     "get_primary_sensor_data",
+    "compute_orientation"
 ]
 
 
@@ -433,3 +436,55 @@ def get_primary_sensor_data(
     
     #Return only the subchannels with right units
     return data[channels.name]    
+
+# ============================================================================
+#
+# ============================================================================
+
+def compute_orientation(doc):
+    """
+    Uses a Madgwick filter to compute the absolute orientation of the enDAQ device,
+    which uses the primary accelerometer, gyroscope, and optionally, a
+    magnetometer.
+    
+    Note that this method relies on the use of :py:func:`~endaq.calc.resample()`,
+    which can create artifacts at the starting / ending points of the dataset.
+    If important data is contained within those segments, it is not recommended 
+    to use this method.
+
+    :param doc: An open `Dataset` object, see :py:func:`~endaq.ide.get_doc()` 
+            for more.
+
+    :return: A pandas DataFrame containing orientation data with
+        column names ['X', 'Y', 'Z', 'W'] (scalar-last order quaternion).
+    
+    :raises:
+        ValueError: if an acceleration or rotation channel is not present
+    """
+    acc = get_primary_sensor_data(doc=doc, measurement_type=ACCELERATION)
+    rot = get_primary_sensor_data(doc=doc, measurement_type=ROTATION)
+    rot = np.deg2rad(rot)
+    try:
+        mag = get_primary_sensor_data(doc=doc, measurement_type=MAGNETIC)
+        al_acc, al_rot, al_mag = align_dataframes([acc, rot, mag])
+    except:
+        al_acc, al_rot = align_dataframes([acc, rot])
+        al_mag = None
+        
+    timestamps = al_acc.index
+    dt = (timestamps[1] - timestamps[0]).total_seconds()
+    data = ahrs.filters.Madgwick(
+        gyr=al_rot.to_numpy(), 
+        acc=al_acc.to_numpy(), 
+        mag=al_mag.to_numpy() if al_mag is not None else None, 
+        Dt=dt
+    ).Q
+    
+    return pd.DataFrame(
+        data, 
+        index=timestamps, 
+        columns=['W', 'X', 'Y', 'Z']
+    #changes the columns from scalar first to scalar last 
+    ).iloc[:, [1,2,3,0]]
+    
+
