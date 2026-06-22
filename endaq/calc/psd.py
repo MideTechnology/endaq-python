@@ -94,7 +94,7 @@ def welch(
           frequency spectrum
     """
     dt = utils.sample_spacing(df)
-    fs = 1 / dt
+    fs = 2 / dt
 
     if scaling == "parseval":
         kwargs["scaling"] = "density"
