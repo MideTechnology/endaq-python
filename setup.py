@@ -33,7 +33,8 @@ INSTALL_REQUIRES = [
     "python-dotenv>=0.18.0",
     "requests>=2.25.1",
     "scipy>=1.7.1",
-    "pint>=0.18"
+    "pint>=0.18",
+    "ahrs"
     ]
 
 TEST_REQUIRES = [

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import bisect
 import typing
-from typing import Optional, Union, Literal
+from typing import Optional, Union, Literal, List
 import warnings
 
 import numpy as np
@@ -128,32 +129,45 @@ dB_refs = {
     "audio_intensity": 1e-12,  # W/m²
 }
 
-
-def resample(df: pd.DataFrame, sample_rate: Optional[float] = None) -> pd.DataFrame:
+def resample(
+        df: pd.DataFrame, 
+        sample_rate: Optional[float] = None, 
+        num_samples: Optional[int] = None
+        ) -> pd.DataFrame:
     """
-    Resample a dataframe to a desired sample rate (in Hz)
-
+    Resample a dataframe to a desired sample rate (in Hz) or a desired number of points.
+    Note that ``sample_rate`` and ``num_samples`` are mutually exclusive. If
+    neither of sample_rate or num_samples is suplied, it will use the same sample_rate 
+    as it currently does, but makes the time stamps uniformly spaced.
+    
     :param df: The DataFrame to resample, indexed by time
     :param sample_rate: The desired sample rate to resample the given data to.
-     If one is not supplied, then it will use the same as it currently does, but
-     make the time stamps uniformly spaced
+    :param num_samples: The desired number of samples to resample the given data to. 
+
     :return: The resampled data in a DataFrame
     """
-    if sample_rate is None:
-        num_samples_after_resampling = len(df)
-    else:
+    if sample_rate is not None and num_samples is not None:
+        raise ValueError("Only one of `sample_rate` and `num_samples` can be set.")
+
+    if sample_rate is not None:
         dt = sample_spacing(df)
         num_samples_after_resampling = int(dt * len(df) * sample_rate)
+    elif num_samples is not None:
+        num_samples_after_resampling = num_samples
+    else:
+        num_samples_after_resampling = len(df)
 
     resampled_data, resampled_time = scipy.signal.resample(
         df,
         num_samples_after_resampling,
         t=df.index.values.astype(np.float64),
         )
-    resampled_time = pd.date_range(
-        df.iloc[0].name, df.iloc[-1].name, 
-        periods=num_samples_after_resampling,
-        )
+    
+    if resampled_time[0] != df.index[0] or resampled_time[-1] != df.index[-1]:
+        resampled_time = pd.date_range(
+            df.index[0], df.index[-1], 
+            periods=num_samples_after_resampling,
+            )
 
     # Check for datetimes, if so localize
     if 'datetime' in str(df.index.dtype):
@@ -168,7 +182,6 @@ def resample(df: pd.DataFrame, sample_rate: Optional[float] = None) -> pd.DataFr
     resampled_df.index.name = df.index.name
 
     return resampled_df
-
 
 def _rolling_slice_definitions(
         df: pd.DataFrame,
@@ -462,3 +475,74 @@ def to_altitude(df: pd.DataFrame,
 
     # Return DataFrame with New Altitude Column
     return alt_df
+
+def align_dataframes(dfs: List[pd.DataFrame]) -> List[pd.DataFrame]:
+    """
+    Resamples the given dataframes to all be equal-sized with resampled uniform timestamps.
+    Any timestamps outside of the shared range will be dropped.
+
+    :param dfs: a List of dataframes with DateTimeIndex to align.
+
+    :return: a list of dataframes in the same order that they were inputted in.
+    """
+    aligned_start = max([df.index[0] for df in dfs])
+    aligned_end = min([df.index[-1] for df in dfs])
+
+    if aligned_start >= aligned_end:
+        raise ValueError("No range of time shared between dataframes")
+    left_idx = [bisect.bisect_right(df.index, aligned_start) - 1 for df in dfs] #the most left point in bound
+    right_idx = [bisect.bisect_left(df.index, aligned_end) for df in dfs] #the first right point out of bounds
+
+    #removes the start / end points
+    trimmed_dfs = [dfs[i][left_idx[i] + 1: right_idx[i] - 1] for i in range(len(dfs))]
+    
+    for i, (df, l_idx) in enumerate(zip(dfs, left_idx)):
+        #if the original timestamp is too early
+        if df.index[l_idx] != aligned_start:
+            #change in time and acceleration
+            dt = (df.index[l_idx] - df.index[l_idx - 1]).total_seconds()
+            da = (df.iloc[l_idx] - df.iloc[l_idx - 1]) / dt
+            new_dt = (aligned_start - df.index[l_idx]).total_seconds()
+            #compute the new point
+            new_point = df.iloc[l_idx - 1] + new_dt * da
+            #and add it back to the dataframe
+            trimmed_dfs[i] = pd.concat([
+                pd.DataFrame([new_point], index= [aligned_start]),
+                trimmed_dfs[i]
+                ])
+        #in the case that the data is already in the correct point, add it back in
+        else:
+            trimmed_dfs[i] = pd.concat([df.loc[[aligned_start]], trimmed_dfs[i]])
+
+    #repeating the steps above, with slight indexing differences to accomodate the right index
+    for i, (df, r_idx) in enumerate(zip(dfs, right_idx)):
+        if df.index[r_idx] != aligned_end:
+            dt = (df.index[r_idx] - df.index[r_idx - 1]).total_seconds()
+            da = (df.iloc[r_idx] - df.iloc[r_idx - 1]) / dt
+            new_dt = (aligned_end - (df.index[r_idx - 1])).total_seconds()
+            new_point = df.iloc[r_idx - 1] + new_dt * da
+            trimmed_dfs[i] = pd.concat([
+                trimmed_dfs[i],
+                pd.DataFrame([new_point], index = [aligned_end])
+                ])
+        else:
+            trimmed_dfs[i] = pd.concat([trimmed_dfs[i], df.loc[[aligned_end]]])
+
+    #resamples the data to the dataframe with the most points available
+    total_samples = max(tdf.shape[0] for tdf in trimmed_dfs)
+    resampled_dfs = [resample(df, num_samples=total_samples) for df in trimmed_dfs]
+    
+    """
+    In the current implementation of scipy's resample, there can be some inconsistent rounding point
+    when creating the datetimes. For this reason, we will find one that meets spec (correct start
+    and end points) and use that for all.
+    """
+    datepoints = None
+    for df in resampled_dfs:
+        if df.index[0] == aligned_start and df.index[-1] == aligned_end: 
+            datepoints = df.index
+            break 
+    if datepoints is None:
+        raise Exception("resampling error, timestamps incosistent with inputs")
+    for df in resampled_dfs: df.index = datepoints
+    return resampled_dfs
